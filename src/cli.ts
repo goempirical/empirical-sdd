@@ -474,8 +474,8 @@ async function main(): Promise<void> {
     case "status": {
       assertNoArgs(context.args, "status");
       const project = await EmpiricalProject.openReadOnly(context.root);
-      const state = await project.status();
-      emit(state, context.json, () => `feature=${state.activeFeature ?? "none"} phase=${state.phase} status=${state.status} revision=${state.revision} profile=${state.profile}`);
+      const state = await project.statusReport();
+      emit(state, context.json, () => `feature=${state.activeFeature ?? "none"} phase=${state.phase} status=${state.status} revision=${state.revision} profile=${state.profile} tracker=${state.tracker.health}`);
       return;
     }
     case "next": {
@@ -488,6 +488,32 @@ async function main(): Promise<void> {
       assertNoArgs(context.args, "explain");
       const project = await EmpiricalProject.openReadOnly(context.root);
       emit(await project.explain(), context.json, renderExplain);
+      return;
+    }
+    case "tracker-configure": {
+      const policy = await readJsonInput<unknown>(context.args, "tracker-configure");
+      const project = await EmpiricalProject.open(context.root);
+      emit(await project.configureTracker(policy), context.json, (value) => value === null
+        ? "External ticket tracking is disabled; Empirical remains local-only."
+        : `External ticket tracking is configured for ${(value as { provider: string }).provider}.`);
+      return;
+    }
+    case "tracker-bind": {
+      const input = await readJsonInput<import("./types.js").TrackerBindInput>(context.args, "tracker-bind");
+      const project = await EmpiricalProject.open(context.root);
+      emit(await project.bindTracker(input), context.json, (value) => {
+        const result = value as import("./types.js").TrackerBindResult;
+        return `External ${result.tracker.provider ?? "ticket"} mirror is ${result.tracker.health}${result.tracker.url ? `: ${result.tracker.url}` : "."}`;
+      });
+      return;
+    }
+    case "tracker-sync": {
+      assertNoArgs(context.args, "tracker-sync");
+      const project = await EmpiricalProject.open(context.root);
+      emit(await project.syncTracker(), context.json, (value) => {
+        const result = value as import("./types.js").TrackerSyncResult;
+        return `External ${result.tracker.provider ?? "ticket"} mirror is ${result.tracker.health}${result.tracker.url ? `: ${result.tracker.url}` : "."}`;
+      });
       return;
     }
     case "complete": {
@@ -1352,6 +1378,7 @@ function renderAction(value: unknown): string {
   const header = action.feature ? `${action.feature}: ${action.phase} (${action.profile}, ${action.status}, revision ${action.revision})` : `Empirical: ${action.phase}`;
   const progress = phaseProgress(action.profile, action.phase);
   const sections = [`Empirical${progress ? ` · ${progress}` : ""}`, header, action.instructions];
+  sections.push(`External tracker: ${action.tracker.health}${action.tracker.url ? ` (${action.tracker.url})` : ""}`);
   if (action.projectContext.length) sections.push(`Project context:\n${action.projectContext.map((item) => `- ${item}`).join("\n")}`);
   if (action.knowledgeContext.length) sections.push(`Repository knowledge:\n${action.knowledgeContext.map((item) => `- ${item}`).join("\n")}`);
   if (action.capabilityContext.length) sections.push(`Living capability context:\n${action.capabilityContext.map((item) => `- ${item}`).join("\n")}`);
@@ -1412,7 +1439,7 @@ Installer automation:
 The searchable installer uses a pinned local catalog of 73 global skill targets,
 remembers explicit selections, and performs no runtime network or npx calls.
 
-Repository work happens inside your coding agent through ${SKILLS.length} installed skills:
+Repository work happens inside your coding agent through ${SKILLS.length} installed ${SKILLS.length === 1 ? "skill" : "skills"}:
 ${SKILLS.map((skill) => `  ${skill.id.padEnd(28)} ${skill.description}`).join("\n")}
 
 Agents use native syntax such as $empirical in Codex, /empirical in Claude Code,
@@ -1424,7 +1451,7 @@ The MCP/private adapter registry currently defines ${OPERATIONS.length} operatio
 function printSubcommandHelp(command: string, internal: boolean): void {
   if (!internal) {
     if (command === "install") {
-      console.log(`Install all ${SKILLS.length} registry-backed Empirical skills for selected agents without project workflow mutation.
+      console.log(`Install the ${SKILLS.length} registry-backed Empirical ${SKILLS.length === 1 ? "skill" : "skills"} for selected agents without project workflow mutation.
 
   empirical install
   empirical install --agent <agent> [--agent <agent> ...]
@@ -1435,7 +1462,7 @@ Options: --agent/-a, --all, --yes/-y, --json, --help/-h`);
       return;
     }
     if (command === "update") {
-      console.log(`Update the installed package and reconcile all ${SKILLS.length} registry-backed skills.
+      console.log(`Update the installed package and reconcile the ${SKILLS.length} registry-backed ${SKILLS.length === 1 ? "skill" : "skills"}.
 
   empirical update
   empirical update --check

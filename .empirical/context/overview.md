@@ -8,13 +8,15 @@ into exact Fast or Complex state-machine actions backed by committed contracts,
 evidence, review, living capability specifications, and safe Git worktrees.
 Source-changing work conditionally enters a persisted Context phase so stale or
 placeholder repository knowledge cannot survive a completed workflow.
+An optional provider-neutral tracker layer mirrors committed progress to one
+GitHub, Linear, or Jira ticket without making remote state authoritative.
 
 ## Boundaries
 
 - One active feature is selected per checkout; parallel work uses real linked
   Git worktrees.
-- Six globally installed Empirical skills provide automatic and deliberate SDD
-  modes. Public CLI commands are Install, Update, and ownership-bound Uninstall;
+- One globally installed `empirical` skill owns setup, routing, discovery,
+  continuation, autonomous ceilings, and optional ticket mirroring. Public CLI commands are Install, Update, and ownership-bound Uninstall;
   workflow operations are MCP/private automation APIs.
 - Repository knowledge is bounded and file-backed. There are no embeddings,
   hosted indexing services, or persisted private reasoning. Managed placeholder

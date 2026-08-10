@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "feature": "external-ticket-tracking",
+  "claimId": "external-ticket-tracking-565da1fe2d7e",
+  "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+  "baseCommit": "42b1eac9266f4d1ed753f59caf62eaf077f66182",
+  "baseTree": "390b690d4454a755a6c8dc4bf6f0bda36fa21315",
+  "featureTree": "sha256:9d7c01baacc170fe08580a51a5c169604c3ef36743740799b4a2044775f4954d",
+  "targetCommit": "c9d186c52d2bd435f8460d8b8a419860acaae89b",
+  "targetTree": "390b690d4454a755a6c8dc4bf6f0bda36fa21315",
+  "capabilityBaseDigests": {
+    "agent-integrations": "sha256:c5fa89e8214f9239b1a96d5a967afc73039a261ac8e1c11be3d4736ff29245dc",
+    "external-ticket-tracking": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "project-policy": "sha256:6808463f7666e5a975eeb927569db17c14999fb778e3f1168214e8bf4a19926d"
+  },
+  "deltaDigest": "sha256:a17d597772350ac477ce3d1f0bc925928dc81bf036fb02c660a35e7fb85fa024",
+  "resultDigests": {
+    "agent-integrations": "sha256:f7abf33b5ee3020ae4c70b8c8677ddb7c0e3cfdae92bf0e9e93610f39cc29171",
+    "external-ticket-tracking": "sha256:d8506be4ff6bd6ed6d80a53284323a6d4f38b01f67de04deb44abb8908e6838a",
+    "project-policy": "sha256:9d698f7f28fe11b66a86af35ca10808c3c3827a63adad90a73a7138c2b1e4b97"
+  },
+  "verificationReceiptDigests": [
+    "sha256:f54b8779128b5d9648e0a74b3f91b6754c04d0376bf8768ec64c65a10d29d5d8"
+  ],
+  "integratedAt": "2026-08-10T03:31:17.961Z",
+  "digest": "sha256:dc11d29918a71fd0d4a23e60e93079fa893fb4b7bb6acdea4702f947526f8e79"
+}

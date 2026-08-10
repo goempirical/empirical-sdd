@@ -19,9 +19,12 @@
 ## Repository-specific constraints
 
 - `.empirical/` is the durable contract and evidence source of truth.
+- Optional external ticket boards are one-way mirrors. Commit the local journal
+  first, persist only credential variable names, and report tracker health
+  without treating provider state as workflow authority.
 - Fast is restricted to explicit tiny low-risk non-UI work; substantial or UI
   changes use Complex. Source-changing Fast and Complex work must cross the
   conditional Context gate whenever repository knowledge is invalid.
 - Do not persist private chain-of-thought or credentials.
-- Do not add project-local workflow skills; global installation owns the six
-  automatic and deliberate Empirical entrypoints.
+- Do not add project-local workflow skills; global installation owns the single
+  `empirical` entrypoint and safely removes only marker-owned legacy names.

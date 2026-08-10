@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 5,
+  "revision": 11,
+  "activeFeature": "external-ticket-tracking",
+  "request": "Add optional external ticket-board tracking to Empirical. Empirical must remain the authoritative workflow source and external boards must be one-way mirrors only. Support GitHub, Linear, and Jira through a provider-neutral tracker boundary. A feature can create or attach to one external ticket; persist only non-secret binding and synchronization metadata. Map exact SDD phase, workflow status, revision, completion level, and blocker state to configurable external board states while preserving the exact Empirical phase/revision as ticket metadata or an update. Perform remote synchronization only after the local journal transition commits, using durable idempotent pending work with retry so remote outages never corrupt or block the local workflow. Expose tracker health in Empirical status as local-only, synced, pending, or failed. Keep credentials outside repository state. Make the installed $empirical skill the only user-facing Empirical workflow entrypoint; remove the separate empirical-init, empirical-spec, empirical-socratic, empirical-loop, and empirical-yolo skills/commands while retaining granular MCP operations as private machine-facing capabilities used by $empirical. Update schemas, migration/compatibility behavior, integrations, CLI/MCP adapters, generated skill text, documentation, and tests consistently.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "normal",
+  "phase": "done",
+  "status": "done",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: agent-integrations, external-ticket-tracking, project-policy",
+  "implementationActor": "agent",
+  "specDigest": "sha256:1a9c7ba5fc59a86f24a0163842a328b785c274513578c73a2e7339a50602085b",
+  "approvedSpecRevision": 2,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:fff01eee54d2a4c15e16abb5878c537f683d7319f1ff8fd50c39257f44b31604",
+  "impactDigest": "sha256:b74b9aceb328ee8f99ff578c0747ec2f16a9d54934980f5e68f148a1fdb18f11",
+  "capabilityClaimId": "external-ticket-tracking-565da1fe2d7e",
+  "authorizationDigest": null,
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-113acf118af47414d81385c8"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-10T03:31:18.204Z"
+}

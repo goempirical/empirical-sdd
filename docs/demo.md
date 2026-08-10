@@ -7,12 +7,12 @@ npm install -g empirical-sdd
 empirical install
 ```
 
-Choose from the pinned 73-target catalog. Empirical writes all six skills once
+Choose from the pinned 73-target catalog. Empirical writes the single skill once
 per unique root and performs no runtime network fetch during installation.
 
 ## Initialize deliberately
 
-In Codex, invoke `$empirical-init`. The agent first shows current or recommended
+In Codex, invoke `$empirical`. The agent first shows current or recommended
 Verification, Parallel work, and Decisions settings. Apply, customize, or
 cancel; cancellation writes nothing. Initialization then persists Schema 5,
 Policy v2, Manifest v2, and supported runtime bridges without creating feature
@@ -36,19 +36,33 @@ Integrate. If the request is
 materially ambiguous, the agent conducts and persists the five Socratic passes
 before drafting the contract.
 
-Use `$empirical-spec` to draft a known Complex request and stop at contract
-approval, `$empirical-socratic` to interview first, and `$empirical-loop` to
-resume the exact selected revision.
+The same `$empirical` entrypoint drafts a known Complex request, conducts the
+five-pass interview when the idea is materially ambiguous, and resumes the
+exact selected revision when work already exists.
 
 ## Bounded autonomous mode
 
-> `$empirical-yolo` Implement and integrate the approved invitation feature;
-> stop before external delivery.
+> `$empirical` Implement and integrate the approved invitation feature
+> autonomously through `integrated`; stop before external delivery.
 
 YOLO stores standing authorization through `integrated`, then continues without
 routine preference questions. It still stops for an unresolved product choice,
 missing host permission, conflict, branch protection, credential boundary, or
 other hard safety floor. It cannot authorize publication.
+
+## Optional ticket mirror
+
+> `$empirical` Mirror this feature to our Linear board and create its ticket.
+
+The agent collects the board identifiers, normalized status mapping, and the
+name of the host-provided credential variable. It stores no credential value.
+After each local journal commit it projects the feature phase, status, exact
+revision, completion level, and blocker summary to that one ticket. The same
+flow supports attaching an existing Linear, GitHub, or Jira ticket.
+
+If the provider is unavailable, local SDD work continues and reports tracker
+health as `pending` or `failed`. A later `$empirical` invocation retries the
+durable projection and converges the same ticket instead of creating a duplicate.
 
 ## Parallel work
 
@@ -78,7 +92,8 @@ artifact blocks the operation.
 empirical update
 ```
 
-This upgrades the package and reconciles all six managed skills. A Schema 4
+This upgrades the package, reconciles the single managed skill, and removes
+marker-owned legacy Empirical skill entrypoints. A Schema 4
 repository migrates atomically to Schema 5 on its first mutating 0.22 workflow
 operation.
 

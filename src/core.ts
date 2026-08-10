@@ -69,6 +69,13 @@ import {
 import { parsePolicy } from "./policy.js";
 import { isMigrationScratchPath } from "./migration-scratch.js";
 import {
+  bindTracker,
+  configureTrackerPolicy,
+  loadTrackerPolicy,
+  synchronizeTracker,
+  trackerStatus,
+} from "./tracking.js";
+import {
   capabilityDeltaDigest,
   capabilityMarkdownDigest,
   listCapabilities,
@@ -105,10 +112,17 @@ import {
   type Profile,
   type ProjectConfig,
   type ProjectPolicy,
+  type ProjectStatus,
   type ProjectConfigurationInput,
   type PublicationInput,
   type PublicationResult,
   type StartOptions,
+  type TrackerBindInput,
+  type TrackerBindResult,
+  type TrackerDependencies,
+  type TrackerPolicy,
+  type TrackerStatus,
+  type TrackerSyncResult,
   type ValidationReport,
   type Workflow,
   type WorkflowState,
@@ -297,6 +311,33 @@ export class EmpiricalProject {
 
   async status(): Promise<WorkflowState> {
     return this.store.loadState(!this.readOnly);
+  }
+
+  async statusReport(): Promise<ProjectStatus> {
+    const state = await this.store.loadState(!this.readOnly);
+    return { ...state, tracker: await trackerStatus(this.store.root, state) };
+  }
+
+  async trackerPolicy(): Promise<TrackerPolicy | null> {
+    return loadTrackerPolicy(this.store.root);
+  }
+
+  async configureTracker(value: unknown): Promise<TrackerPolicy | null> {
+    if (this.readOnly) throw new EmpiricalError("READ_ONLY", "Tracker configuration requires a writable project");
+    return configureTrackerPolicy(this.store.root, value);
+  }
+
+  async bindTracker(
+    input: TrackerBindInput,
+    dependencies: TrackerDependencies = {},
+  ): Promise<TrackerBindResult> {
+    if (this.readOnly) throw new EmpiricalError("READ_ONLY", "Tracker binding requires a writable project");
+    return bindTracker(this.store.root, await this.store.loadState(), input, dependencies);
+  }
+
+  async syncTracker(dependencies: TrackerDependencies = {}): Promise<TrackerSyncResult> {
+    if (this.readOnly) throw new EmpiricalError("READ_ONLY", "Tracker synchronization requires a writable project");
+    return synchronizeTracker(this.store.root, await this.store.loadState(), dependencies);
   }
 
   async config(): Promise<ProjectConfig> {
@@ -994,6 +1035,7 @@ export class EmpiricalProject {
       revision: state.revision,
       rationale: packet.rationale,
       decisions,
+      tracker: packet.tracker,
     };
   }
 
@@ -2195,6 +2237,7 @@ export class EmpiricalProject {
       artifacts,
       [...new Set(missingArtifacts)],
       config,
+      await trackerStatus(this.store.root, state),
     );
   }
 }
@@ -2434,6 +2477,7 @@ function actionPacket(
   artifacts: string[],
   missingArtifacts: string[],
   config: ProjectConfig,
+  tracker: TrackerStatus,
 ): ActionPacket {
   const route = state.request
     ? routeRequest({
@@ -2481,6 +2525,7 @@ function actionPacket(
     knowledgeContext,
     capabilityContext,
     completionLevel: state.completion,
+    tracker,
     completion: {
       available: completionAvailable,
       mcpTool: integration
@@ -2577,7 +2622,7 @@ function assertStartAction(
 function instructionsFor(state: WorkflowState, policy: ProjectPolicy, config: ProjectConfig): string {
   if (state.status === "blocked") return appendPolicy(`Stop. Resolve this blocker before retrying: ${state.message ?? "unknown"}`, state, policy);
   if (state.status === "awaiting_human") return appendPolicy(`Stop and ask the user: ${state.message ?? "a decision is required"}`, state, policy);
-  if (state.phase === "idle") return appendPolicy("No feature is active. Loop does not create or route new work. Use the installed empirical skill for automatic routing, empirical-spec for a concrete contract, or empirical-socratic for five-pass discovery.", state, policy);
+  if (state.phase === "idle") return appendPolicy("No feature is active. Loop does not create or route new work. Use the installed empirical skill for setup, automatic routing, concrete contracts, or five-pass discovery.", state, policy);
   if (state.phase === "done") return appendPolicy(`The feature reached ${state.completion.highest}. Report that exact completion level; delivery and publication require their own explicit authorization and receipts.`, state, policy);
   const feature = state.activeFeature ?? "current feature";
   const verifyInstruction = config.evidence.required

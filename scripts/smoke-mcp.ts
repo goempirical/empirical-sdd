@@ -169,8 +169,8 @@ try {
     const help = await runCli(root, args);
     if (
       !help.stdout.includes("empirical v0.22.1")
-      || !help.stdout.includes("through 6 installed skills")
-      || !help.stdout.includes("empirical-yolo")
+      || !help.stdout.includes("through 1 installed skill")
+      || !help.stdout.includes("Automatically initialize, route, track, resume")
       || help.stdout.includes("\u001b[")
     ) throw new Error(`Bundled help omitted Schema-5 UX: ${help.stdout}`);
   }
@@ -178,7 +178,7 @@ try {
     const help = await runCli(root, args, { HOME: skillHome, USERPROFILE: skillHome });
     const expected = args[0] === "uninstall"
       ? "Project .empirical histories and repository MCP/agent configuration are always preserved."
-      : "6 registry-backed";
+      : "1 registry-backed";
     if (help.code !== 0 || !help.stdout.includes(expected)) {
       throw new Error(`Bundled subcommand help failed: ${help.stderr}`);
     }
@@ -196,22 +196,22 @@ try {
   };
   if (
     installed.code !== 0
-    || integration.created?.length !== 391
+    || integration.created?.length !== 66
     || integration.selected?.length !== 73
     || integration.destinations?.length !== 65
     || integration.entrypoints?.filter((entry) => entry.guidanceVerified).length !== 5
-    || integration.entrypoints?.some((entry) => entry.skills.length !== 6)
+    || integration.entrypoints?.some((entry) => entry.skills.length !== 1)
   ) {
-    throw new Error(`Bundled broad six-skill install failed: ${installed.stderr}`);
+    throw new Error(`Bundled broad single-skill install failed: ${installed.stderr}`);
   }
-  for (const name of ["empirical", "empirical-init", "empirical-loop", "empirical-socratic", "empirical-spec", "empirical-yolo"]) {
+  for (const name of ["empirical"]) {
     const skill = await readFile(join(skillHome, ".codex", "skills", name, "SKILL.md"), "utf8");
     if (!skill.includes(`name: ${name}`) || !skill.includes("empirical-sdd:managed-file")) {
       throw new Error(`Bundled install produced an invalid ${name} skill`);
     }
   }
 
-  console.log("Bundled 0.22 six-skill, uninstall, receipt, routing, YOLO, worktree, CLI, and MCP smoke passed.");
+  console.log("Bundled 0.22 single-skill, tracker, uninstall, receipt, routing, YOLO, worktree, CLI, and MCP smoke passed.");
 } finally {
   await client.close();
   await Promise.all([...createdWorktrees, root, yoloRoot, gitRoot, skillHome].map((path) => rm(path, { recursive: true, force: true })));

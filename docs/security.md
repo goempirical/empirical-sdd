@@ -24,6 +24,12 @@ untrusted.
 - Manifest v2 inventory is bounded and excludes ignored, build, dependency,
   secret-like, binary, and oversized paths. It stores fingerprints, not a
   remote semantic index. Stale generated pages are not silently retrieved.
+- Tracker Policy v1 stores only provider target IDs, normalized status IDs, and
+  credential environment-variable names. Runtime values are never serialized.
+  Provider requests use fixed HTTPS endpoints, bounded timeouts and responses,
+  redacted diagnostics, checksummed feature-local state, and a stable
+  idempotency marker. Remote input is never allowed to mutate local workflow
+  state or acceptance criteria.
 - Reserved migration stage/marker/backup paths are transaction state rather
   than source. Pre-marker failure removes only its owned stage; evidence,
   knowledge, and integration overlays exclude scratch, while Doctor diagnoses
@@ -49,5 +55,5 @@ untrusted.
   secret sections. Explain exposes deterministic state-machine rationale only.
 
 Do not place secrets in requests, Socratic answers, specifications, decisions,
-evidence summaries, screenshots, or delivery inputs. `.empirical/` is committed
+evidence summaries, screenshots, tracker configuration, or delivery inputs. `.empirical/` is committed
 project data; Git-common-dir claim records are local coordination metadata.

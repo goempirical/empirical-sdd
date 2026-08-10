@@ -1,14 +1,14 @@
 # Architecture
 
-Empirical 0.22 is a TypeScript library, Node.js CLI, stdio MCP server, and six
-generated agent skills over one repository-native Schema 5 model.
+Empirical 0.22 is a TypeScript library, Node.js CLI, stdio MCP server, and one
+generated agent skill over one repository-native Schema 5 model.
 
 ## Boundaries
 
 - `protocol.ts` defines strict shared schemas, canonical JSON, digests,
   authorizations, impacts, receipts, and completion derivation.
 - `operations.ts` is the single frozen registry for MCP names, internal verbs,
-  summaries, workflows, modes, and the six skills.
+  summaries, workflows, modes, and the single skill.
 - `core.ts` owns workflow transitions, exact revisions, phase gates, routing,
   receipt use, and orchestration.
 - `storage.ts` owns safe paths, atomic projections, locks, journal recovery, and
@@ -23,6 +23,8 @@ generated agent skills over one repository-native Schema 5 model.
   candidate validation, projection rollback, and integration receipts.
 - `delivery.ts` owns protected GitHub source/evidence PR convergence and
   explicit publication planning.
+- `tracking.ts` owns the optional provider-neutral ticket policy, feature-local
+  bindings and retry projections, and GitHub, Linear, and Jira adapters.
 - `knowledge.ts` owns Manifest v2 fingerprints and fresh-by-default retrieval.
 - `doctor.ts` performs read-only cross-subsystem diagnostics.
 - `cli.ts`, `mcp.ts`, and `integrations.ts` are registry-backed adapters, not
@@ -41,10 +43,12 @@ Git common directory
 
 repository checkout
 ├── Schema-5 config + Policy v2 + Manifest v2
+├── optional secret-free Tracker Policy v1
 ├── living capability projections
 ├── discovery records
 └── selected feature
     ├── spec + design + decisions + plan + impact + deltas
+    ├── optional tracker binding + durable pending projection
     ├── immutable evidence/integration/delivery receipts
     └── state projection + hash journal + terminal snapshot
 ```
@@ -75,6 +79,13 @@ into a different worktree, runs every exact Policy command there, restores the
 target, then promotes source capability projections with rollback and records a
 receipt. The feature is not `integrated` until that receipt and state transition
 both succeed.
+
+External tracking is a separate one-way projection boundary. Every workflow
+transition commits its local journal and state projection first. A later
+tracker sync snapshots that committed revision into a checksummed pending
+record, converges the bound remote ticket with a stable idempotency marker, and
+only then advances the binding's last-synced revision. Provider failure cannot
+roll back, demote, or block the local state machine.
 
 ## Delivery and publication
 

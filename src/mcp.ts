@@ -61,7 +61,7 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
     { name: "empirical-sdd", version: PRODUCT_VERSION },
     {
       instructions:
-        "Use Empirical through the six registry-backed skills. Route deterministically, record immutable evidence receipts, complete exact revisions, and integrate reviewed deltas against an independent target. YOLO carries bounded standing authorization but never suppresses host prompts or weakens Git, credential, publication, or deletion safety floors.",
+        "Use Empirical through its single registry-backed skill. Route deterministically, keep local workflow state authoritative, mirror committed progress only through the granular tracker operations, record immutable evidence receipts, complete exact revisions, and integrate reviewed deltas against an independent target. Bounded standing authorization never suppresses host prompts or weakens Git, credential, publication, or deletion safety floors.",
     },
   );
 
@@ -293,6 +293,48 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
     annotations: operationAnnotations("explain"),
   }, async ({ root }) => toolResult(async () => (await EmpiricalProject.openReadOnly(root ?? defaultRoot)).explain()));
 
+  server.registerTool(operationName("tracker-configure"), {
+    title: "Configure external ticket tracking",
+    description: operationSummary("tracker-configure"),
+    inputSchema: {
+      root: z.string().optional(),
+      policy: z.unknown().nullable(),
+    },
+    annotations: operationAnnotations("tracker-configure"),
+  }, async ({ root, policy }) => toolResult(async () =>
+    (await EmpiricalProject.open(root ?? defaultRoot)).configureTracker(policy)));
+
+  server.registerTool(operationName("tracker-bind"), {
+    title: "Create or attach an external ticket",
+    description: operationSummary("tracker-bind"),
+    inputSchema: {
+      root: z.string().optional(),
+      mode: z.enum(["create", "attach"]),
+      ticket: z.string().min(1).optional(),
+      title: z.string().min(1).optional(),
+      description: z.string().optional(),
+      replace: z.literal(true).optional(),
+      confirmCreateRetry: z.literal(true).optional(),
+    },
+    annotations: operationAnnotations("tracker-bind"),
+  }, async ({ root, mode, ticket, title, description, replace, confirmCreateRetry }) => toolResult(async () =>
+    (await EmpiricalProject.open(root ?? defaultRoot)).bindTracker({
+      mode,
+      ...(ticket ? { ticket } : {}),
+      ...(title ? { title } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(replace ? { replace } : {}),
+      ...(confirmCreateRetry ? { confirmCreateRetry } : {}),
+    })));
+
+  server.registerTool(operationName("tracker-sync"), {
+    title: "Synchronize external ticket tracking",
+    description: operationSummary("tracker-sync"),
+    inputSchema: { root: z.string().optional() },
+    annotations: operationAnnotations("tracker-sync"),
+  }, async ({ root }) => toolResult(async () =>
+    (await EmpiricalProject.open(root ?? defaultRoot)).syncTracker()));
+
   server.registerTool(operationName("complete"), {
     title: "Complete current action",
     description: operationSummary("complete"),
@@ -320,7 +362,7 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
     description: operationSummary("status"),
     inputSchema: { root: z.string().optional() },
     annotations: operationAnnotations("status"),
-  }, async ({ root }) => toolResult(async () => (await EmpiricalProject.openReadOnly(root ?? defaultRoot)).status()));
+  }, async ({ root }) => toolResult(async () => (await EmpiricalProject.openReadOnly(root ?? defaultRoot)).statusReport()));
 
   server.registerTool(operationName("verify"), {
     title: "Validate evidence",
