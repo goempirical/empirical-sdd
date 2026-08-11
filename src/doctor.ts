@@ -21,6 +21,8 @@ import {
   MIGRATION_MARKER_NAME,
   migrationScratchKind,
 } from "./migration-scratch.js";
+import { loadTrackerPolicy, trackerStatus } from "./tracking.js";
+import type { WorkflowState } from "./types.js";
 
 export type DoctorSeverity = "ok" | "warning" | "error";
 
@@ -112,7 +114,7 @@ async function inspectSchema(root: string, findings: DoctorFinding[]): Promise<n
         "SCHEMA_CONFIG_MISSING",
         "schema",
         "The repository has no .empirical/config.json.",
-        "Run the empirical-init skill before starting workflow work.",
+        "Invoke the empirical skill to complete repository setup before starting workflow work.",
       ),
     );
     return null;
@@ -203,7 +205,7 @@ async function inspectPolicy(root: string, findings: DoctorFinding[]): Promise<v
         "POLICY_MISSING",
         "policy",
         "Project policy is missing.",
-        "Run empirical-init to create strict Policy v2 defaults.",
+        "Invoke the empirical skill to create strict Policy v2 defaults.",
       ),
     );
     return;
@@ -242,6 +244,87 @@ async function inspectPolicy(root: string, findings: DoctorFinding[]): Promise<v
         "Correct Policy v2 fields; do not weaken mandatory gates.",
       ),
     );
+  }
+}
+
+async function inspectTracker(root: string, findings: DoctorFinding[]): Promise<void> {
+  let policy: Awaited<ReturnType<typeof loadTrackerPolicy>>;
+  try {
+    policy = await loadTrackerPolicy(root);
+  } catch (error) {
+    findings.push(finding(
+      "error",
+      "TRACKER_POLICY_INVALID",
+      "tracker",
+      error instanceof Error ? error.message : String(error),
+      "Correct or disable .empirical/tracker.json through the empirical skill; never add credential values.",
+    ));
+    return;
+  }
+  if (!policy) {
+    findings.push(finding(
+      "ok",
+      "TRACKER_LOCAL_ONLY",
+      "tracker",
+      "External ticket tracking is not configured; workflow progress remains local-only.",
+    ));
+    return;
+  }
+  const credentialNames = Object.values(policy.credentialEnv);
+  const missing = credentialNames.filter((name) => !(process.env[name]?.trim()));
+  findings.push(finding(
+    missing.length > 0 ? "warning" : "ok",
+    missing.length > 0 ? "TRACKER_CREDENTIALS_MISSING" : "TRACKER_READY",
+    "tracker",
+    missing.length > 0
+      ? `${policy.provider} tracking is configured, but credential environment variables are missing: ${missing.join(", ")}.`
+      : `${policy.provider} tracking is configured and its credential environment variables are present.`,
+    missing.length > 0
+      ? "Provide the named variables through the host secret store; never write credential values to .empirical/."
+      : null,
+  ));
+  let inspected = 0;
+  let invalid = false;
+  for (const feature of await featureDirectories(root)) {
+    const statePath = join(root, ".empirical", "specs", feature, "state.json");
+    if (!(await exists(statePath))) continue;
+    try {
+      const state = await readJson<WorkflowState>(statePath);
+      const status = await trackerStatus(root, state);
+      inspected += 1;
+      if (status.health !== "failed") continue;
+      const code = status.failure?.code ?? "TRACKER_FAILED";
+      const structural = code.startsWith("INVALID_TRACKER_")
+        || code === "UNSAFE_TRACKER_PATH"
+        || code === "TRACKER_PROVIDER_MISMATCH";
+      findings.push(finding(
+        structural ? "error" : "warning",
+        structural ? "TRACKER_STATE_INVALID" : "TRACKER_SYNC_FAILED",
+        `tracker:${feature}`,
+        status.failure?.summary ?? "Tracker synchronization failed without a diagnostic summary.",
+        structural
+          ? "Repair the checksummed feature tracker files from a trusted copy or explicitly rebind through the empirical skill."
+          : "Keep local progress and retry the durable pending projection when provider access is available.",
+      ));
+      invalid ||= structural;
+    } catch (error) {
+      invalid = true;
+      findings.push(finding(
+        "error",
+        "TRACKER_STATE_INVALID",
+        `tracker:${feature}`,
+        error instanceof Error ? error.message : String(error),
+        "Repair the feature state or tracker files from a trusted copy; Doctor will not mutate them.",
+      ));
+    }
+  }
+  if (!invalid) {
+    findings.push(finding(
+      "ok",
+      "TRACKER_STATE_VALID",
+      "tracker",
+      `${inspected} feature tracker state projection(s) passed local validation.`,
+    ));
   }
 }
 
@@ -618,6 +701,7 @@ export async function doctorRepository(rootInput: string): Promise<DoctorReport>
   const schema = await inspectSchema(root, findings);
   await inspectMigration(root, findings);
   await inspectPolicy(root, findings);
+  await inspectTracker(root, findings);
   await inspectKnowledge(root, findings);
   await inspectJournals(root, schema, findings);
   await inspectLocks(root, findings);

@@ -104,6 +104,157 @@ export interface WorkflowState {
   updatedAt: string;
 }
 
+export type TrackerProvider = "github" | "linear" | "jira";
+export type TrackerProgressState =
+  | "specification"
+  | "planned"
+  | "in-progress"
+  | "verification"
+  | "review"
+  | "blocked"
+  | "done";
+export type TrackerHealth = "local-only" | "pending" | "synced" | "failed";
+export type TrackerStateMap = Record<TrackerProgressState, string>;
+
+export interface GitHubTrackerPolicy {
+  schemaVersion: 1;
+  provider: "github";
+  target: {
+    owner: string;
+    repository: string;
+    projectId: string;
+    statusFieldId: string;
+  };
+  credentialEnv: { token: string };
+  states: TrackerStateMap;
+}
+
+export interface LinearTrackerPolicy {
+  schemaVersion: 1;
+  provider: "linear";
+  target: {
+    teamId: string;
+    projectId: string | null;
+  };
+  credentialEnv: { apiKey: string };
+  states: TrackerStateMap;
+}
+
+export interface JiraTrackerPolicy {
+  schemaVersion: 1;
+  provider: "jira";
+  target: {
+    siteUrl: string;
+    projectKey: string;
+    issueTypeId: string;
+  };
+  credentialEnv: { email: string; apiToken: string };
+  states: TrackerStateMap;
+}
+
+export type TrackerPolicy = GitHubTrackerPolicy | LinearTrackerPolicy | JiraTrackerPolicy;
+
+export interface TrackerProjection {
+  schemaVersion: 1;
+  feature: string;
+  phase: Phase;
+  status: WorkflowStatus;
+  revision: number;
+  completionLevel: CompletionReport["highest"];
+  progress: TrackerProgressState;
+  summary: string | null;
+  marker: string;
+  digest: string;
+}
+
+export interface TrackerFailure {
+  code: string;
+  summary: string;
+  at: string;
+}
+
+export interface TrackerBinding {
+  schemaVersion: 1;
+  feature: string;
+  provider: TrackerProvider;
+  remoteId: string;
+  remoteKey: string;
+  url: string;
+  projectItemId: string | null;
+  markerId: string | null;
+  lastSyncedRevision: number | null;
+  lastSyncedDigest: string | null;
+  digest: string;
+}
+
+export interface TrackerPendingRecord {
+  schemaVersion: 1;
+  provider: TrackerProvider;
+  projection: TrackerProjection;
+  idempotencyKey: string;
+  attempts: number;
+  status: "pending" | "failed" | "synced";
+  failure: TrackerFailure | null;
+  updatedAt: string;
+  digest: string;
+}
+
+export interface TrackerStatus {
+  health: TrackerHealth;
+  provider: TrackerProvider | null;
+  url: string | null;
+  committedRevision: number;
+  lastSyncedRevision: number | null;
+  pendingRevision: number | null;
+  failure: TrackerFailure | null;
+}
+
+export interface ProjectStatus extends WorkflowState {
+  tracker: TrackerStatus;
+}
+
+export interface TrackerBindInput {
+  mode: "create" | "attach";
+  ticket?: string;
+  title?: string;
+  description?: string;
+  replace?: true;
+  confirmCreateRetry?: true;
+}
+
+export interface TrackerHttpRequest {
+  method: "GET" | "POST" | "PATCH" | "PUT";
+  url: string;
+  headers: Record<string, string>;
+  body?: string;
+  timeoutMs: number;
+  maxResponseBytes: number;
+}
+
+export interface TrackerHttpResponse {
+  status: number;
+  body: string;
+}
+
+export type TrackerTransport = (request: TrackerHttpRequest) => Promise<TrackerHttpResponse>;
+
+export interface TrackerDependencies {
+  transport?: TrackerTransport;
+  env?: Readonly<Record<string, string | undefined>>;
+  now?: () => Date;
+}
+
+export interface TrackerBindResult {
+  binding: TrackerBinding | null;
+  tracker: TrackerStatus;
+}
+
+export interface TrackerSyncResult {
+  binding: TrackerBinding | null;
+  tracker: TrackerStatus;
+  projection: TrackerProjection | null;
+}
+
 export interface ProjectPolicy {
   schemaVersion: typeof POLICY_SCHEMA_VERSION;
   context: string[];
@@ -185,6 +336,7 @@ export interface ActionPacket {
   knowledgeContext: string[];
   capabilityContext: string[];
   completionLevel: CompletionReport;
+  tracker: TrackerStatus;
   completion: {
     available: boolean;
     mcpTool: "empirical_complete" | "empirical_integrate" | "empirical_deliver" | "empirical_publish";
@@ -269,6 +421,7 @@ export interface ExplainReport {
   revision: number;
   rationale: ActionRationale;
   decisions: DecisionSummary[];
+  tracker: TrackerStatus;
 }
 
 export interface ExplorationPacket {

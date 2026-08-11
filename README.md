@@ -1,8 +1,8 @@
 # Empirical SDD
 
 Agent-neutral, resumable spec-driven development with deterministic routing,
-immutable evidence, safe cross-worktree integration, and six agent-native
-skills. Empirical installs across 73 global agent targets and provides verified
+immutable evidence, safe cross-worktree integration, optional external ticket
+mirrors, and one agent-native skill. Empirical installs across 73 global agent targets and provides verified
 guidance for Codex, Claude Code, Cursor, Gemini CLI, Windsurf, and MCP clients.
 
 > Empirical 0.22 is alpha software and intentionally introduces the breaking
@@ -14,7 +14,7 @@ guidance for Codex, Claude Code, Cursor, Gemini CLI, Windsurf, and MCP clients.
 | Command | Purpose |
 | --- | --- |
 | `npm install -g empirical-sdd` | Install the CLI. Node.js 22 or newer is required. |
-| `empirical install` | Choose coding agents and install all six skills. |
+| `empirical install` | Choose coding agents and install the single `empirical` skill. |
 | `empirical update` | Upgrade Empirical and reconcile installed skills. |
 | `empirical uninstall` | Remove managed global skills, owned selection metadata, then the global package. |
 
@@ -34,7 +34,7 @@ unmanaged or unsafe global paths are also preserved and reported.
 | Previous 0.21 behavior | Updated behavior |
 | --- | --- |
 | Public lifecycle exposed Install and Update only. | Public lifecycle also exposes `empirical uninstall`. |
-| Removing six agent skills required manual per-agent cleanup. | One command scans every unique catalog root and removes only marker-owned skills. |
+| Removing legacy agent skills required manual per-agent cleanup. | One command scans every unique catalog root and removes only marker-owned skills. |
 | Selection metadata had to be found manually. | Valid Empirical-owned metadata is removed; invalid or user-owned metadata is preserved. |
 | Package removal was a separate manual npm command. | Confirmed uninstall runs exact `npm uninstall -g empirical-sdd` last. |
 | Project preservation was implicit. | Help, confirmation, human output, and JSON explicitly report preserved project state. |
@@ -45,12 +45,7 @@ These are coding-agent skills, not public shell workflow commands.
 
 | Skill | Purpose |
 | --- | --- |
-| `empirical <request>` | Initialize, resume, route, and run in normal mode. |
-| `empirical-init` | Initialize or repair repository context without starting work. |
-| `empirical-spec <request>` | Draft a concrete Complex contract and stop for approval. |
-| `empirical-socratic <idea>` | Run the durable five-pass interview, then draft the contract. |
-| `empirical-loop` | Resume the selected feature from its exact current revision. |
-| `empirical-yolo <request>` | Run autonomously to an explicit safe completion ceiling. |
+| `empirical <request>` | Initialize, interview when needed, route, optionally mirror, resume, and complete the work. |
 
 Native invocation examples include `$empirical` in Codex, `/empirical` in
 Claude Code, and `@empirical` in Windsurf. Reload an agent after installation.
@@ -80,13 +75,36 @@ receipt tied to criteria, source state, and provenance. Completion reports only
 the highest proven level: implemented, verified, integrated, delivered, or
 published.
 
+## External ticket tracking
+
+External tracking is optional and local-only by default. When enabled through
+the `empirical` skill, one selected feature can create or attach one ticket in
+Linear, GitHub Issues + Projects v2, or Jira Cloud. Empirical's hash-chained
+local journal remains authoritative; the ticket is a one-way projection of the
+committed phase, normalized status, revision, completion level, and blocker
+summary.
+
+The provider-neutral Tracker Policy v1 lives at `.empirical/tracker.json`.
+It selects exactly one provider, names its board/project and normalized status
+IDs, and stores only credential environment-variable names. Credential values
+are read at request time and are never written to `.empirical/`. Bindings and
+durable retry projections live under each feature's `tracker/` directory.
+
+After every local journal commit, the skill asks the granular MCP tracker layer
+to converge the remote ticket. A provider outage never rolls back or blocks
+local SDD progress. Status and action packets expose `local-only`, `synced`,
+`pending`, or `failed` tracker health so the same pending revision can be
+retried safely. See [MCP usage](docs/mcp.md#external-ticket-mirror) for the
+strict provider schemas and state mapping.
+
 ## Repository model
 
 Schema 5 stores strict Policy v2 configuration, Manifest v2 knowledge
 fingerprints, impact manifests, receipts, Git-common-dir capability claims, and
 hash-chained per-feature journals. Terminal journals compact transactionally to
 a verified snapshot boundary. `empirical_doctor` diagnoses schema, journal,
-lock, claim, toolchain, policy, knowledge, evidence, worktree, and delivery
+lock, claim, toolchain, policy, tracker configuration, credential presence,
+knowledge, evidence, worktree, and delivery
 state without mutating the repository.
 
 Schema 4 repositories migrate atomically on the first mutating 0.22 operation.

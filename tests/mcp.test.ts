@@ -45,6 +45,11 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
     const completeTool = listed.tools.find((tool) => tool.name === "empirical_complete");
     expect(Object.keys(completeTool?.inputSchema.properties ?? {})).toContain("receiptIds");
     expect(Object.keys(completeTool?.inputSchema.properties ?? {})).not.toContain("evidence");
+    expect(listed.tools.map((tool) => tool.name)).toEqual(expect.arrayContaining([
+      "empirical_tracker_configure",
+      "empirical_tracker_bind",
+      "empirical_tracker_sync",
+    ]));
 
     const initialized = await client.callTool({
       name: "empirical_init",
@@ -96,7 +101,7 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
     expect(idle.isError).not.toBe(true);
     expect(idle.structuredContent).toMatchObject({ phase: "idle", revision: 0 });
     expect((idle.structuredContent as { instructions: string }).instructions)
-      .toContain("empirical-spec");
+      .toContain("installed empirical skill");
     expect((idle.structuredContent as { instructions: string }).instructions)
       .toContain("does not create or route new work");
 
@@ -112,7 +117,15 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
       status: "waiting",
       revision: 1,
       requiredEvidence: ["test", "review"],
+      tracker: { health: "local-only", provider: null },
       kind: "action",
+    });
+
+    const status = await client.callTool({ name: "empirical_status", arguments: { root } });
+    expect(status.isError).not.toBe(true);
+    expect(status.structuredContent).toMatchObject({
+      phase: "implement",
+      tracker: { health: "local-only", provider: null },
     });
 
     const resumed = await client.callTool({

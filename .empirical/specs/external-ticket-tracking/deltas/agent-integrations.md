@@ -1,12 +1,11 @@
-# Agent Integrations Specification
+# Agent Integrations
 
 ## Purpose
 
-Make Empirical workflows discoverable and safely invocable either from one
-repository or globally across a developer's projects using each supported
-agent's native extension mechanism.
+Expose one coherent Empirical experience per supported agent while retaining a
+granular, safety-bounded machine protocol beneath it.
 
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Explicit global skill installation
 
@@ -81,20 +80,6 @@ human terminal commands.
 - **THEN** it directs the developer to the single installed Empirical skill
 - **AND** exposes no Init, Spec, Socratic, Loop, YOLO, or tracker shell command
 
-### Requirement: Update converges package and integrations
-
-`empirical update` MUST install `empirical-sdd@latest` and invoke the newly
-installed CLI as `empirical install --yes`. Update MUST preserve the remembered,
-detected, or legacy-managed target set without prompting, MUST NOT expand an
-empty set to the entire catalog, MUST report each stage distinctly, and MUST NOT
-claim refresh success unless both stages pass.
-
-#### Scenario: A broad prior selection is updated
-
-- **WHEN** npm successfully installs the latest package
-- **THEN** the new process reconciles the remembered selected ids and unique roots
-- **AND** newly added catalog entries remain unselected until explicitly chosen
-
 ### Requirement: Explicit skills have disjoint approval boundaries
 
 The one generated skill MUST state its input routing, mutations, approval
@@ -121,40 +106,3 @@ provider credentials, MCP support, or external-launch capability for an agent.
 - **WHEN** package consistency and MCP smoke checks run
 - **THEN** one user-facing skill is installed while all registered MCP operations remain callable
 - **AND** no removed skill name is required to reach those operations
-
-### Requirement: Agent catalog is deterministic and auditable
-
-The packaged global agent catalog MUST record its upstream repository and pinned
-revision or version, use stable ids and aliases, contain only safe home-relative
-global roots, and load without telemetry or network access. CI MUST reject
-duplicate ids, alias collisions, unsafe roots, non-deterministic order, and
-entries with neither a supported global destination nor an explicit exclusion
-reason.
-
-#### Scenario: A maintainer refreshes upstream compatibility
-
-- **WHEN** catalog data changes for a release
-- **THEN** the reviewed diff records new provenance and target changes
-- **AND** runtime installation remains fully local after the package is installed
-
-### Requirement: Safe global uninstall is explicit and ownership-bound
-
-Empirical SHALL provide `empirical uninstall` outside initialized repositories.
-It MUST show the complete global removal and project-preservation scope before
-interactive mutation, default to cancellation, require `--yes` for
-non-interactive or JSON execution, remove only marker-owned current or obsolete
-global skills and valid Empirical-owned selection metadata, preserve and report
-unsafe or unmanaged targets, and invoke exact shell-free global npm package
-removal only after integration cleanup succeeds. Repeated cleanup MUST converge.
-
-#### Scenario: A developer confirms global removal
-
-- **WHEN** the user approves uninstall with managed and unmanaged targets present
-- **THEN** all Empirical-managed global skills and owned selection metadata are removed
-- **AND** unmanaged files, repository history, and project MCP configuration remain unchanged
-- **AND** `npm uninstall -g empirical-sdd` runs last
-
-#### Scenario: Automation omits confirmation
-
-- **WHEN** stdin is non-interactive or structured output is requested without `--yes`
-- **THEN** uninstall refuses before changing files or invoking npm

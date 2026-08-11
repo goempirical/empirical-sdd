@@ -19,6 +19,11 @@ const obsoleteSkillNames = [
   "empirical-explore",
   "empirical-fast",
   "empirical-complex",
+  "empirical-init",
+  "empirical-loop",
+  "empirical-socratic",
+  "empirical-spec",
+  "empirical-yolo",
 ] as const;
 const currentSkillNames = [...EMPIRICAL_AGENT_SKILL_NAMES];
 const globalRoots = [
@@ -99,30 +104,30 @@ describe("agent integrations", () => {
     );
   });
 
-  test("global install creates all six registry-backed Empirical skills for every selected agent", async () => {
+  test("global install creates only the registry-backed Empirical skill for every selected agent", async () => {
     const home = await temporaryDirectory("empirical-global-skills-");
     const report = await installGlobalAgentSkills(home, { all: true, pathValue: "" });
 
     expect(report.scope).toBe("global");
     expect(report.selected).toHaveLength(73);
     expect(report.destinations).toHaveLength(65);
-    expect(report.created).toHaveLength(391);
+    expect(report.created).toHaveLength(66);
     expect(report.updated).toEqual([]);
     expect(report.removed).toEqual([]);
     expect(report.preserved).toEqual([]);
     expect(report.entrypoints).toHaveLength(73);
     expect(report.entrypoints.filter((entrypoint) => entrypoint.guidanceVerified)).toHaveLength(5);
     expect(report.entrypoints.filter((entrypoint) => entrypoint.guidanceVerified)
-      .every((entrypoint) => entrypoint.invocations.length === 6)).toBe(true);
+      .every((entrypoint) => entrypoint.invocations.length === 1)).toBe(true);
     expect(report.entrypoints.find((entrypoint) => entrypoint.id === "codebuddy")).toMatchObject({
       invocations: [], guidanceVerified: false, projectMcp: false, handoff: false,
     });
     expect(report.entrypoints.find((entrypoint) => entrypoint.id === "codex")?.invocations)
-      .toEqual(["$empirical", "$empirical-init", "$empirical-loop", "$empirical-socratic", "$empirical-spec", "$empirical-yolo"]);
+      .toEqual(["$empirical"]);
     expect(report.entrypoints.find((entrypoint) => entrypoint.id === "claude-code")?.invocations)
-      .toEqual(["/empirical", "/empirical-init", "/empirical-loop", "/empirical-socratic", "/empirical-spec", "/empirical-yolo"]);
+      .toEqual(["/empirical"]);
     expect(report.entrypoints.find((entrypoint) => entrypoint.id === "windsurf")?.invocations)
-      .toEqual(["@empirical", "@empirical-init", "@empirical-loop", "@empirical-socratic", "@empirical-spec", "@empirical-yolo"]);
+      .toEqual(["@empirical"]);
 
     for (const segments of globalRoots) {
       for (const skillName of currentSkillNames) {
@@ -134,27 +139,11 @@ describe("agent integrations", () => {
         expect(contents).toContain("empirical __internal");
       }
       expect(await readFile(join(home, ...segments, "empirical", "SKILL.md"), "utf8"))
-        .toContain("automatic end-to-end path");
-      expect(await readFile(join(home, ...segments, "empirical-init", "SKILL.md"), "utf8"))
-        .toMatch(/must not create a\s+feature/);
-      expect(await readFile(join(home, ...segments, "empirical-init", "SKILL.md"), "utf8"))
-        .toContain("Apply recommended settings, Customize, and Cancel");
-      expect(await readFile(join(home, ...segments, "empirical-init", "SKILL.md"), "utf8"))
-        .toContain("evidenceRequired, browserForUi, screenshotForUi, codeReview");
-      expect(await readFile(join(home, ...segments, "empirical-init", "SKILL.md"), "utf8"))
-        .toContain("refinementRequired");
-      expect(await readFile(join(home, ...segments, "empirical-spec", "SKILL.md"), "utf8"))
-        .toMatch(/Do not call\s+empirical_complete/);
-      expect(await readFile(join(home, ...segments, "empirical-socratic", "SKILL.md"), "utf8"))
-        .toContain("call empirical_discovery");
-      expect(await readFile(join(home, ...segments, "empirical-loop", "SKILL.md"), "utf8"))
-        .toMatch(/does not accept or\s+route a new feature request/);
-      expect(await readFile(join(home, ...segments, "empirical-loop", "SKILL.md"), "utf8"))
-        .toContain("Continue here, Save for later");
-      expect(await readFile(join(home, ...segments, "empirical-loop", "SKILL.md"), "utf8"))
-        .toContain("For Context, refresh, inspect evidence");
-      expect(await readFile(join(home, ...segments, "empirical-yolo", "SKILL.md"), "utf8"))
-        .toContain("Never suppress host or operating-system prompts");
+        .toContain("only user-facing Empirical skill");
+      expect(await readFile(join(home, ...segments, "empirical", "SKILL.md"), "utf8"))
+        .toContain("empirical_tracker_configure");
+      expect(await readFile(join(home, ...segments, "empirical", "SKILL.md"), "utf8"))
+        .toContain("local journal as authoritative");
       for (const obsolete of obsoleteSkillNames) {
         await expect(readFile(join(home, ...segments, obsolete, "SKILL.md"), "utf8"))
           .rejects.toBeDefined();
@@ -181,17 +170,19 @@ describe("agent integrations", () => {
     const staleLoop = join(home, ".gemini", "skills", "empirical-loop", "SKILL.md");
     const nonFile = join(home, ".gemini", "skills", "empirical-explore", "SKILL.md");
     await writeFile(stale, "<!-- empirical-sdd:managed-file -->\nstale\n", "utf8");
+    await mkdir(join(staleLoop, ".."), { recursive: true });
     await writeFile(staleLoop, "<!-- empirical-sdd:managed-file -->\nstale loop\n", "utf8");
     await mkdir(join(managedObsolete, ".."), { recursive: true });
     await writeFile(managedObsolete, "<!-- empirical-sdd:managed-file -->\nold\n", "utf8");
     await mkdir(join(unmanagedObsolete, ".."), { recursive: true });
     await writeFile(unmanagedObsolete, "# My own skill\n", "utf8");
+    await mkdir(join(unmanagedCurrent, ".."), { recursive: true });
     await writeFile(unmanagedCurrent, "# My own specification skill\n", "utf8");
     await mkdir(nonFile, { recursive: true });
 
     const report = await installGlobalAgentSkills(home, { all: true, pathValue: "" });
     expect(report.updated).toContain(".codex/skills/empirical/SKILL.md");
-    expect(report.updated).toContain(".gemini/skills/empirical-loop/SKILL.md");
+    expect(report.removed).toContain(".gemini/skills/empirical-loop/SKILL.md");
     expect(report.removed).toContain(".codex/skills/empirical-fast/SKILL.md");
     expect(await readFile(stale, "utf8")).toContain("name: empirical");
     expect(report.preserved).toContain(
@@ -217,14 +208,9 @@ describe("agent integrations", () => {
 
     const report = await installGlobalAgentSkills(home, { agents: ["codex", "cursor"], pathValue: "" });
     expect(report.entrypoints.map((entrypoint) => entrypoint.id)).toEqual(["codex", "cursor"]);
-    expect(report.removed).toHaveLength(378);
+    expect(report.removed).toHaveLength(63);
     expect(report.removed).toEqual(expect.arrayContaining([
       ".claude/skills/empirical/SKILL.md",
-      ".claude/skills/empirical-init/SKILL.md",
-      ".claude/skills/empirical-spec/SKILL.md",
-      ".claude/skills/empirical-socratic/SKILL.md",
-      ".claude/skills/empirical-loop/SKILL.md",
-      ".claude/skills/empirical-yolo/SKILL.md",
       ".gemini/skills/empirical/SKILL.md",
       ".codeium/windsurf/skills/empirical/SKILL.md",
     ]));
@@ -241,7 +227,7 @@ describe("agent integrations", () => {
     const first = await installGlobalAgentSkills(home, { agents: ["amp", "replit"], pathValue: "" });
     expect(first.entrypoints.map((entrypoint) => entrypoint.id)).toEqual(["amp", "replit"]);
     expect(first.destinations).toEqual([shared]);
-    expect(first.created).toHaveLength(7);
+    expect(first.created).toHaveLength(2);
 
     const survivor = await installGlobalAgentSkills(home, { agents: ["amp"], pathValue: "" });
     expect(survivor.removed).toEqual([]);
@@ -257,7 +243,7 @@ describe("agent integrations", () => {
     expect(migratedMetadata.updated).toContain(".empirical-sdd/integrations.json");
 
     const lastRemoved = await installGlobalAgentSkills(home, { agents: ["codex"], pathValue: "" });
-    expect(lastRemoved.removed).toHaveLength(6);
+    expect(lastRemoved.removed).toHaveLength(1);
     await expect(readFile(join(shared, "empirical", "SKILL.md"), "utf8")).rejects.toBeDefined();
   });
 
@@ -314,6 +300,7 @@ describe("agent integrations", () => {
 
     const unmanaged = join(home, ".codex", "skills", "empirical-spec", "SKILL.md");
     const obsolete = join(home, ".config", "agents", "skills", "empirical-fast", "SKILL.md");
+    await mkdir(join(unmanaged, ".."), { recursive: true });
     await writeFile(unmanaged, "# My own similarly named skill\n", "utf8");
     await mkdir(join(obsolete, ".."), { recursive: true });
     await writeFile(obsolete, "<!-- empirical-sdd:managed-file -->\nlegacy\n", "utf8");
@@ -381,13 +368,13 @@ describe("agent integrations", () => {
     });
     expect(human.status).toBe(0);
     expect(human.stderr).toBe("");
-    expect(human.stdout).toContain("reconciled 73 selected agents (391 created");
+    expect(human.stdout).toContain("reconciled 73 selected agents (66 created");
     expect(human.stdout).toContain("Filesystem outcomes:");
-    expect(human.stdout).toContain("Created (391)");
+    expect(human.stdout).toContain("Created (66)");
     expect(human.stdout).toContain("Installed Empirical agent skills:");
     expect(human.stdout).toContain(`Codex (${join(home, ".codex", "skills")})`);
     expect(human.stdout).toContain("Invoke: $empirical");
-    expect(human.stdout).toContain("$empirical-socratic, $empirical-spec, $empirical-yolo");
+    expect(human.stdout).not.toContain("$empirical-spec");
     expect(human.stdout).toContain("Windsurf");
     expect(human.stdout).not.toContain("$empirical-explore");
 

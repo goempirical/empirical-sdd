@@ -181,16 +181,9 @@ describe("Schema-5 protocol", () => {
 });
 
 describe("operation and skill registry", () => {
-  test("has unique operations and exactly six registry-backed skills", () => {
+  test("has unique operations and exactly one registry-backed skill", () => {
     expect(() => assertRegistryIntegrity()).not.toThrow();
-    expect(SKILLS.map((skill) => skill.id).sort()).toEqual([
-      "empirical",
-      "empirical-init",
-      "empirical-loop",
-      "empirical-socratic",
-      "empirical-spec",
-      "empirical-yolo",
-    ]);
+    expect(SKILLS.map((skill) => skill.id)).toEqual(["empirical"]);
     expect(new Set(OPERATIONS.map((entry) => entry.mcpName)).size).toBe(
       OPERATIONS.length,
     );
@@ -203,6 +196,11 @@ describe("operation and skill registry", () => {
       readOnlyHint: false,
       destructiveHint: true,
       idempotentHint: true,
+    });
+    expect(operationAnnotations("tracker-bind")).toEqual({
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: false,
     });
     expect(OPERATIONS.filter((entry) => entry.readOnly && entry.destructive)).toEqual([]);
   });

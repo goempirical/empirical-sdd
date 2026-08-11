@@ -18,8 +18,8 @@ if (packageJson.engines?.node !== ">=22") throw new Error("package runtime must 
 if (JSON.stringify(Object.keys(packageJson.exports ?? {}).sort()) !== JSON.stringify([".", "./integrations", "./mcp", "./protocol"])) {
   throw new Error("package exports must contain only the four supported entrypoints");
 }
-if (SKILLS.length !== 6 || EMPIRICAL_AGENT_SKILL_NAMES.length !== SKILLS.length) {
-  throw new Error("skill registry and rendered integrations must contain exactly six entries");
+if (SKILLS.length !== 1 || EMPIRICAL_AGENT_SKILL_NAMES.length !== SKILLS.length) {
+  throw new Error("skill registry and rendered integrations must contain exactly one entry");
 }
 if (JSON.stringify(EMPIRICAL_AGENT_SKILL_NAMES) !== JSON.stringify(SKILLS.map((skill) => skill.id))) {
   throw new Error("rendered skill order differs from the shared registry");
@@ -67,4 +67,4 @@ for (const gate of ["test:coverage", "test:dist", "test:package", "test:consiste
   if (!ci.includes(`bun run ${gate}`)) throw new Error(`CI omits ${gate}`);
 }
 
-console.log(`Consistency gate: Empirical ${PRODUCT_VERSION}, Schema ${SCHEMA_VERSION}, ${SKILLS.length} skills, ${OPERATIONS.length} operations.`);
+console.log(`Consistency gate: Empirical ${PRODUCT_VERSION}, Schema ${SCHEMA_VERSION}, ${SKILLS.length} skill${SKILLS.length === 1 ? "" : "s"}, ${OPERATIONS.length} operations.`);

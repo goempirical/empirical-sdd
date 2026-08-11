@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "classification": "behavioral",
+  "capabilities": [
+    "agent-integrations",
+    "external-ticket-tracking",
+    "project-policy"
+  ],
+  "surfaces": [
+    "workflow"
+  ],
+  "regressionRationale": null,
+  "digest": "sha256:b74b9aceb328ee8f99ff578c0747ec2f16a9d54934980f5e68f148a1fdb18f11"
+}

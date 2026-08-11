@@ -110,8 +110,51 @@ describe("read-only Doctor diagnostics", () => {
     expect(report.findings).toContainEqual(
       expect.objectContaining({ code: "POLICY_VALID", severity: "ok" }),
     );
+    expect(report.findings).toContainEqual(
+      expect.objectContaining({ code: "TRACKER_LOCAL_ONLY", severity: "ok" }),
+    );
     expect(await fileSnapshot(root)).toEqual(beforeFiles);
     expect(gitSnapshot(root)).toEqual(beforeGit);
+  });
+
+  test("validates tracker policy and reports only missing credential variable names", async () => {
+    const { root } = await fixture();
+    const variable = "EMPIRICAL_TEST_LINEAR_API_KEY_MISSING";
+    delete process.env[variable];
+    const project = await EmpiricalProject.open(root);
+    await project.configureTracker({
+      schemaVersion: 1,
+      provider: "linear",
+      target: { teamId: "team-1", projectId: null },
+      credentialEnv: { apiKey: variable },
+      states: {
+        specification: "state-spec",
+        planned: "state-plan",
+        "in-progress": "state-work",
+        verification: "state-verify",
+        review: "state-review",
+        blocked: "state-blocked",
+        done: "state-done",
+      },
+    });
+    const report = await doctorRepository(root);
+    expect(report.findings).toContainEqual(expect.objectContaining({
+      code: "TRACKER_CREDENTIALS_MISSING",
+      severity: "warning",
+      message: expect.stringContaining(variable),
+    }));
+    expect(JSON.stringify(report)).not.toContain("apiKey\":");
+
+    const action = await project.fast("Validate malformed tracker state");
+    if (action.kind !== "action" || !action.feature) throw new Error("Expected a feature action");
+    const trackerDirectory = join(root, ".empirical", "specs", action.feature, "tracker");
+    await mkdir(trackerDirectory, { recursive: true });
+    await writeFile(join(trackerDirectory, "binding.json"), '{"schemaVersion":1}\n', "utf8");
+    const malformed = await doctorRepository(root);
+    expect(malformed.findings).toContainEqual(expect.objectContaining({
+      code: "TRACKER_STATE_INVALID",
+      severity: "error",
+    }));
   });
 
   test("reports placeholder context as refinement-required without mutating it", async () => {

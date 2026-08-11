@@ -716,6 +716,13 @@ async function withFileLock<T>(lockPath: string, operation: () => Promise<T>): P
   }
 }
 
+export async function withOwnedFileLock<T>(
+  lockPath: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  return withFileLock(lockPath, operation);
+}
+
 export function isRetryableLockOpenError(
   error: unknown,
   platform: NodeJS.Platform = process.platform,

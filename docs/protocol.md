@@ -24,6 +24,15 @@ revision. Its essential fields are:
   "status": "waiting",
   "revision": 5,
   "completionLevel": { "highest": "implemented" },
+  "tracker": {
+    "health": "synced",
+    "provider": "linear",
+    "url": "https://linear.app/example/issue/ENG-42",
+    "committedRevision": 5,
+    "lastSyncedRevision": 5,
+    "pendingRevision": null,
+    "failure": null
+  },
   "completion": {
     "available": true,
     "mcpTool": "empirical_complete",
@@ -106,16 +115,34 @@ requires an explicit refresh, evidence-backed topic refinement, managed-marker
 removal, and a second refresh whose report has empty `stale`, `missing`, and
 `refinementRequired` lists.
 
+## External tracker projection
+
+Tracker Policy v1 is an optional sidecar to Schema 5. Its absence preserves
+existing repositories exactly and means `local-only`; it does not trigger a
+workflow schema migration. The policy chooses one GitHub, Linear, or Jira
+target, stores a complete normalized status map, and references credentials by
+environment-variable name only.
+
+The local journal commits first. A tracker sync then writes a checksummed
+feature-local pending projection keyed by feature and revision, converges one
+bound ticket, and advances the binding only after remote success. The remote
+system is never read as workflow authority. Provider failures therefore change
+only tracker health (`pending` or `failed`) and cannot alter the phase, revision,
+criteria, or completion level.
+
 ## Persistence
 
 ```text
 .empirical/config.json                         # Schema 5
 .empirical/policy.json                         # Policy v2
+.empirical/tracker.json                        # optional Tracker Policy v1
 .empirical/context/manifest.json               # Manifest v2
 .empirical/capabilities/<capability>/spec.md
 .empirical/specs/<feature>/state.json
 .empirical/specs/<feature>/impact.json
 .empirical/specs/<feature>/evidence/<receipt>.json
+.empirical/specs/<feature>/tracker/binding.json
+.empirical/specs/<feature>/tracker/pending.json
 .empirical/specs/<feature>/events/snapshot.json
 .empirical/specs/<feature>/events/NNNNNNNN.json
 ```
