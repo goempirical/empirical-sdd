@@ -58,6 +58,7 @@ function renderFullMark(color: boolean): string[] {
     `${yellow("   ╭───", color)}${blue("╯    ╰", color)}${red("───╮", color)}`,
     `${yellow("   │", color)}            ${red("│", color)}`,
     `${yellow("   ╰───╮", color)}    ${red("╭───╯", color)}`,
+    `       ${yellow("│", color)}    ${red("│", color)}`,
     `       ${yellow("╰──", color)}${red("──╯", color)}`,
   ];
 }
