@@ -24,6 +24,22 @@ bun run test:package
 npm pack --dry-run
 ```
 
-The published package must run on Node.js 20+ even though Bun powers local
+The published package must run on Node.js 22+ even though Bun powers local
 development. Do not add a required database, hosted service, or MCP vendor to
 the canonical state path. New integrations call the exported TypeScript API.
+
+## Publishing to npm
+
+Publishing is performed only by `.github/workflows/publish.yml` after a
+non-prerelease GitHub Release is published. Before creating the release:
+
+1. Merge a pull request that sets the exact version in `package.json` and
+   `src/protocol.ts` and passes CI.
+2. Create a GitHub Release whose tag is exactly `v<version>` and points to a
+   commit on `main`.
+3. Approve the protected `npm` GitHub environment when prompted.
+
+The npm trusted publisher must be bound to organization `goempirical`,
+repository `empirical-sdd`, workflow `publish.yml`, environment `npm`, and the
+`npm publish` action. The release workflow uses OIDC and must not receive a
+long-lived npm write token.

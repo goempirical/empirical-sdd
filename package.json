@@ -54,12 +54,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/MateoCerquetella/empirical-sdd.git"
+    "url": "git+https://github.com/goempirical/empirical-sdd.git"
   },
   "bugs": {
-    "url": "https://github.com/MateoCerquetella/empirical-sdd/issues"
+    "url": "https://github.com/goempirical/empirical-sdd/issues"
   },
-  "homepage": "https://github.com/MateoCerquetella/empirical-sdd#readme",
+  "homepage": "https://github.com/goempirical/empirical-sdd#readme",
   "publishConfig": {
     "access": "public"
   },
