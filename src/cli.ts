@@ -1283,7 +1283,7 @@ function renderIntegrationReport(summary: string, report: IntegrationReport): st
   if (!report.entrypoints.length) {
     return report.scope === "global"
       ? `${summary}\n\nNo supported agents were detected. Install an agent or run empirical install --all.`
-      : `${summary}\n\nNo project-local workflow skills are installed; the global Empirical skills own the UX.`;
+      : `${summary}\n\nRepository-local automatic activation and MCP bridges were reconciled. Use empirical-init only for setup or repair; ordinary change prompts need no Empirical command.`;
   }
   const lines = [
     summary,
@@ -1523,8 +1523,10 @@ remembers explicit selections, and performs no runtime network or npx calls.
 Repository work happens inside your coding agent through ${SKILLS.length} installed ${SKILLS.length === 1 ? "skill" : "skills"}:
 ${SKILLS.map((skill) => `  ${skill.id.padEnd(28)} ${skill.description}`).join("\n")}
 
-Agents use native syntax such as $empirical in Codex, /empirical in Claude Code,
-and @empirical in Windsurf. Agent skills are not terminal workflow commands.
+Initialize or repair a repository explicitly with native syntax such as
+$empirical-init in Codex, /empirical-init in Claude Code, or @empirical-init in
+Windsurf. After setup, ordinary repository-changing prompts route automatically;
+read-only prompts do not. Agent skills are not terminal workflow commands.
 Fast remains contract-neutral; Complex handles every material risk floor.
 The MCP/private adapter registry currently defines ${OPERATIONS.length} operations.`);
 }

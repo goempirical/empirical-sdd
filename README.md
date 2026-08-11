@@ -2,19 +2,19 @@
 
 Agent-neutral, resumable spec-driven development with deterministic routing,
 immutable evidence, safe cross-worktree integration, optional external ticket
-mirrors, and one agent-native skill. Empirical installs across 73 global agent targets and provides verified
-guidance for Codex, Claude Code, Cursor, Gemini CLI, Windsurf, and MCP clients.
+mirrors, and an explicit bootstrap that makes normal repository work automatic.
+Empirical installs across 73 global agent targets and provides verified guidance
+for Codex, Claude Code, Cursor, Gemini CLI, Windsurf, and MCP clients.
 
-> Empirical 0.22 is alpha software and intentionally introduces the breaking
-> Schema 5 protocol. One checkout selects at most one active feature; linked Git
-> worktrees isolate parallel work.
+> Empirical 0.23 is alpha software. Schema 5 remains unchanged. One checkout
+> selects at most one active feature; linked Git worktrees isolate parallel work.
 
 ## Install
 
 | Command | Purpose |
 | --- | --- |
 | `npm install -g empirical-sdd` | Install the CLI. Node.js 22 or newer is required. |
-| `empirical install` | Choose coding agents and install the single `empirical` skill. |
+| `empirical install` | Choose coding agents and install the single explicit `empirical-init` skill. |
 | `empirical update` | Upgrade Empirical and reconcile installed skills. |
 | `empirical uninstall` | Remove managed global skills, owned selection metadata, then the global package. |
 
@@ -29,26 +29,29 @@ cancel, while automation must use `empirical uninstall --yes` (optionally with
 history, evidence, and repository MCP/agent configuration are always preserved;
 unmanaged or unsafe global paths are also preserved and reported.
 
-### Difference from the previous command surface
+### Upgrade from 0.22
 
-| Previous 0.21 behavior | Updated behavior |
+| Previous 0.22 behavior | Updated 0.23 behavior |
 | --- | --- |
-| Public lifecycle exposed Install and Update only. | Public lifecycle also exposes `empirical uninstall`. |
-| Removing legacy agent skills required manual per-agent cleanup. | One command scans every unique catalog root and removes only marker-owned skills. |
-| Selection metadata had to be found manually. | Valid Empirical-owned metadata is removed; invalid or user-owned metadata is preserved. |
-| Package removal was a separate manual npm command. | Confirmed uninstall runs exact `npm uninstall -g empirical-sdd` last. |
-| Project preservation was implicit. | Help, confirmation, human output, and JSON explicitly report preserved project state. |
+| A global `empirical` skill watched every prompt. | The global skill is explicit `empirical-init` and is limited to setup or repair. |
+| Normal work required naming `empirical`. | Initialized repositories route ordinary change prompts automatically. |
+| Project workflow guidance was removed. | Short marker-owned project dispatchers and detailed local skills are restored. |
+| Existing repositories needed no integration repair. | Invoke `empirical-init` once per existing checkout; configuration and history are preserved. |
 
 ## Skills
 
 These are coding-agent skills, not public shell workflow commands.
 
-| Skill | Purpose |
+| Entry | Purpose |
 | --- | --- |
-| `empirical <request>` | Initialize, interview when needed, route, optionally mirror, resume, and complete the work. |
+| `empirical-init` | Explicitly initialize a new repository or repair an existing repository's context and integrations. |
+| Ordinary change prompt | Automatically route, optionally interview or mirror, resume, and complete work in a valid initialized repository. |
 
-Native invocation examples include `$empirical` in Codex, `/empirical` in
-Claude Code, and `@empirical` in Windsurf. Reload an agent after installation.
+Native bootstrap examples include `$empirical-init` in Codex,
+`/empirical-init` in Claude Code, and `@empirical-init` in Windsurf. Reload an
+agent after installation. Once initialized, ask normally—for example, “fix the
+pagination bug.” Read-only questions remain outside Empirical, and a repository
+without valid completed `.empirical/config.json` is never enrolled implicitly.
 
 ## Trust model
 
@@ -78,7 +81,7 @@ published.
 ## External ticket tracking
 
 External tracking is optional and local-only by default. When enabled through
-the `empirical` skill, one selected feature can create or attach one ticket in
+the repository-local workflow, one selected feature can create or attach one ticket in
 Linear, GitHub Issues + Projects v2, or Jira Cloud. Empirical's hash-chained
 local journal remains authoritative; the ticket is a one-way projection of the
 committed phase, normalized status, revision, completion level, and blocker
@@ -116,7 +119,7 @@ knowledge, evidence, worktree, and delivery state without mutating the
 repository. It still validates dormant feature binding and pending files when
 tracking is local-only or disabled.
 
-Schema 4 repositories migrate atomically on the first mutating 0.22 operation.
+Schema 4 repositories migrate atomically on the first mutating Schema-5 operation.
 The migration validates a complete candidate tree before promotion and retains
 a recovery receipt. Earlier schemas must first be upgraded to Schema 4 with the
 version that created them.
@@ -141,7 +144,8 @@ The package exposes only `.`, `./protocol`, `./mcp`, and `./integrations`.
 
 [Protocol](docs/protocol.md) · [Architecture](docs/architecture.md) ·
 [MCP](docs/mcp.md) · [Demo](docs/demo.md) · [Security](docs/security.md) ·
-[Migration](docs/migration-v1.md)
+[Migration](docs/migration-v1.md) · [Versioning](docs/versioning.md) ·
+[Changelog](CHANGELOG.md)
 
 ## License
 

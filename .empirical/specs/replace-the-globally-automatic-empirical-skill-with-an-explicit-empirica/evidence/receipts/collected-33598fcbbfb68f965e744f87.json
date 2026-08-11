@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "id": "collected-33598fcbbfb68f965e744f87",
+  "criteria": [
+    "AC-1",
+    "AC-10",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7",
+    "AC-8",
+    "AC-9"
+  ],
+  "evidenceKinds": [
+    "review"
+  ],
+  "summary": "Complete criterion-by-criterion review found no open correctness, safety, migration, documentation, or packaging issues.",
+  "passed": true,
+  "startedAt": "2026-08-11T18:20:36.658Z",
+  "completedAt": "2026-08-11T18:20:36.658Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "replace-the-globally-automatic-empirical-skill-with-an-explicit-empirica",
+    "specRevision": 2,
+    "specDigest": "sha256:642602fd578d0537a1d1fe5a435a19822f8e8260fa42bce42e4f58f4217a6fe4",
+    "treeDigest": "sha256:a8e3f732927fb86af3d7955fc81548f98e3c024ee0ebb6cd2b7ecd60cc877f16",
+    "policyDigest": "sha256:888d86d00b83ec4a957413efb0701df5278d06de2077ba6b76f58dd2ba6eeeaf"
+  },
+  "digest": "sha256:888661a5099b9e148d5fd19d73e4b893e33a6365aace5552ddf872fe23170184",
+  "kind": "collected",
+  "collector": "codex-manual-review",
+  "artifacts": [
+    {
+      "path": ".empirical/specs/replace-the-globally-automatic-empirical-skill-with-an-explicit-empirica/decisions.md",
+      "mediaType": "text/markdown",
+      "bytes": 6425,
+      "digest": "sha256:3a0bb830bef9ab6506670fc5daae1201e7f37bc38469dabbdd7a84f098f8702f"
+    },
+    {
+      "path": ".empirical/specs/replace-the-globally-automatic-empirical-skill-with-an-explicit-empirica/review.md",
+      "mediaType": "text/markdown",
+      "bytes": 2202,
+      "digest": "sha256:d570c037eeda7bf5f4d48c840e95cf7ff4cd610795cf8d4d2efa575e09e80a3e"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "mediaType": "text/markdown",
+      "bytes": 2487,
+      "digest": "sha256:8bd04a33134e452edfd78358f1422d2acc0263a890a2a551a0ae64f60a71a845"
+    },
+    {
+      "path": "docs/versioning.md",
+      "mediaType": "text/markdown",
+      "bytes": 3007,
+      "digest": "sha256:1a8e6d5e826ec0d02b236e57d4fca4ec48ab441dff9f9308ffe746ef3236b86f"
+    },
+    {
+      "path": "src/integrations.ts",
+      "mediaType": "text/typescript",
+      "bytes": 32900,
+      "digest": "sha256:7f87b1f03f3cc70974903fe391c5c5d3f8e543aaab846158f78262d3b660433e"
+    },
+    {
+      "path": "tests/integrations.test.ts",
+      "mediaType": "text/typescript",
+      "bytes": 36468,
+      "digest": "sha256:f0587a2c67347b258525cebb82af7e96a5a0fbd72a1ae634e6b71e4a371ba96c"
+    }
+  ]
+}

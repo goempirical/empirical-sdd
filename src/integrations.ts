@@ -19,7 +19,17 @@ import type { IntegrationReport } from "./types.js";
 const START = "<!-- empirical-sdd:start -->";
 const END = "<!-- empirical-sdd:end -->";
 const MANAGED_FILE_MARKER = "empirical-sdd:managed-file";
-const OBSOLETE_ENTRYPOINTS = [
+const OBSOLETE_GLOBAL_ENTRYPOINTS = [
+  "empirical",
+  "empirical-explore",
+  "empirical-fast",
+  "empirical-complex",
+  "empirical-loop",
+  "empirical-socratic",
+  "empirical-spec",
+  "empirical-yolo",
+] as const;
+const OBSOLETE_PROJECT_ENTRYPOINTS = [
   "empirical-explore",
   "empirical-fast",
   "empirical-complex",
@@ -33,61 +43,99 @@ const GLOBAL_SELECTION_SCHEMA = 1 as const;
 const GLOBAL_SELECTION_OWNER = "empirical-sdd" as const;
 const UNVERIFIED_RUNTIME_GUIDANCE = "Skill files installed; invocation and reload guidance for this runtime has not been verified.";
 
-const AUTOMATIC_SKILL_BODY = `# Empirical
+const PROJECT_GUIDANCE = `${START}
+## Empirical repository workflow
 
-Use the current host agent to initialize, route, track, and complete Empirical
-work. This is the only user-facing Empirical skill. Do not direct the user to
-separate setup, specification, interview, loop, or autonomous-run skills, and
-do not ask them to run hidden terminal commands.
+When \`.empirical/config.json\` has \`schemaVersion: 5\` and
+\`setupComplete: true\`, automatically use the repository-local Empirical
+workflow for requests to build, add, implement, change, fix, refactor, remove,
+migrate, upgrade, change tests, or continue repository work. The user does not
+need to mention Empirical. Read-only explanation and inspection stay outside
+the workflow.
 
-1. Before interpreting a feature request, inspect .empirical/config.json and
-   repository context. If configuration is missing, setupComplete is false, or
-   context is missing, inspect manifests, documentation, source, tests, and Git
-   base without writing. Before calling any mutating setup operation, render the
-   complete Empirical setup summary for Verification, Parallel work, and Decisions
-   and offer Apply recommended settings (or Keep current settings), Customize,
-   and Cancel. On Customize, visit one section at a time and end with a complete
-   Save, Edit, or Cancel review. Cancel stops setup without calling empirical_init,
-   empirical_context, or any private fallback. After confirmation, call
-   empirical_init with all four explicit evidence booleans plus isolation, base,
-   path, branch, and decision policy. Call empirical_context when context is
-   stale. Private fallbacks are empirical __internal init with equivalent flags
-   and empirical __internal context. Do not install project-local skills.
-2. If selected non-terminal work exists, call empirical_loop with no request or
+Read \`.agents/skills/empirical/SKILL.md\` (or the native project copy) for the
+full contract. Use Empirical MCP operations first and private
+\`empirical __internal\` fallbacks only when MCP is unavailable. If the config
+is missing, invalid, or incomplete, do not initialize implicitly; tell the user
+to invoke \`empirical-init\` explicitly.
+${END}`;
+
+const INIT_SKILL_BODY = `# Empirical Init
+
+Use this skill only when the user explicitly asks to initialize, set up, or
+repair Empirical in the current repository. Attached text is setup context,
+never a feature request.
+
+1. Inspect \`.empirical/config.json\`, manifests, documentation, source, tests,
+   and Git base without writing. Determine whether this is first setup or a
+   repair. Preserve existing configuration values and durable workflow history
+   unless the user explicitly changes a value.
+2. Before any mutation, render the complete Empirical setup summary for
+   Verification, Parallel work, and Decisions. Offer Apply recommended settings
+   (or Keep current settings), Customize, and Cancel. On Customize, visit one
+   section at a time and end with a complete Save, Edit, or Cancel review.
+3. Cancel stops without calling \`empirical_init\`, \`empirical_context\`, or a
+   private fallback. After confirmation, call \`empirical_init\` with all four
+   explicit evidence booleans plus isolation, base, path, branch, and decision
+   policy. The private fallback is \`empirical __internal init\` with equivalent
+   flags.
+4. Call \`empirical_context\` when context is missing or stale and replace every
+   reported refinement-required topic with repository-grounded knowledge. The
+   private fallback is \`empirical __internal context\`.
+5. Ensure project integrations are reconciled by initialization. Report exact
+   configuration, context, created, updated, removed, and preserved outcomes,
+   including whether automatic repository activation is ready.
+6. Stop after setup or repair. Do not call route, discovery, fast, complex,
+   yolo, loop, complete, tracker binding, handoff, integrate, deliver, publish,
+   or archive, and do not create or select feature workflow state.
+
+Never scan other repositories, overwrite unmanaged files, follow unsafe paths,
+or claim automatic activation for a repository without valid completed config.`;
+
+const LOCAL_AUTOMATIC_SKILL_BODY = `# Empirical
+
+Automatically route, track, resume, and complete Empirical work in this
+initialized repository. Use this workflow for ordinary repository mutations;
+the user does not need to mention Empirical or choose a profile.
+
+1. First validate that \`.empirical/config.json\` has \`schemaVersion: 5\` and
+   \`setupComplete: true\`. If it does not, do not initialize or create feature
+   state; ask the user to invoke \`empirical-init\` explicitly.
+2. If selected non-terminal work exists, call \`empirical_loop\` with no request or
    profile and resume the returned action. Attached text never replaces active
-   work. The private fallback is empirical __internal loop.
-3. For a genuinely vague new idea, call empirical_explore for repository and
-   capability context, then call empirical_discovery with empty answers to
+   work. The private fallback is \`empirical __internal loop\`.
+3. For a genuinely vague new idea, call \`empirical_explore\` for repository and
+   capability context, then call \`empirical_discovery\` with empty answers to
    create the draft and receive its first nextQuestion. Ask only the returned
    pass or material follow-up, one at a time, and resubmit the ordered answers
    after each response. The five passes are problem/user, observable outcome,
    boundaries/non-goals, risk/failure, and verification. Show the returned exact
-   refined contract and wait for approval before calling empirical_discovery
+   refined contract and wait for approval before calling \`empirical_discovery\`
    with approved true.
-   Private fallbacks are empirical __internal explore and empirical __internal
-   discovery --input <json-file>.
-4. For concrete work, call empirical_fast only when it is explicit, tiny,
+   Private fallbacks are \`empirical __internal explore\` and
+   \`empirical __internal discovery --input <json-file>\`.
+4. For concrete work, call \`empirical_fast\` only when it is explicit, tiny,
    localized, reversible, low-risk, and non-UI. Call empirical_complex for
    everything else, including UI, architecture, public APIs, security,
    permissions, payments, migrations, dependencies, infrastructure, or
-   cross-cutting work. Private fallbacks are empirical __internal fast and
-   empirical __internal complex; these are agent operations, not user commands.
-5. When the user explicitly requests autonomous progress, call empirical_yolo
+   cross-cutting work. Private fallbacks are \`empirical __internal fast\` and
+   \`empirical __internal complex\`; these are agent operations, not user commands.
+5. When the user explicitly requests autonomous progress, call \`empirical_yolo\`
    with the exact request and a bounded implemented, verified, integrated, or
    delivered ceiling. Default to integrated only when no lower ceiling is
    requested. YOLO never authorizes publication and never weakens host, Git,
    credential, evidence, deletion, or branch-protection safety. Its private
-   fallback is empirical __internal yolo; it is not another user-facing skill.
+   fallback is \`empirical __internal yolo\`.
 6. Show any worktree proposal exactly and wait for approval before calling the
    approved creation operation. Never stash, force, or replace selected work.
 7. Treat Empirical's local journal as authoritative. If .empirical/tracker.json
    is absent, remain local-only and make no network requests. When the user asks
    to enable a mirror, collect exactly one provider configuration for GitHub,
    Linear, or Jira, persist only credential environment-variable names through
-   empirical_tracker_configure, and create or attach one ticket through
-   empirical_tracker_bind. Never replace an existing binding implicitly.
+   \`empirical_tracker_configure\`, and create or attach one ticket through
+   \`empirical_tracker_bind\`. Never replace an existing binding implicitly.
    After each local workflow mutation is durably committed, call
-   empirical_tracker_sync. A remote failure leaves local progress intact;
+   \`empirical_tracker_sync\`. A remote failure leaves local progress intact;
    report local-only, synced, pending, or failed health and retry only the
    durable pending projection. Tracker operations are granular MCP tools, not
    additional skills or user commands.
@@ -100,22 +148,38 @@ do not ask them to run hidden terminal commands.
    again, and complete only when stale, missing, and refinementRequired are all
    empty. Report the exact highest completion level. Stop only at Done, Blocked,
    or Awaiting Human.
-9. After Complex Specify passes, empirical_handoff may offer Continue here,
+9. After Complex Specify passes, \`empirical_handoff\` may offer Continue here,
    Save for later, or one detected agent. Detection and Save launch nothing;
    another runtime requires explicit approval of its exact target, cwd, and argv.
 
 Do not invent state, weaken acceptance criteria, expose credentials, or persist
 private chain-of-thought. Files under .empirical/ are the durable source of truth.`;
 
-
-function skillContent(name: string, description: string, body: string): string {
-  return `---\nname: ${name}\ndescription: ${description}\n---\n\n<!-- ${MANAGED_FILE_MARKER} -->\n${body}\n\nUse Empirical MCP operations first. Use empirical __internal only when MCP is unavailable; it is a private agent fallback, never a command for the user to run.\n`;
+function skillContent(
+  name: string,
+  description: string,
+  body: string,
+  explicitOnly = false,
+): string {
+  const invocationMetadata = explicitOnly ? "disable-model-invocation: true\n" : "";
+  return `---\nname: ${name}\ndescription: ${description}\n${invocationMetadata}---\n\n<!-- ${MANAGED_FILE_MARKER} -->\n${body}\n\nUse Empirical MCP operations first. Use empirical __internal only when MCP is unavailable; it is a private agent fallback, never a command for the user to run.\n`;
 }
+
+const CODEX_EXPLICIT_ONLY_METADATA = `# ${MANAGED_FILE_MARKER}
+policy:
+  allow_implicit_invocation: false
+`;
+
+const LOCAL_EMPIRICAL_SKILL = skillContent(
+  "empirical",
+  "Automatically route repository-changing requests through this initialized repository's Empirical workflow; skip read-only explanation or inspection.",
+  LOCAL_AUTOMATIC_SKILL_BODY,
+);
 
 type RegistrySkillId = typeof SKILLS[number]["id"];
 
 const SKILL_BODIES: Record<RegistrySkillId, string> = {
-  empirical: AUTOMATIC_SKILL_BODY,
+  "empirical-init": INIT_SKILL_BODY,
 };
 
 export const EMPIRICAL_AGENT_SKILLS = Object.freeze(
@@ -126,7 +190,20 @@ export const EMPIRICAL_AGENT_SKILLS = Object.freeze(
       definition.id,
       definition.description,
       SKILL_BODIES[definition.id as RegistrySkillId]!,
+      true,
     ),
+    artifacts: [
+      {
+        path: "SKILL.md",
+        content: skillContent(
+          definition.id,
+          definition.description,
+          SKILL_BODIES[definition.id as RegistrySkillId]!,
+          true,
+        ),
+      },
+      { path: join("agents", "openai.yaml"), content: CODEX_EXPLICIT_ONLY_METADATA },
+    ],
   })),
 );
 
@@ -191,9 +268,21 @@ export async function installProjectIntegrations(root: string): Promise<Integrat
   const report = emptyReport("project");
 
   for (const filename of ["AGENTS.md", "CLAUDE.md", "GEMINI.md"]) {
-    await removeManagedMarkdownBlock(root, join(root, filename), report);
+    await mergeManagedMarkdownBlock(root, join(root, filename), PROJECT_GUIDANCE, report);
   }
-  for (const path of projectSkillTargets(root)) {
+  await writeManagedFile(
+    root,
+    join(root, ".agents", "skills", "empirical", "SKILL.md"),
+    LOCAL_EMPIRICAL_SKILL,
+    report,
+  );
+  await writeManagedFile(
+    root,
+    join(root, ".claude", "skills", "empirical", "SKILL.md"),
+    LOCAL_EMPIRICAL_SKILL,
+    report,
+  );
+  for (const path of obsoleteProjectTargets(root)) {
     await removeManagedFile(root, path, report);
   }
 
@@ -247,16 +336,30 @@ export async function installGlobalAgentSkills(
   }));
 
   for (const [skillRoot, definitions] of groupedGlobalTargets(home)) {
-    if (definitions.some((definition) => requestedIds.has(definition.id))) {
+    const selectedRoot = definitions.some((definition) => requestedIds.has(definition.id));
+    if (selectedRoot) {
       for (const skill of EMPIRICAL_AGENT_SKILLS) {
-        await writeManagedFile(home, join(skillRoot, skill.name, "SKILL.md"), skill.content, report);
+        for (const artifact of skill.artifacts) {
+          await writeManagedFile(home, join(skillRoot, skill.name, artifact.path), artifact.content, report);
+        }
       }
     } else if (options.agents !== undefined || options.all) {
       for (const skill of EMPIRICAL_AGENT_SKILLS) {
-        await removeManagedFile(home, join(skillRoot, skill.name, "SKILL.md"), report);
+        for (const artifact of skill.artifacts) {
+          await removeManagedFile(home, join(skillRoot, skill.name, artifact.path), report);
+        }
+        await removeEmptyDirectory(join(skillRoot, skill.name));
       }
     }
-    for (const obsolete of OBSOLETE_ENTRYPOINTS) {
+    for (const obsolete of OBSOLETE_GLOBAL_ENTRYPOINTS) {
+      if (obsolete === "empirical" && selectedRoot && !(await hasManagedCurrentGlobalSkill(home, skillRoot))) {
+        const legacy = join(skillRoot, obsolete, "SKILL.md");
+        if (await isSafeRegularFile(home, legacy)) {
+          const label = `${relativeLabel(home, legacy)} (kept until empirical-init is fully installed)`;
+          if (!report.preserved.includes(label)) report.preserved.push(label);
+        }
+        continue;
+      }
       await removeManagedFile(home, join(skillRoot, obsolete, "SKILL.md"), report);
     }
   }
@@ -281,7 +384,13 @@ export async function uninstallGlobalAgentSkills(
   ];
 
   for (const [skillRoot] of groupedGlobalTargets(home)) {
-    for (const name of [...EMPIRICAL_AGENT_SKILL_NAMES, ...OBSOLETE_ENTRYPOINTS]) {
+    for (const skill of EMPIRICAL_AGENT_SKILLS) {
+      for (const artifact of skill.artifacts) {
+        await removeManagedFile(home, join(skillRoot, skill.name, artifact.path), report);
+      }
+      await removeEmptyDirectory(join(skillRoot, skill.name));
+    }
+    for (const name of OBSOLETE_GLOBAL_ENTRYPOINTS) {
       await removeManagedFile(home, join(skillRoot, name, "SKILL.md"), report);
     }
   }
@@ -293,26 +402,39 @@ function emptyReport(scope: IntegrationReport["scope"]): IntegrationReport {
   return { scope, selected: [], destinations: [], created: [], updated: [], removed: [], preserved: [], entrypoints: [] };
 }
 
-function projectSkillTargets(root: string): string[] {
-  const names = [...EMPIRICAL_AGENT_SKILL_NAMES, ...OBSOLETE_ENTRYPOINTS];
-  return names.flatMap((name) => [
+function obsoleteProjectTargets(root: string): string[] {
+  const legacySkills = OBSOLETE_PROJECT_ENTRYPOINTS.flatMap((name) => [
     join(root, ".agents", "skills", name, "SKILL.md"),
     join(root, ".claude", "skills", name, "SKILL.md"),
+  ]);
+  const legacyCommands = ["empirical", ...OBSOLETE_PROJECT_ENTRYPOINTS].flatMap((name) => [
     join(root, ".cursor", "commands", `${name}.md`),
     join(root, ".gemini", "commands", `${name}.toml`),
     join(root, ".windsurf", "workflows", `${name}.md`),
   ]);
+  return [...legacySkills, ...legacyCommands];
 }
 
 async function hasManagedGlobalTarget(home: string, definition: GlobalAgentSkillTarget): Promise<boolean> {
   const root = agentSkillTargetPath(home, definition);
-  for (const name of [...EMPIRICAL_AGENT_SKILL_NAMES, ...OBSOLETE_ENTRYPOINTS]) {
+  for (const name of [...EMPIRICAL_AGENT_SKILL_NAMES, ...OBSOLETE_GLOBAL_ENTRYPOINTS]) {
     const path = join(root, name, "SKILL.md");
     if (await isSafeRegularFile(home, path) && (await readFile(path, "utf8")).includes(MANAGED_FILE_MARKER)) {
       return true;
     }
   }
   return false;
+}
+
+async function hasManagedCurrentGlobalSkill(home: string, root: string): Promise<boolean> {
+  for (const skill of EMPIRICAL_AGENT_SKILLS) {
+    for (const artifact of skill.artifacts) {
+      const path = join(root, skill.name, artifact.path);
+      if (!(await isSafeRegularFile(home, path))) return false;
+      if (!(await readFile(path, "utf8")).includes(MANAGED_FILE_MARKER)) return false;
+    }
+  }
+  return true;
 }
 
 function invocationFor(
@@ -515,39 +637,42 @@ async function removeManagedFile(root: string, path: string, report: Integration
   });
 }
 
-async function removeManagedMarkdownBlock(
+async function removeEmptyDirectory(path: string): Promise<void> {
+  await rmdir(path).catch((error: NodeJS.ErrnoException) => {
+    if (!["ENOENT", "ENOTEMPTY", "EEXIST", "ENOTDIR"].includes(error.code ?? "")) throw error;
+  });
+}
+
+async function mergeManagedMarkdownBlock(
   root: string,
   path: string,
+  managed: string,
   report: IntegrationReport,
 ): Promise<void> {
   if (await preserveUnsafeTarget(root, path, report)) return;
-  if (!(await isFile(path))) return;
+  if (!(await isFile(path))) {
+    await writeTextAtomic(path, `${managed}\n`);
+    report.created.push(relativeLabel(root, path));
+    return;
+  }
   const current = await readFile(path, "utf8");
   const starts = markerIndexes(current, START);
   const ends = markerIndexes(current, END);
-  if (starts.length === 0 && ends.length === 0) return;
-  if (starts.length !== 1 || ends.length !== 1 || ends[0]! < starts[0]!) {
+  if (starts.length === 1 && ends.length === 1 && ends[0]! >= starts[0]!) {
+    const next = `${current.slice(0, starts[0]!)}${managed}${current.slice(ends[0]! + END.length)}`;
+    if (next !== current) {
+      await writeTextAtomic(path, next);
+      report.updated.push(relativeLabel(root, path));
+    }
+    return;
+  }
+  if (starts.length > 0 || ends.length > 0) {
     report.preserved.push(`${relativeLabel(root, path)} (unmatched Empirical marker)`);
     return;
   }
-  const [blockStart, blockEnd] = managedBlockBounds(current, starts[0]!, ends[0]! + END.length);
-  const next = `${current.slice(0, blockStart)}${current.slice(blockEnd)}`;
-  if (!next.trim()) {
-    await rm(path);
-    report.removed.push(relativeLabel(root, path));
-  } else {
-    await writeTextAtomic(path, next);
-    report.updated.push(relativeLabel(root, path));
-  }
-}
-
-function managedBlockBounds(contents: string, markerStart: number, markerEnd: number): [number, number] {
-  const lineStart = contents.lastIndexOf("\n", markerStart - 1) + 1;
-  const start = contents.slice(lineStart, markerStart).trim() ? markerStart : lineStart;
-  let end = markerEnd;
-  if (contents.startsWith("\r\n", end)) end += 2;
-  else if (contents.startsWith("\n", end)) end += 1;
-  return [start, end];
+  const separator = current.endsWith("\n") ? "\n" : "\n\n";
+  await writeTextAtomic(path, `${current}${separator}${managed}\n`);
+  report.updated.push(relativeLabel(root, path));
 }
 
 async function mergeMcpJson(

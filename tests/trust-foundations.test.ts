@@ -80,7 +80,7 @@ describe("Schema-5 protocol", () => {
   test("exports one coherent alpha protocol version", () => {
     expect(SCHEMA_VERSION).toBe(5);
     expect(POLICY_SCHEMA_VERSION).toBe(2);
-    expect(PRODUCT_VERSION).toBe("0.22.1");
+    expect(PRODUCT_VERSION).toBe("0.23.0");
   });
 
   test("canonical JSON is key-order independent and rejects unsafe values", () => {
@@ -183,7 +183,7 @@ describe("Schema-5 protocol", () => {
 describe("operation and skill registry", () => {
   test("has unique operations and exactly one registry-backed skill", () => {
     expect(() => assertRegistryIntegrity()).not.toThrow();
-    expect(SKILLS.map((skill) => skill.id)).toEqual(["empirical"]);
+    expect(SKILLS.map((skill) => skill.id)).toEqual(["empirical-init"]);
     expect(new Set(OPERATIONS.map((entry) => entry.mcpName)).size).toBe(
       OPERATIONS.length,
     );

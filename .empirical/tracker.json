@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "provider": "linear",
+  "target": {
+    "teamId": "759936b8-0971-44ad-9162-6909afdd4467",
+    "projectId": null
+  },
+  "credentialEnv": {
+    "apiKey": "LINEAR_API_KEY"
+  },
+  "states": {
+    "specification": "f211e83b-b7a2-4641-a16b-61baf3ed4d1c",
+    "planned": "36ef47d0-ea4c-48bc-9208-c93b5b438a0f",
+    "in-progress": "73f9e1ac-01ab-4113-b2fb-fc34795bdbd9",
+    "verification": "e36b5e46-96f7-44a7-82f4-15b83b37363a",
+    "review": "8c736b52-16ae-4697-bfb9-929f16ee64a1",
+    "blocked": "0efba0cf-3df5-4f39-a7c9-6bfab55ee212",
+    "done": "8b7018dc-250a-40ca-bd8e-915d985da64b"
+  }
+}

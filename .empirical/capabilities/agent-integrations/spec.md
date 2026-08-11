@@ -10,76 +10,74 @@ agent's native extension mechanism.
 
 ### Requirement: Explicit global skill installation
 
-Empirical SHALL provide an interactive `empirical install` selector outside an
-initialized project over the pinned audited agent catalog. It MUST prioritize
-detected and managed targets, remember explicit selection, show destinations
-and status, accept non-interactive flags, and install exactly the one registered
-`empirical` skill at each unique selected destination. Counts and labels MUST
-derive from that registry. Installation MUST NOT initialize project state,
-require network access, invoke `npx`, or launch an agent.
+Empirical SHALL install exactly one global skill named `empirical-init` for
+each selected agent. Installation and update MUST replace only marker-owned
+global `empirical` skills from earlier versions after Init is safely installed,
+preserve user-owned artifacts and shared selections, and MUST NOT initialize a
+repository or launch an agent.
 
-#### Scenario: A developer installs one selected target
+#### Scenario: A developer updates from 0.22
 
-- **WHEN** selection is submitted
-- **THEN** exactly one registered Empirical skill is reconciled at its safe destination
-- **AND** reports derive the installed count from the same registry
+- **GIVEN** a marker-owned global `empirical` skill and remembered agent selection
+- **WHEN** the newly installed process reconciles integrations
+- **THEN** the old managed skill is removed and `empirical-init` is installed
+- **AND** unmanaged collisions and project histories remain untouched
 
 ### Requirement: Global integration preserves user configuration
 
-Installation and update MUST reconcile selected ids and their unique normalized
-destinations, persist marker-owned selection metadata, and remove a shared root
-only when no selected target still depends on it. They MUST remove only
-marker-owned obsolete Empirical skills—including Init, Spec, Socratic, Loop,
-YOLO, Explore, Fast, and Complex—while preserving unmanaged files,
-directories, symbolic links, unrelated configuration, and unsafe targets.
+Global and project reconciliation MUST distinguish the current global Init
+skill, the current repository-local workflow skill, and obsolete global or
+local entrypoints. It MUST write, update, or remove only marker-owned artifacts
+within validated roots and preserve unmatched markers, unmanaged files,
+directories, symbolic links, and unrelated content.
 
-#### Scenario: A managed dedicated skill remains from an older release
+#### Scenario: Project instructions contain user content
 
-- **WHEN** the single-skill installer refreshes its destination
-- **THEN** the obsolete marker-owned skill is removed repeatably
-- **AND** an unmanaged collision at that path is preserved and reported
+- **WHEN** Init adds or refreshes its managed automatic-routing block
+- **THEN** the user content remains byte-for-byte outside the managed block
+- **AND** repeated repair produces no further filesystem changes
 
 ### Requirement: Global discovery guidance is agent-accurate
 
-Human and structured installation reports MUST identify selected agent ids,
-unique native global skill roots, and created, updated, removed, or preserved
-results for the one registered skill. Verified invocation and reload guidance
-MAY be shown only from catalog metadata; missing runtime metadata MUST be
-labeled unknown and MUST NOT be inferred from skill-file support.
+Installation reports and documentation MUST show only the native Init
+invocation for verified runtimes. Init MUST be explicitly non-implicit where a
+host supports invocation policy metadata; other hosts MUST receive a narrowly
+scoped setup/repair description and no unsupported guarantee.
 
-#### Scenario: A skill-only agent is installed
+#### Scenario: Codex receives the bootstrap skill
 
-- **WHEN** its runtime invocation metadata is unavailable
-- **THEN** the report confirms one installed Empirical skill and destination
-- **AND** makes no unsupported launch, prompt, or MCP claim
+- **WHEN** Empirical installs the Codex target
+- **THEN** the report shows `$empirical-init`
+- **AND** Codex metadata disables implicit invocation of the bootstrap
 
 ### Requirement: Native user-invocable workflow entrypoints
 
-The system SHALL expose exactly one global `empirical` skill per selected
-agent. It MUST own setup, context, discovery, routing, normal or bounded
-autonomy, exact revision execution, evidence, handoff, optional ticket
-configuration/synchronization, and terminal reporting. It MUST use granular MCP
-operations first and MAY use only the private internal transport as fallback.
+The system SHALL expose `empirical-init` as the only explicit global workflow
+skill. Init MUST only review, initialize, repair, and report repository setup,
+context, automatic activation, and MCP bridges; it MUST NOT start, resume, or
+complete feature workflow state.
 
-#### Scenario: A developer invokes Empirical for a tracked feature
+#### Scenario: A developer initializes a new repository
 
-- **WHEN** the current phase advances and a tracker binding exists
-- **THEN** the same skill executes the local action and tracker synchronization
-- **AND** never asks the developer to invoke another Empirical skill
+- **WHEN** the developer explicitly invokes `empirical-init` and approves setup
+- **THEN** valid `.empirical` state and repository-local activation are created
+- **AND** no feature specification or selected workflow is created
 
 ### Requirement: Honest command discovery report
 
 Root and subcommand help and README MUST present only `empirical install`,
-`empirical update`, `empirical uninstall`, and the one native in-agent
-`empirical` skill. Each public lifecycle subcommand MUST provide usable help.
-Direct state-machine and tracker verbs remain private and MUST be rejected as
-human terminal commands.
+`empirical update`, `empirical uninstall`, and `empirical-init` as the explicit
+native bootstrap skill. They MUST explain that ordinary mutation prompts in a
+valid initialized repository route through the local workflow without an
+Empirical invocation. Direct state-machine and tracker verbs remain private and
+MUST be rejected as human terminal commands.
 
 #### Scenario: A developer asks how to start or resume work
 
 - **WHEN** help or documentation is rendered
-- **THEN** it directs the developer to the single installed Empirical skill
-- **AND** exposes no Init, Spec, Socratic, Loop, YOLO, or tracker shell command
+- **THEN** setup and repair guidance names the native `empirical-init` skill
+- **AND** normal or resumed work is described as an ordinary repository prompt
+- **AND** no private workflow or tracker verb is presented as a shell command
 
 ### Requirement: Update converges package and integrations
 
@@ -97,30 +95,35 @@ claim refresh success unless both stages pass.
 
 ### Requirement: Explicit skills have disjoint approval boundaries
 
-The one generated skill MUST state its input routing, mutations, approval
-boundaries, tracker behavior, stop conditions, and valid recovery behavior.
-First-run configuration still requires Apply, Customize, or Cancel; discovery
-still requires approval of the refined contract; external handoff, host access,
-credentials, delivery, and publication retain their explicit approval gates.
+The generated global Init contract MUST state its setup-only input, mutations,
+approval boundary, stop conditions, and repair behavior. The repository-local
+automatic workflow MUST retain discovery approval, conservative Fast/Complex
+routing, tracker credential boundaries, exact evidence, external handoff,
+delivery, and publication authorization. First-run or repair configuration
+still requires Apply/Keep, Customize, or Cancel.
 
-#### Scenario: First use needs both setup and a tracker credential
+#### Scenario: Setup is followed by optional ticket tracking
 
-- **WHEN** the user selects an external provider during setup
-- **THEN** configuration stores only safe provider metadata and waits for host credential access
+- **WHEN** the user explicitly initializes a repository and later requests an external mirror
+- **THEN** Init completes setup without starting feature or tracker state
+- **AND** the local workflow separately obtains tracker configuration and host credential access
 - **AND** cancellation creates neither feature state nor a remote ticket
 
 ### Requirement: Installation, MCP, and handoff capabilities are distinct
 
-Empirical MUST model global single-skill installation independently from
-project MCP bridges, tracker providers, and executable handoff targets.
-Contracting the skill registry MUST NOT remove granular MCP operations or imply
-provider credentials, MCP support, or external-launch capability for an agent.
+Empirical MUST model global `empirical-init` installation independently from
+repository-local automatic activation, project MCP bridges, tracker providers,
+and executable handoff targets. Contracting the global registry to Init MUST
+NOT remove the detailed local workflow or granular MCP operations, and MUST NOT
+imply provider credentials, MCP support, or external-launch capability for an
+agent.
 
-#### Scenario: The registry contracts from six skills to one
+#### Scenario: The global registry contains only Init
 
 - **WHEN** package consistency and MCP smoke checks run
-- **THEN** one user-facing skill is installed while all registered MCP operations remain callable
-- **AND** no removed skill name is required to reach those operations
+- **THEN** one explicit global bootstrap skill is installed while local automatic activation remains generated during initialization
+- **AND** all registered MCP operations remain callable
+- **AND** no removed global skill name is required for normal repository work
 
 ### Requirement: Agent catalog is deterministic and auditable
 

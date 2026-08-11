@@ -78,7 +78,7 @@ class FakeGitHub {
     if (argv[1] === "diff") return captured("");
     if (argv[1] === "status") return captured(" M tracked-file\n");
     if (argv[1] === "ls-remote") {
-      return captured(this.remoteTagCommit ? `${this.remoteTagCommit}\trefs/tags/v0.22.1\n` : "");
+      return captured(this.remoteTagCommit ? `${this.remoteTagCommit}\trefs/tags/v0.23.0\n` : "");
     }
     if (argv[1] === "tag") {
       this.localTagCommit = argv[4] ?? null;
@@ -154,7 +154,7 @@ class FakeGitHub {
     }
     if (argv[1] === "release" && argv[2] === "view") {
       return this.releaseExists
-        ? captured(`${JSON.stringify({ tagName: "v0.22.1" })}\n`)
+        ? captured(`${JSON.stringify({ tagName: "v0.23.0" })}\n`)
         : captured("", 1, "release not found (404)");
     }
     if (argv[1] === "release" && argv[2] === "create") {
@@ -177,8 +177,8 @@ class FakeGitHub {
         : captured("", 1, "npm error E404 package not found");
     }
     if (argv[1] === "publish") {
-      this.npmVersions.add("0.22.1");
-      this.distTags[argv[argv.indexOf("--tag") + 1] ?? "latest"] = "0.22.1";
+      this.npmVersions.add("0.23.0");
+      this.distTags[argv[argv.indexOf("--tag") + 1] ?? "latest"] = "0.23.0";
       return captured("ok\n");
     }
     if (argv[1] === "dist-tag" && argv[2] === "add") {
@@ -210,7 +210,7 @@ function publicationAuthorization() {
       repositoryId: "repo-1",
       feature: "delivery-feature",
       packageName: "empirical-sdd",
-      version: "0.22.1",
+      version: "0.23.0",
       distTag: "latest",
       commit: sourceMerge,
     }),
@@ -455,7 +455,7 @@ describe("explicit immutable publication", () => {
         repositoryId: "repo-1",
         feature: "delivery-feature",
         packageName: "empirical-sdd",
-        version: "0.22.1",
+        version: "0.23.0",
         distTag: "latest",
         commit: sourceMerge,
         observed: {
@@ -475,7 +475,7 @@ describe("explicit immutable publication", () => {
       repositoryId: "repo-1",
       feature: "delivery-feature",
       packageName: "empirical-sdd",
-      version: "0.22.1",
+      version: "0.23.0",
       distTag: "latest",
       commit: sourceMerge,
       observed: {
@@ -497,14 +497,14 @@ describe("explicit immutable publication", () => {
       repositoryId: "repo-1",
       feature: "delivery-feature",
       packageName: "empirical-sdd",
-      version: "0.22.1",
+      version: "0.23.0",
       distTag: "latest",
       commit: sourceMerge,
       observed: {
         tagCommit: sourceMerge,
         releaseCommit: sourceMerge,
-        npmVersion: "0.22.1",
-        distTagVersion: "0.22.1",
+        npmVersion: "0.23.0",
+        distTagVersion: "0.23.0",
       },
     });
     expect(converged).toMatchObject({ actions: [], converged: true });
@@ -518,7 +518,7 @@ describe("explicit immutable publication", () => {
         repositoryId: "repo-1",
         feature: "delivery-feature",
         packageName: "empirical-sdd",
-        version: "0.22.1",
+        version: "0.23.0",
         distTag: "latest",
         commit: sourceMerge,
         observed: {
@@ -535,7 +535,7 @@ describe("explicit immutable publication", () => {
       repositoryId: "repo-1",
       feature: "delivery-feature",
       packageName: "empirical-sdd",
-      version: "0.22.1",
+      version: "0.23.0",
       distTag: "latest",
       commit: sourceMerge,
       observed: {
@@ -571,18 +571,18 @@ describe("explicit immutable publication", () => {
       repositoryId: "repo-1",
       feature: "delivery-feature",
       packageName: "empirical-sdd",
-      version: "0.22.1",
+      version: "0.23.0",
       distTag: "latest",
       commit: sourceMerge,
       runner: fake.runner,
       now: () => new Date("2026-08-03T12:00:00Z"),
     });
     expect(() => verifyPublicationReceipt(receipt)).not.toThrow();
-    expect(receipt).toMatchObject({ version: "0.22.1", commit: sourceMerge });
+    expect(receipt).toMatchObject({ version: "0.23.0", commit: sourceMerge });
     expect(fake.remoteTagCommit).toBe(sourceMerge);
     expect(fake.releaseExists).toBe(true);
-    expect(fake.npmVersions.has("0.22.1")).toBe(true);
-    expect(fake.distTags.latest).toBe("0.22.1");
+    expect(fake.npmVersions.has("0.23.0")).toBe(true);
+    expect(fake.distTags.latest).toBe("0.23.0");
     expect(fake.commands.filter((argv) => argv[1] === "view").length).toBeGreaterThanOrEqual(4);
   });
 });

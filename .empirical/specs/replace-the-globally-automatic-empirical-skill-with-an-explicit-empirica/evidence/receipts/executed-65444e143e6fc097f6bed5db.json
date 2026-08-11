@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "executed-65444e143e6fc097f6bed5db",
+  "criteria": [
+    "AC-1",
+    "AC-10",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7",
+    "AC-8",
+    "AC-9"
+  ],
+  "evidenceKinds": [
+    "review",
+    "test"
+  ],
+  "summary": "Full CI verifies the explicit Init bootstrap, local automatic activation, migration safety, documentation, versioning, changelog, and package distribution.",
+  "passed": false,
+  "startedAt": "2026-08-11T18:06:35.561Z",
+  "completedAt": "2026-08-11T18:09:39.394Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "replace-the-globally-automatic-empirical-skill-with-an-explicit-empirica",
+    "specRevision": 2,
+    "specDigest": "sha256:642602fd578d0537a1d1fe5a435a19822f8e8260fa42bce42e4f58f4217a6fe4",
+    "treeDigest": "sha256:ffee4fa29b0d08fb7d09725959d2830ef921c6b9fcfd50c24195bfc54dc4dbf0",
+    "policyDigest": "sha256:888d86d00b83ec4a957413efb0701df5278d06de2077ba6b76f58dd2ba6eeeaf"
+  },
+  "digest": "sha256:eb3974093fcccc7cead5a5086f3eb2eca4523c4a9169d70050431abd1bb3cd6e",
+  "kind": "executed",
+  "command": {
+    "argv": [
+      "bun",
+      "run",
+      "ci"
+    ],
+    "cwd": ".",
+    "timeoutMs": 900000,
+    "maxOutputBytes": 4194304,
+    "environmentKeys": [
+      "NO_COLOR",
+      "PATH",
+      "TMPDIR"
+    ]
+  },
+  "result": {
+    "exitCode": 1,
+    "signal": null,
+    "timedOut": false,
+    "stdoutDigest": "sha256:d6684989b8dd63b37d2f1954270826fbe1bd89a8debd12bcacf03ed1c6140ef6",
+    "stderrDigest": "sha256:da11ac401b55927070349b7113af82c2f6995645e3172fbdd3e2f1d17c267d81",
+    "stdoutTail": "bun test v1.3.14 (0d9b296a)\n",
+    "stderrTail": "ed projections [1405.91ms]\n\ntests/cli-config.test.ts:\n(pass) first-run configuration CLI > forced interactive init previews before writing and persists every customized answer [1520.51ms]\n(pass) first-run configuration CLI > setup cancellation happens before first-run or repair mutation [1920.88ms]\n(pass) first-run configuration CLI > non-interactive init uses safe defaults and explicit flags can replace them [1145.63ms]\n(pass) first-run configuration CLI > legacy workstream flags and commands are rejected [1868.48ms]\n(pass) first-run configuration CLI > interactive/default modes reject conflicting configuration flags before mutation [716.48ms]\n(pass) first-run configuration CLI > Explain has matching human and JSON surfaces [2619.23ms]\n\ntests/tracking.test.ts:\n(pass) external ticket tracking > missing policy is local-only and status never contacts a provider [826.04ms]\n(pass) external ticket tracking > policy is strict, complete, credential-free, and rejects unsafe Jira sites [5.41ms]\n(pass) external ticket tracking > phase and stop conditions map to the normalized progress model [0.25ms]\n(pass) external ticket tracking > missing credentials fail before transport and persist only the environment name [1158.66ms]\n(pass) external ticket tracking > rate limits and malformed provider responses remain retryable local failures [674.81ms]\n(pass) external ticket tracking > Linear create binds, projects, survives a later local commit, and resynchronizes [820.02ms]\n(pass) external ticket tracking > GitHub create keeps exactly one machine-owned marker in the project comment [483.27ms]\n(pass) external ticket tracking > GitHub attachment adopts an existing Projects v2 item, upserts one comment, and moves Status [420.60ms]\n(pass) external ticket tracking > Jira attachment writes the issue property and selects a transition by destination status [336.63ms]\n(pass) external ticket tracking > provider failure is redacted and cannot roll back the committed workflow [696.32ms]\n(pass) external ticket tracking > an ambiguous create is not repeated without explicit confirmation [838.39ms]\n\ntests/delivery.test.ts:\n(pass) bounded GitHub delivery > uses two protected pull requests and derives delivery from remote merge facts [13.01ms]\n(pass) bounded GitHub delivery > resumes from matching merged remote PRs without duplicate mutations [1.31ms]\n(pass) bounded GitHub delivery > waits for pending checks and stops on failed checks before merge [6.95ms]\n(pass) bounded GitHub delivery > requires matching explicit delivery authority before any command [0.51ms]\n(pass) bounded GitHub delivery > binds new commits to the exact branch and repository-contained paths [1.66ms]\n(pass) bounded GitHub delivery > rejects foreign or moved pull requests before checks or merge [0.80ms]\n(pass) bounded GitHub delivery > an explicitly empty required-check policy performs no check polling [2.09ms]\n(pass) bounded GitHub delivery > structurally rejects force, admin, deletion, credential, and worktree operations [0.27ms]\n(pass) explicit immutable publication > ordinary YOLO remains local/integrated and cannot infer publication [1.21ms]\n(pass) explicit immutable publication > plans only absent immutable artifacts and converges identical retries [0.35ms]\n(pass) explicit immutable publication > stops on immutable conflicts and executes an approved plan without replacement flags [1.75ms]\n(pass) explicit immutable publication > queries remote publication state and verifies convergence independently [4.53ms]\n\ntests/selector.test.ts:\n(pass) agent installer selector > preselects detected and remembered agents and renders status and paths [4.28ms]\n(pass) agent installer selector > supports movement, filtering by name, id, alias, and destination, and toggling [0.78ms]\n(pass) agent installer selector > bounds the viewport, reports hidden rows, and keeps every frame width-safe [1.12ms]\n(pass) agent installer selector > refuses empty submission and preserves an explicit empty default [0.13ms]\n(pass) agent installer selector > restores raw mode and cursor visibility when rendering fails [4.86ms]\n\ntests/lifecycle.test.ts:\n(pass) package lifecycle > update upgrades the package before refreshing installed agent entrypoints [0.26ms]\n(pass) package lifecycle > update stops with a stage-specific error when package update fails [0.11ms]\n(pass) package lifecycle > update reports integration refresh failures separately [0.09ms]\n(pass) package lifecycle > uninstall removes the exact global package through the platform npm executable [0.12ms]\n(pass) package lifecycle > uninstall reports package-stage failure after managed cleanup may have occurred [0.10ms]\n(pass) package lifecycle > uninstall confirmation defaults closed and accepts only an explicit yes [0.23ms]\n\ntests/integrations.test.ts:\n(pass) agent integrations > project initialization installs automatic local activation and runtime bridges [289.90ms]\n(pass) agent integrations > project repair replaces owned guidance, removes owned legacy artifacts, and preserves collisions [144.09ms]\n(pass) agent integrations > 0.22-style repository repair preserves configuration, context, and history without feature state [623.10ms]\n(pass) agent integrations > project activation never follows instruction or skill symbolic links [63.06ms]\n(pass) agent integrations > global install creates only the registry-backed Empirical skill for every selected agent [1822.85ms]\n(pass) agent integrations > global refresh updates current managed skills, removes managed legacy skills, and preserves unmanaged collisions [1022.02ms]\n(pass) agent integrations > global migration keeps the old managed workflow until Init is fully installed [128.46ms]\n(pass) agent integrations > an explicit selection installs selected agents and removes only deselected managed skills [843.15ms]\n(pass) agent integrations > shared roots are reconciled once and remain until the last selected target leaves [370.72ms]\n(pass) agent integrations > legacy aliases canonicalize, project-only targets fail, and unmanaged selection metadata is preserved [125.77ms]\n(pass) agent integrations > global refresh does not follow skill or parent-directory symbolic links [950.32ms]\n(pass) agent integrations > global uninstall removes only owned skills and metadata and converges [297.18ms]\n(pass) agent integrations > global uninstall preserves incompatible selection metadata [94.42ms]\n(pass) agent integrations > global integration rejects empty and filesystem-root homes [0.39ms]\n(pass) agent integrations > install CLI works outside a project and reports one human and JSON entrypoint per agent [1607.37ms]\n(pass) agent integrations > primary help exposes only install, update, and uninstall as normal terminal commands [1902.55ms]\n(pass) agent integrations > every registry operation and public subcommand has no-write usable help [15745.66ms]\n(pass) agent integrations > version aliases remain exact and unbranded [1083.33ms]\n(pass) agent integrations > public workflow verbs are rejected before project discovery [3438.02ms]\n(pass) agent integrations > non-interactive install requires an explicit selection [695.98ms]\n(pass) agent integrations > non-interactive uninstall refuses before mutation without --yes [670.38ms]\n(pass) agent integrations > confirmed uninstall works outside a repository with JSON and human reports [1872.87ms]\n(pass) agent integrations > repeatable agent flags install the exact selection [518.00ms]\n(pass) agent integrations > yes mode preserves detected agents without prompting [364.92ms]\n(pass) agent integrations > yes mode reuses a remembered broad selection without detecting it [1134.75ms]\n\ntests/setup.test.ts:\n(pass) setup settings > renders every safe default before persistence [0.42ms]\n(pass) setup settings > explains inactive UI sub-policies without erasing them [0.13ms]\n(pass) setup settings > validates path and branch templates before save [0.35ms]\n\n1 tests failed:\n(fail) the bundled stdio MCP server exposes and executes the portable workflow tools [894.85ms]\n\n 188 pass\n 1 fail\n 1428 expect() calls\nRan 189 tests across 21 files. [182.46s]\nerror: script \"test\" exited with code 1\nerror: script \"ci\" exited with code 1\n",
+    "stdoutTruncated": false,
+    "stderrTruncated": false
+  }
+}

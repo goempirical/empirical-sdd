@@ -15,14 +15,18 @@ GitHub, Linear, or Jira ticket without making remote state authoritative.
 
 - One active feature is selected per checkout; parallel work uses real linked
   Git worktrees.
-- One globally installed `empirical` skill owns setup, routing, discovery,
-  continuation, autonomous ceilings, and optional ticket mirroring. Public CLI commands are Install, Update, and ownership-bound Uninstall;
-  workflow operations are MCP/private automation APIs.
+- One globally installed, explicit `empirical-init` skill owns first setup and
+  repair. Valid initialized repositories carry marker-owned dispatchers and a
+  detailed local workflow that automatically routes mutation prompts while
+  leaving read-only prompts outside Empirical. Public CLI commands are Install,
+  Update, and ownership-bound Uninstall; workflow operations are MCP/private
+  automation APIs.
 - Repository knowledge is bounded and file-backed. There are no embeddings,
   hosted indexing services, or persisted private reasoning. Managed placeholder
   topics are reported as refinement-required and withheld from usable context.
-- Empirical does not publish, commit user work, force Git, or launch another
-  agent without exact explicit approval.
+- Empirical does not initialize an unconfigured repository implicitly, publish,
+  commit user work, force Git, or launch another agent without exact explicit
+  approval.
 
 ## Evidence
 

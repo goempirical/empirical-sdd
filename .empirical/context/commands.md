@@ -4,14 +4,16 @@
 
 - `bun install` installs development dependencies.
 - `npm install -g empirical-sdd` installs the published runtime CLI.
-- `empirical install` installs the single global `empirical` skill per selected
-  agent; `empirical update` upgrades it and removes marker-owned legacy skills.
+- `empirical install` installs the single global `empirical-init` skill per
+  selected agent; `empirical update` upgrades it and removes marker-owned
+  legacy skills.
 - `empirical uninstall` confirms scope, removes marker-owned global skills and
   selection metadata, then removes the global npm package while preserving
   project history and repository integrations.
-- Repository workflows run through the single native `empirical` skill, which
-  uses granular MCP/private operations for setup, discovery, routing, tracking,
-  continuation, evidence, and integration.
+- Invoke the native `empirical-init` skill explicitly for setup or repair.
+  Afterwards, ordinary repository change prompts use the marker-owned local
+  workflow automatically through granular MCP/private operations for discovery,
+  routing, tracking, continuation, evidence, and integration.
 
 ## Run, test, and build
 
@@ -21,8 +23,8 @@
 - `bun run build` generates the Node-compatible `dist/` package.
 - `bun run test:dist` builds and exercises the bundled CLI and MCP server.
 - `bun run test:package` runs the npm package dry-run.
-- `bun run test:consistency` checks version, schema, skill, and operation
-  surfaces for drift.
+- `bun run test:consistency` checks version, schema, skill, changelog, package,
+  and operation surfaces for drift.
 - `bun run ci` executes the complete required pipeline.
 
 ## Verification evidence

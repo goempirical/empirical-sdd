@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "feature": "reconcile-explicit-init-capability-contract",
+  "lastSequence": 8,
+  "lastEventDigest": "sha256:e2ac56b955bb90b181b85aeaa2bb693f7d7ff42bbde175c9b9c67f385b3f945c",
+  "stateDigest": "sha256:313249355f8a1ca88a2b1a251436576240652e7d6e426c13659f424a0903f968",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 8,
+    "activeFeature": "reconcile-explicit-init-capability-contract",
+    "request": "Reconcile the agent-integrations living capability contract so every requirement consistently describes empirical-init as the only explicit global bootstrap and repository-local automatic workflow as the normal mutation path, without changing runtime behavior.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "normal",
+    "phase": "done",
+    "status": "done",
+    "repairAttempts": 0,
+    "message": "Integrated capability changes: agent-integrations",
+    "implementationActor": "agent",
+    "specDigest": "sha256:9d694c77ce5e321568f45de468fcfbc4e0cde06ed55207ee789d3c0438996400",
+    "approvedSpecRevision": 2,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:e9a868c9318839b1e2ab0a49127c3e6ab4b0306488a39cd484be6270dc44adab",
+    "impactDigest": "sha256:989ebbacc0f8b864dbf849bbd69f5a377fafdf6be77889f054bbb10cb60a419a",
+    "capabilityClaimId": "reconcile-explicit-init-capability-contract-42c449b41a7c",
+    "authorizationDigest": null,
+    "evidence": [],
+    "evidenceReceiptIds": [
+      "executed-10240f9c3f6aa1333ef23e42",
+      "collected-5a6953753f6fce67a1eeec4c"
+    ],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": true,
+      "integrated": true,
+      "delivered": false,
+      "published": false,
+      "highest": "integrated",
+      "reasons": {
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-11T18:35:45.507Z"
+  },
+  "compactedAt": "2026-08-11T18:35:45.530Z",
+  "digest": "sha256:205e07080d43f38499c0bf174d019d2e123d44e8bf08f9ba49149ad9ade75ee7"
+}

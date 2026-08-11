@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 5,
+  "revision": 8,
+  "activeFeature": "consolidate-explicit-init-capability-contract",
+  "request": "Consolidate all seven 0.23 agent-integration requirement replacements into one capability delta so integration from the committed target cannot reintroduce any pre-0.23 global empirical workflow wording, without changing runtime behavior.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "normal",
+  "phase": "done",
+  "status": "done",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: agent-integrations",
+  "implementationActor": "agent",
+  "specDigest": "sha256:537e1912a137ca5570390bf3df9e9c2f75a01a6feae01eb1740c682df56a2550",
+  "approvedSpecRevision": 2,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:61ef2c8dcb40841fe6a913ab14f96d575eecb406896f98a7c431939e8892a1b3",
+  "impactDigest": "sha256:989ebbacc0f8b864dbf849bbd69f5a377fafdf6be77889f054bbb10cb60a419a",
+  "capabilityClaimId": "consolidate-explicit-init-capability-contract-42c449b41a7c",
+  "authorizationDigest": null,
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-1e4986e2c70344d331bc7b50",
+    "collected-3b1581618be5fc2083a90559"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-11T18:47:47.963Z"
+}

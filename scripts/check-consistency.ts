@@ -10,6 +10,8 @@ const packageJson = JSON.parse(await readFile(resolve(root, "package.json"), "ut
   version: string;
   engines?: { node?: string };
   exports?: Record<string, unknown>;
+  files?: string[];
+  scripts?: Record<string, string>;
   repository?: { url?: string };
 };
 assertRegistryIntegrity();
@@ -28,6 +30,15 @@ if (SKILLS.length !== 1 || EMPIRICAL_AGENT_SKILL_NAMES.length !== SKILLS.length)
 if (JSON.stringify(EMPIRICAL_AGENT_SKILL_NAMES) !== JSON.stringify(SKILLS.map((skill) => skill.id))) {
   throw new Error("rendered skill order differs from the shared registry");
 }
+if (EMPIRICAL_AGENT_SKILL_NAMES[0] !== "empirical-init") {
+  throw new Error("the sole global workflow skill must be empirical-init");
+}
+for (const required of ["CHANGELOG.md", "docs/versioning.md"]) {
+  if (!packageJson.files?.includes(required)) throw new Error(`package files omit ${required}`);
+}
+if (!packageJson.scripts?.ci?.includes("git diff --check")) {
+  throw new Error("the complete CI command must enforce git diff --check");
+}
 if (new Set(OPERATIONS.map((operation) => operation.mcpName)).size !== OPERATIONS.length) {
   throw new Error("MCP operation names are not unique");
 }
@@ -41,6 +52,8 @@ const documentationPaths = [
   "docs/openspec-comparison.md",
   "docs/protocol.md",
   "docs/security.md",
+  "docs/versioning.md",
+  "CHANGELOG.md",
 ];
 const documentation = (
   await Promise.all(documentationPaths.map((path) => readFile(resolve(root, path), "utf8")))
@@ -52,6 +65,20 @@ for (const skill of SKILLS) {
 }
 if (!documentation.includes("empirical uninstall")) {
   throw new Error("documentation omits the public uninstall lifecycle");
+}
+if (/(?:\$|\/|@)empirical(?:`|\s)/.test(documentation)) {
+  throw new Error("documentation still presents the old global empirical invocation");
+}
+const changelog = await readFile(resolve(root, "CHANGELOG.md"), "utf8");
+if (!changelog.includes("## [Unreleased]") || !changelog.includes(`## [${PRODUCT_VERSION}] - `)) {
+  throw new Error("changelog omits Unreleased or the prepared product version");
+}
+if (!changelog.includes(`[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v${PRODUCT_VERSION}...HEAD`)) {
+  throw new Error("changelog Unreleased compare link does not start at the product version");
+}
+const versioning = await readFile(resolve(root, "docs/versioning.md"), "utf8");
+for (const required of ["Semantic Versioning 2.0.0", "Keep a Changelog 1.1.0", "PRODUCT_VERSION", "Publication boundary"]) {
+  if (!versioning.includes(required)) throw new Error(`versioning policy omits ${required}`);
 }
 for (const stale of [
   /\b(?:five|5)\s+(?:managed\s+|native\s+|agent-native\s+)?skills?\b/i,

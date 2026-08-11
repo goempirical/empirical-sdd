@@ -51,6 +51,8 @@ try {
     "dist/mcp.d.ts",
     "dist/integrations.js",
     "dist/integrations.d.ts",
+    "CHANGELOG.md",
+    "docs/versioning.md",
   ]) {
     if (!paths.has(required)) throw new Error(`Packed package omitted ${required}`);
   }
@@ -77,10 +79,10 @@ import { canonicalJson } from "empirical-sdd/protocol";
 import { createMcpServer } from "empirical-sdd/mcp";
 import { EMPIRICAL_AGENT_SKILL_NAMES, uninstallGlobalAgentSkills } from "empirical-sdd/integrations";
 
-if (typeof EmpiricalProject !== "function" || PRODUCT_VERSION !== "0.22.1" || SCHEMA_VERSION !== 5) throw new Error("root export mismatch");
+if (typeof EmpiricalProject !== "function" || PRODUCT_VERSION !== "0.23.0" || SCHEMA_VERSION !== 5) throw new Error("root export mismatch");
 if (canonicalJson({ b: 2, a: 1 }) !== '{"a":1,"b":2}') throw new Error("protocol export mismatch");
 if (typeof createMcpServer !== "function") throw new Error("MCP export mismatch");
-if (EMPIRICAL_AGENT_SKILL_NAMES.length !== 1 || EMPIRICAL_AGENT_SKILL_NAMES[0] !== "empirical" || typeof uninstallGlobalAgentSkills !== "function") throw new Error("integration export mismatch");
+if (EMPIRICAL_AGENT_SKILL_NAMES.length !== 1 || EMPIRICAL_AGENT_SKILL_NAMES[0] !== "empirical-init" || typeof uninstallGlobalAgentSkills !== "function") throw new Error("integration export mismatch");
 let blocked = false;
 try { await import("empirical-sdd/storage"); } catch (error) { blocked = error?.code === "ERR_PACKAGE_PATH_NOT_EXPORTED"; }
 if (!blocked) throw new Error("internal package subpath was exported");

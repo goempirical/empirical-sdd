@@ -13,8 +13,10 @@ Empirical exposes its registry-backed internal API over stdio:
 }
 ```
 
-The single `empirical` skill can be installed across 73 global agent targets. Skill-file
-compatibility does not imply MCP configuration or executable handoff support.
+The single explicit `empirical-init` skill can be installed across 73 global
+agent targets. Initialization writes marker-owned local activation for verified
+repository hosts; skill-file compatibility does not imply MCP configuration or
+executable handoff support.
 
 ## Important tool groups
 
@@ -41,11 +43,13 @@ Schema-5 integration requirement.
 
 ## Agent contract
 
-1. Inspect setup without writing, show the complete settings, and persist only
-   after confirmation.
-2. Resume selected non-terminal work before treating request text as new work.
-3. Use five-pass discovery only for material ambiguity or when the `$empirical`
-   request explicitly asks for an interview.
+1. Invoke `empirical-init` explicitly for setup or repair. Inspect without
+   writing, show the complete settings, and persist only after confirmation.
+   Init stops without creating feature state.
+2. In a valid initialized repository, ordinary mutation prompts automatically
+   use the local workflow. Read-only prompts do not. Resume selected
+   non-terminal work before treating request text as new work.
+3. Use five-pass discovery only for material ambiguity or explicit Socratic use.
 4. Call `empirical_route`; Fast is legal only at the contract-neutral floor.
 5. In YOLO, obey the recorded ceiling and ask only for a product blocker,
    missing permission, or hard safety boundary.

@@ -161,16 +161,16 @@ try {
   const packageJson = JSON.parse(await readFile(resolve(import.meta.dir, "../package.json"), "utf8")) as { version: string };
   for (const args of [["version"], ["--version"], ["-v"]]) {
     const version = await runCli(root, args);
-    if (version.stdout !== "0.22.1\n" || packageJson.version !== "0.22.1") {
+    if (version.stdout !== "0.23.0\n" || packageJson.version !== "0.23.0") {
       throw new Error(`Bundled/package version mismatch: ${version.stdout}`);
     }
   }
   for (const args of [[], ["help"], ["--help"], ["-h"]]) {
     const help = await runCli(root, args);
     if (
-      !help.stdout.includes("empirical v0.22.1")
+      !help.stdout.includes("empirical v0.23.0")
       || !help.stdout.includes("through 1 installed skill")
-      || !help.stdout.includes("Automatically initialize, route, track, resume")
+      || !help.stdout.includes("Explicitly initialize or repair Empirical")
       || help.stdout.includes("\u001b[")
     ) throw new Error(`Bundled help omitted Schema-5 UX: ${help.stdout}`);
   }
@@ -196,7 +196,7 @@ try {
   };
   if (
     installed.code !== 0
-    || integration.created?.length !== 66
+    || integration.created?.length !== 131
     || integration.selected?.length !== 73
     || integration.destinations?.length !== 65
     || integration.entrypoints?.filter((entry) => entry.guidanceVerified).length !== 5
@@ -204,14 +204,14 @@ try {
   ) {
     throw new Error(`Bundled broad single-skill install failed: ${installed.stderr}`);
   }
-  for (const name of ["empirical"]) {
+  for (const name of ["empirical-init"]) {
     const skill = await readFile(join(skillHome, ".codex", "skills", name, "SKILL.md"), "utf8");
     if (!skill.includes(`name: ${name}`) || !skill.includes("empirical-sdd:managed-file")) {
       throw new Error(`Bundled install produced an invalid ${name} skill`);
     }
   }
 
-  console.log("Bundled 0.22 single-skill, tracker, uninstall, receipt, routing, YOLO, worktree, CLI, and MCP smoke passed.");
+  console.log("Bundled 0.23 Init-skill, tracker, uninstall, receipt, routing, YOLO, worktree, CLI, and MCP smoke passed.");
 } finally {
   await client.close();
   await Promise.all([...createdWorktrees, root, yoloRoot, gitRoot, skillHome].map((path) => rm(path, { recursive: true, force: true })));
