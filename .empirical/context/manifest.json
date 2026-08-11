@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "generator": "empirical-0.22.1",
-  "sourceDigest": "sha256:97688f8f9c2a6dec80a4932cc537730a6fc7d025831718c77cd13161e7687ddf",
+  "generator": "empirical-0.23.0",
+  "sourceDigest": "sha256:ad71845b908ae0f809291b18cd232207b51b2ec0f782809c761e0c8928fd97a1",
   "files": [
     {
       "path": ".codex/config.toml",
@@ -34,6 +34,11 @@
       "digest": "sha256:a4d50e5110c610d398e04657e81a2c2db9328cd131f5c28995aaf4e213a9c90b"
     },
     {
+      "path": "CHANGELOG.md",
+      "size": 2487,
+      "digest": "sha256:8bd04a33134e452edfd78358f1422d2acc0263a890a2a551a0ae64f60a71a845"
+    },
+    {
       "path": "CONTRIBUTING.md",
       "size": 1214,
       "digest": "sha256:e9fbf6b98aad3f2c92a8537847bdbd2fe492a5bb20128c964f814dbc17d8e068"
@@ -45,8 +50,8 @@
     },
     {
       "path": "README.md",
-      "size": 7705,
-      "digest": "sha256:8e488257161891ca8b9b73b61e44b759c8e39d711ab383e2d83ec12aca328c69"
+      "size": 8035,
+      "digest": "sha256:eb1d2c1949685675ec2ce1b62cfc7542bf086646c399357a7e8309ad1f3412d4"
     },
     {
       "path": "SECURITY.md",
@@ -60,18 +65,18 @@
     },
     {
       "path": "docs/architecture.md",
-      "size": 6758,
-      "digest": "sha256:4d5fdfbfd8b58bcc902b9e178b184b4b8f99ef3e30b4d00ec3d37fe2fb1ad175"
+      "size": 7511,
+      "digest": "sha256:847733540f5c2da241c86dfaca77787048114c2d4765480bae4b4059443c7959"
     },
     {
       "path": "docs/demo.md",
-      "size": 4827,
-      "digest": "sha256:898fa46230b4b8b58f1c73762f159856d7e813c57b8d1a066afecb5623f47d5a"
+      "size": 5395,
+      "digest": "sha256:026bf97749b04684d58856432bf01b0548d6447f07b73e32397493cbf3428629"
     },
     {
       "path": "docs/mcp.md",
-      "size": 9022,
-      "digest": "sha256:219e34002a4909b4a3aae1b45de34db45e8ea8b2868af4dc817cf1d4483f15c6"
+      "size": 9302,
+      "digest": "sha256:95deeb19b19b588b4db2f2563a17f5da3275ad4d0ea171e19c3f7a5015a3a016"
     },
     {
       "path": "docs/migration-v1.md",
@@ -81,17 +86,22 @@
     {
       "path": "docs/openspec-comparison.md",
       "size": 1679,
-      "digest": "sha256:02eb729eef960a13f20576b6f8a254bc5e330c935d5c4e60b990b5ea8e6c920c"
+      "digest": "sha256:2f43ab7746602bc0b05d2f63573fd989ba31b0a75ffd314c90bd93128591d5df"
     },
     {
       "path": "docs/protocol.md",
       "size": 7897,
-      "digest": "sha256:34e326d531446b7bf4783985fcc09ca464800837872d15528ca47f89d21802c9"
+      "digest": "sha256:fc7cc353c956d5f306fb145dc38ca888d99c464ccb2b9deb111672a4a3db11f6"
     },
     {
       "path": "docs/security.md",
-      "size": 4139,
-      "digest": "sha256:e5acbce08cf9a2ae778f51cc70bd14301c9b7cfa7cf0be20ce579cc9619d7720"
+      "size": 4486,
+      "digest": "sha256:e24cfd9dbd85f0a4ea993ca545fb408f9356114c954bf12a1c761302ddd0bc6e"
+    },
+    {
+      "path": "docs/versioning.md",
+      "size": 3007,
+      "digest": "sha256:1a8e6d5e826ec0d02b236e57d4fca4ec48ab441dff9f9308ffe746ef3236b86f"
     },
     {
       "path": "openspec/config.yaml",
@@ -100,8 +110,8 @@
     },
     {
       "path": "package.json",
-      "size": 2043,
-      "digest": "sha256:406a4ca2f4c7ad60648dde6246c7e7c5a5f59daf710c588159565d1e0d97ce57"
+      "size": 2109,
+      "digest": "sha256:bb748a498eecb01aa2055db3a7a1e1ca35bcae3769cf747068b7cc1e48fa8e90"
     },
     {
       "path": "scripts/build.ts",
@@ -110,8 +120,8 @@
     },
     {
       "path": "scripts/check-consistency.ts",
-      "size": 3278,
-      "digest": "sha256:7f10153332270e36705168d824eb42d4df95d71b1b836afc96c2fb9fad1d0e9b"
+      "size": 4740,
+      "digest": "sha256:d43af6020dc4d0ac147d9fdaf8a8fbe250bd8a6c737081fae8eea4f1ac47dc4d"
     },
     {
       "path": "scripts/check-coverage.ts",
@@ -130,23 +140,23 @@
     },
     {
       "path": "scripts/smoke-mcp.ts",
-      "size": 10055,
-      "digest": "sha256:7677112f9757b16fdd5b7e2323fd726ca6b1d3eaee14a5cb842f8b1b6b1b15ae"
+      "size": 10054,
+      "digest": "sha256:34fd2dc85c2ee59e79de059a4d6eaf69a88e0be3bd3e491acad3d6ab813e5846"
     },
     {
       "path": "scripts/test-package.ts",
-      "size": 5399,
-      "digest": "sha256:2a9f86478de374ca99b01c8a2ddde29e07b415aea0070f0009af7ae0a7b1ec5f"
+      "size": 5450,
+      "digest": "sha256:b49182125b9742df22dc9c9e5e3e0b98663b38d69b36e3ccbc1a36866e0275ae"
     },
     {
       "path": "src/agent-catalog.ts",
-      "size": 12753,
-      "digest": "sha256:b8868627a204bbcf4e03b5655e328e531ee495c8355eaa9e05428e77661a6bcb"
+      "size": 12809,
+      "digest": "sha256:ee22ab6b191ea00fe2479a240056405d7b71b73adb69865cdcfe5855820a0dfd"
     },
     {
       "path": "src/agents.ts",
-      "size": 5475,
-      "digest": "sha256:f2a8f3812d7b7f818841426ea352ea310cfbfcf10510c7be29664de8740b9740"
+      "size": 5531,
+      "digest": "sha256:a2b9eaee99ed49331066c6540c13f2fa280b1320c2bb98c1cb8ad6430e3ff8c7"
     },
     {
       "path": "src/branding.ts",
@@ -160,8 +170,8 @@
     },
     {
       "path": "src/cli.ts",
-      "size": 74257,
-      "digest": "sha256:4bdca705eac7c91c226232de7314e6c9a45bde5368ad9671914033eb39522e7c"
+      "size": 74486,
+      "digest": "sha256:ad7fe7d70698b9d678873ee0815b294cba1a2f72b67e70915a05a7b5a7194517"
     },
     {
       "path": "src/coordination.ts",
@@ -210,8 +220,8 @@
     },
     {
       "path": "src/integrations.ts",
-      "size": 28158,
-      "digest": "sha256:1c29f3bbe9cb5814cebdfeb00e6ee33b0503cd00207b98d10d0f08280fc8ed88"
+      "size": 32900,
+      "digest": "sha256:7f87b1f03f3cc70974903fe391c5c5d3f8e543aaab846158f78262d3b660433e"
     },
     {
       "path": "src/journal.ts",
@@ -225,8 +235,8 @@
     },
     {
       "path": "src/knowledge.ts",
-      "size": 18960,
-      "digest": "sha256:32f2e28507f0f6147f9839773ef72577bb808e229601210845601cc9b334e12e"
+      "size": 19083,
+      "digest": "sha256:67cf843e90d4f8ceaec8adad4b932aa3f55fbcbf7a2acc5901f3f8daa6c721b9"
     },
     {
       "path": "src/lifecycle.ts",
@@ -250,8 +260,8 @@
     },
     {
       "path": "src/operations.ts",
-      "size": 8052,
-      "digest": "sha256:c39917c008e1bfd1594bfb827955d641633c9713785855a18329b3f17f190bc9"
+      "size": 8105,
+      "digest": "sha256:4057f28a7f02cbc9d96a279602f502599f28405ac5cab3531f25591f21b08b04"
     },
     {
       "path": "src/policy.ts",
@@ -261,7 +271,7 @@
     {
       "path": "src/protocol.ts",
       "size": 14489,
-      "digest": "sha256:8e4f001eb659555079257ade68f9b0814628f2eecaa427530a36eb535b470338"
+      "digest": "sha256:555cdcb8f37f3b5275446293f53eedbc01dc94de689832453c0a9488804ca56b"
     },
     {
       "path": "src/routing.ts",
@@ -291,7 +301,7 @@
     {
       "path": "src/storage.ts",
       "size": 38869,
-      "digest": "sha256:dc7050391240ad3b99ae9253371a90ef38fe7b94d820cd455e02ba49ca907358"
+      "digest": "sha256:ebe23396019628ebb24431958556a96cecae464a7591478f6739fecf749c483d"
     },
     {
       "path": "src/tracking.ts",
@@ -335,13 +345,13 @@
     },
     {
       "path": "tests/core.test.ts",
-      "size": 31749,
-      "digest": "sha256:52404b24f91cd0f357f67e3d14804286a9d2cc86dead835ec727f07a9febf973"
+      "size": 31818,
+      "digest": "sha256:f8265a16b814c18a02c6c058adb425c9fe7ae35cf882cc84f942e0da087efe6a"
     },
     {
       "path": "tests/delivery.test.ts",
       "size": 21127,
-      "digest": "sha256:6e4e96edc3dbc86ea52a3ac4f60d433e03d9b01bc54ba473d706d975c0cff587"
+      "digest": "sha256:06529f213adb73780f6cc555291ff1c1bda609bb397542436f5b1e4e599315b5"
     },
     {
       "path": "tests/discovery.test.ts",
@@ -355,8 +365,8 @@
     },
     {
       "path": "tests/integrations.test.ts",
-      "size": 30522,
-      "digest": "sha256:dc98736e0f950f62a60a77c8ec80dccd8f198d1df31368504b8ddc70732f153f"
+      "size": 36468,
+      "digest": "sha256:f0587a2c67347b258525cebb82af7e96a5a0fbd72a1ae634e6b71e4a371ba96c"
     },
     {
       "path": "tests/journal.test.ts",
@@ -386,7 +396,7 @@
     {
       "path": "tests/migration.test.ts",
       "size": 14310,
-      "digest": "sha256:7572e01bbf8f90c7e014b56fc607fff4b4403baed669d63ff4bcde1f0ab6f32c"
+      "digest": "sha256:357d06ab49c44c7bee1545eaf15630b25d0b5e71fbb8432b99ce8436edec6740"
     },
     {
       "path": "tests/selector.test.ts",
@@ -405,8 +415,8 @@
     },
     {
       "path": "tests/trust-foundations.test.ts",
-      "size": 21027,
-      "digest": "sha256:a759b75a71785a401d8e136758486f717dc7e1f508c3a4f973eb15584ce4d185"
+      "size": 21032,
+      "digest": "sha256:9a65d73194e68d0ab0b663424c60bca0705842530918a2fe6b5fc232cfc28611"
     },
     {
       "path": "tests/worktree-isolation.test.ts",
@@ -422,7 +432,7 @@
   "pages": [
     {
       "path": ".empirical/context/index.md",
-      "generator": "empirical-0.22.1",
+      "generator": "empirical-0.23.0",
       "managed": false,
       "dependencies": [
         ".codex/config.toml",
@@ -431,6 +441,7 @@
         ".github/workflows/ci.yml",
         ".gitignore",
         ".mcp.json",
+        "CHANGELOG.md",
         "CONTRIBUTING.md",
         "LICENSE",
         "README.md",
@@ -443,6 +454,7 @@
         "docs/openspec-comparison.md",
         "docs/protocol.md",
         "docs/security.md",
+        "docs/versioning.md",
         "openspec/config.yaml",
         "package.json",
         "scripts/build.ts",
@@ -509,25 +521,25 @@
         "tests/worktree-isolation.test.ts",
         "tsconfig.json"
       ],
-      "sourceDigest": "sha256:97688f8f9c2a6dec80a4932cc537730a6fc7d025831718c77cd13161e7687ddf",
-      "digest": "sha256:115ed9cd78d6b52b32f64442f1681aad4203d6e9f8f9d1dbe1bd520b62ad6eb8",
+      "sourceDigest": "sha256:ad71845b908ae0f809291b18cd232207b51b2ec0f782809c761e0c8928fd97a1",
+      "digest": "sha256:62c1e429f938bf5a727c9e089eb965df0b29d2db55837334cad4cb68a75a8ab9",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/overview.md",
-      "generator": "empirical-0.22.1",
+      "generator": "empirical-0.23.0",
       "managed": false,
       "dependencies": [
         "README.md",
         "package.json"
       ],
-      "sourceDigest": "sha256:12aebaf007bddc34b42391c9aaef662c70d3d7a34ce54a5df213826102fb5f66",
-      "digest": "sha256:a6a433f1fb5ea687ed04aa7122f66293078d9c7d7f3b5724de4bdb4bb1fc7f96",
+      "sourceDigest": "sha256:53b184ba70f3fe440ac5a30120c6298a8071e6a5c1ea543029aac8a4a8e42061",
+      "digest": "sha256:30bc451fac5fa8e21662312c12f4ea57798c9fdaa6c3582bb9a069527e77e4c8",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/architecture.md",
-      "generator": "empirical-0.22.1",
+      "generator": "empirical-0.23.0",
       "managed": false,
       "dependencies": [
         "docs/architecture.md",
@@ -567,13 +579,13 @@
         "src/types.ts",
         "src/worktrees.ts"
       ],
-      "sourceDigest": "sha256:390b640122d696df1097308c98cbb1240d491a45bc85c471c698656a7f6e954e",
-      "digest": "sha256:17c2a3ec84d285fb9da64d7dcab1cd1e05edfd1173107434f1b242628239b5b6",
+      "sourceDigest": "sha256:3f51b2b6b1fa223e8df43b07d95122ff9c6685bea819a683bcf8dad2e0ec78d3",
+      "digest": "sha256:8a3ce40862fa2601df89006351d195308b09680274472f9e2d1d8130c4db7b8b",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/commands.md",
-      "generator": "empirical-0.22.1",
+      "generator": "empirical-0.23.0",
       "managed": false,
       "dependencies": [
         ".github/workflows/ci.yml",
@@ -586,13 +598,13 @@
         "scripts/smoke-mcp.ts",
         "scripts/test-package.ts"
       ],
-      "sourceDigest": "sha256:cea6a5d6390171d753b32909e136c6e21b8db5ddc1d2451120a9c7a663f8c6c7",
-      "digest": "sha256:ff50e4cb3ddd3fedadf005eb1059d7d9dd9f4a1650e076856483f957bed80b22",
+      "sourceDigest": "sha256:0f324164501e0d9140788770d070fbbeae77c16f30a2a7cd91cab11a48bcf233",
+      "digest": "sha256:6582b97fdadb423928980f6a90300c1ab6bf17637880e37f1cffb3092a4d2638",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/conventions.md",
-      "generator": "empirical-0.22.1",
+      "generator": "empirical-0.23.0",
       "managed": false,
       "dependencies": [
         "CONTRIBUTING.md",
@@ -600,11 +612,11 @@
         "tests/agents.test.ts",
         "tsconfig.json"
       ],
-      "sourceDigest": "sha256:23c6305c72a3422f000da98ee86a787b17fefcb49feb67679d90a439da8a8db6",
-      "digest": "sha256:8b4170705e947b381a5e28becf4b94a22b37c06b7c4268926b5c719fde537041",
+      "sourceDigest": "sha256:f9221d0219c041c484b2713185891be56670c68eff820e37d2ccc742da8ea794",
+      "digest": "sha256:0d52698a96335da7bd590428bc2b6fd677efbabe085f7332b72af310e36b3a3f",
       "freshness": "fresh"
     }
   ],
   "truncated": false,
-  "digest": "sha256:a285804234e4a69af2a996977024e062db64a95ab2931aa6448f5a1c27affd91"
+  "digest": "sha256:4dfa52822f2b94be46742c5c73d47523407b4f0131f22bb4127de851d73302d8"
 }

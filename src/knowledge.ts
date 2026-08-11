@@ -89,10 +89,15 @@ const BINARY_EXTENSIONS = new Set([
   ".zip",
 ]);
 const INTEGRATION_ONLY_PATHS = new Set([
+  ".agents/skills/empirical/SKILL.md",
+  ".claude/skills/empirical/SKILL.md",
   ".codex/config.toml",
   ".cursor/mcp.json",
   ".gemini/settings.json",
   ".mcp.json",
+  "AGENTS.md",
+  "CLAUDE.md",
+  "GEMINI.md",
 ]);
 
 type ContextPageId = "index" | "overview" | "architecture" | "commands" | "conventions";

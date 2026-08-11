@@ -14,7 +14,8 @@
   worktrees where isolation behavior matters.
 - Changes must pass type checking, the full suite, built distribution smoke,
   npm package inspection, and `git diff --check`.
-- Version `0.22.1` remains alpha; publication is a separate explicit action.
+- Version `0.23.0` remains alpha; `src/protocol.ts` is canonical, changelog and
+  package surfaces must agree, and publication is a separate explicit action.
 
 ## Repository-specific constraints
 
@@ -28,5 +29,7 @@
   changes use Complex. Source-changing Fast and Complex work must cross the
   conditional Context gate whenever repository knowledge is invalid.
 - Do not persist private chain-of-thought or credentials.
-- Do not add project-local workflow skills; global installation owns the single
-  `empirical` entrypoint and safely removes only marker-owned legacy names.
+- Global installation owns only the explicit `empirical-init` bootstrap.
+  Initialization manages short project dispatchers and local `empirical`
+  workflow skills through containment and ownership markers; preserve
+  unmatched markers, unmanaged collisions, and unsafe paths.

@@ -98,11 +98,11 @@ export interface SkillDefinition {
 
 export const SKILLS = Object.freeze([
   {
-    id: "empirical",
-    title: "Empirical",
-    description: "Automatically initialize, route, track, resume, and complete Empirical work.",
-    entryOperation: "route",
-    stopCondition: "Done, blocked, awaiting human, or external authorization required.",
+    id: "empirical-init",
+    title: "Empirical Init",
+    description: "Explicitly initialize or repair Empirical in the current repository; use only when the user asks for setup or repair.",
+    entryOperation: "init",
+    stopCondition: "Setup applied, repaired, cancelled, blocked, or awaiting human input.",
   },
 ] satisfies SkillDefinition[]);
 

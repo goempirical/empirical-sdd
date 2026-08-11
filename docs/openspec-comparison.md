@@ -1,10 +1,10 @@
-# Empirical 0.22 compared with OpenSpec
+# Empirical 0.23 compared with OpenSpec
 
 Empirical adopts OpenSpec's repository-native change contracts and explicit
 deltas from current behavior. It adds an executable, resumable trust protocol
 for autonomous coding agents.
 
-| Capability | OpenSpec | Empirical 0.22 |
+| Capability | OpenSpec | Empirical 0.23 |
 | --- | --- | --- |
 | Change contract | Proposal/spec/design/tasks | Spec/design/plan, impact manifest, observable criteria |
 | Behavior change | ADDED/MODIFIED/REMOVED deltas | Frozen deltas, shared claims, base replay, independent integration |

@@ -18,17 +18,22 @@
   bindings, durable pending operations, normalized projection, and GitHub,
   Linear, and Jira adapters.
 - `src/agents.ts` / `src/integrations.ts` / `src/lifecycle.ts`: supported-agent
-  detection, the single-skill global catalog, managed legacy removal, updates, and
-  ownership-bound global uninstall.
+  detection, the single explicit Init global catalog, repository-local
+  activation, managed legacy removal, updates, and ownership-bound global
+  uninstall.
 - `src/cli.ts` / `src/mcp.ts`: adapters over the same core API.
 
 ## Data and control flow
 
-A user invokes the single `empirical` skill in a host agent. The host initializes
-or repairs `.empirical/`, retrieves relevant context, then routes, interviews,
-drafts, pauses for approval, or resumes through granular MCP operations. After source-changing implementation, invalid repository
-knowledge routes through the persisted Context phase before Verify or Done.
-Returned actions and evidence still use one state machine.
+A user explicitly invokes `empirical-init` once to initialize or repair
+`.empirical/`, repository context, local activation, and MCP bridges. After
+that, valid completed config plus the repository-local dispatcher routes
+ordinary mutation prompts automatically; read-only prompts bypass the state
+machine. The local workflow retrieves relevant context, then routes,
+interviews, drafts, pauses for approval, or resumes through granular MCP
+operations. After source-changing implementation, invalid repository knowledge
+routes through the persisted Context phase before Verify or Done. Returned
+actions and evidence still use one state machine.
 Optional external tracking commits that state machine first, then converges one
 target-bound ticket from durable feature-local pending work. Target drift fails
 before provider access, while same-target mapping changes force reprojection;

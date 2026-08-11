@@ -1,7 +1,8 @@
 # Architecture
 
-Empirical 0.22 is a TypeScript library, Node.js CLI, stdio MCP server, and one
-generated agent skill over one repository-native Schema 5 model.
+Empirical 0.23 is a TypeScript library, Node.js CLI, stdio MCP server, one
+explicit global Init skill, and a repository-local automatic workflow over one
+Schema 5 model.
 
 ## Boundaries
 
@@ -29,7 +30,9 @@ generated agent skill over one repository-native Schema 5 model.
 - `knowledge.ts` owns Manifest v2 fingerprints and fresh-by-default retrieval.
 - `doctor.ts` performs read-only cross-subsystem diagnostics.
 - `cli.ts`, `mcp.ts`, and `integrations.ts` are registry-backed adapters, not
-  alternate workflow implementations. Global uninstall reuses integration
+  alternate workflow implementations. Integrations install a setup-only global
+  `empirical-init`, marker-owned repository dispatchers and local workflow
+  skills, and project MCP bridges. Global uninstall reuses integration
   containment and ownership checks, then `lifecycle.ts` removes the npm package
   last through an exact shell-free argv.
 
@@ -44,6 +47,7 @@ Git common directory
 
 repository checkout
 ├── Schema-5 config + Policy v2 + Manifest v2
+├── marker-owned automatic workflow dispatchers and local skills
 ├── optional secret-free Tracker Policy v1
 ├── living capability projections
 ├── discovery records
@@ -128,3 +132,11 @@ The public lifecycle CLI exposes Install, Update, and Uninstall. Uninstall owns
 only catalog-derived global skill paths, valid owner-stamped selection metadata,
 and the global package. Repository discovery and project `.empirical` or MCP
 mutation are outside that command's authority.
+
+The installed global skill is `empirical-init`, which is explicit-only where a
+host supports invocation policy metadata and narrowly setup-scoped everywhere
+else. Initialization writes the detailed `empirical` workflow into project
+skill directories and short dispatchers into supported repository instruction
+files. Those dispatchers activate only for change requests when Schema 5 config
+is valid and setup is complete; read-only requests and uninitialized
+repositories stay outside the state machine.

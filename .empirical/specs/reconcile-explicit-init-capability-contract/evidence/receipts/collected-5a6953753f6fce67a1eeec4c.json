@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "id": "collected-5a6953753f6fce67a1eeec4c",
+  "criteria": [
+    "AC-1",
+    "AC-2",
+    "AC-3"
+  ],
+  "evidenceKinds": [
+    "review"
+  ],
+  "summary": "Reviewed the three exact title-keyed replacements; they remove the stale global-workflow claims, preserve every approval boundary, and change no runtime artifact.",
+  "passed": true,
+  "startedAt": "2026-08-11T18:31:46.687Z",
+  "completedAt": "2026-08-11T18:31:46.687Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "reconcile-explicit-init-capability-contract",
+    "specRevision": 2,
+    "specDigest": "sha256:9d694c77ce5e321568f45de468fcfbc4e0cde06ed55207ee789d3c0438996400",
+    "treeDigest": "sha256:a8e3f732927fb86af3d7955fc81548f98e3c024ee0ebb6cd2b7ecd60cc877f16",
+    "policyDigest": "sha256:888d86d00b83ec4a957413efb0701df5278d06de2077ba6b76f58dd2ba6eeeaf"
+  },
+  "digest": "sha256:36537bfe65c28f86ee4c1ce99de2aa27bf0af2ef9f7f83b2a24e89c87da6e9d5",
+  "kind": "collected",
+  "collector": "codex-manual-review",
+  "artifacts": [
+    {
+      "path": ".empirical/specs/reconcile-explicit-init-capability-contract/decisions.md",
+      "mediaType": "text/markdown",
+      "bytes": 988,
+      "digest": "sha256:c5d895989b999e479a81d11aa1cd1e91d408ae2988bc8117c837dc782694d7bb"
+    },
+    {
+      "path": ".empirical/specs/reconcile-explicit-init-capability-contract/deltas/agent-integrations.md",
+      "mediaType": "text/markdown",
+      "bytes": 2771,
+      "digest": "sha256:ce0ae493fc9337b273dee71276d4be58b73257f6fd98f89fa7ad55ca7d485944"
+    },
+    {
+      "path": ".empirical/specs/reconcile-explicit-init-capability-contract/spec.md",
+      "mediaType": "text/markdown",
+      "bytes": 2163,
+      "digest": "sha256:9d694c77ce5e321568f45de468fcfbc4e0cde06ed55207ee789d3c0438996400"
+    }
+  ]
+}

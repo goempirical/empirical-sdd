@@ -44,6 +44,11 @@ untrusted.
   carrying Empirical's managed marker and valid owner-stamped metadata, never
   follows symlinks, never searches repositories, and invokes exact npm package
   removal only after managed integration cleanup succeeds.
+- Global installation exposes only the narrowly scoped `empirical-init` skill.
+  Project activation validates completed Schema 5 configuration, ignores
+  read-only prompts, never initializes implicitly, and changes instruction or
+  skill files only through contained marker-owned writes that preserve
+  unmatched markers and unmanaged collisions.
 - Doctor never repairs, deletes, prunes, launches, or writes.
 - Delivery uses ordinary GitHub PR merges and declared required checks. It has
   no admin, protection-bypass, force-push, credential-discovery, or hidden

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "classification": "behavioral",
+  "capabilities": [
+    "agent-integrations",
+    "package-distribution"
+  ],
+  "surfaces": [
+    "workflow"
+  ],
+  "regressionRationale": null,
+  "digest": "sha256:7593307d76643ff98fd3346238fcb47039e23d9ce37e21b6efcfda43aa9d27ae"
+}

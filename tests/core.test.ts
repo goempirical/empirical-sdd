@@ -136,9 +136,9 @@ The product MUST expose the example behavior.
 `, "utf8");
 }
 
-describe("Empirical 0.22 Schema-5 core", () => {
+describe("Empirical 0.23 Schema-5 core", () => {
   test("exports one product/schema version and parses stable criteria", () => {
-    expect(PRODUCT_VERSION).toBe("0.22.1");
+    expect(PRODUCT_VERSION).toBe("0.23.0");
     expect(SCHEMA_VERSION).toBe(5);
     expect(parseCriteria("<!--\n- [ ] [AC-X] Example only\n-->\n")).toEqual([]);
     expect(parseCriteria("- [ ] [AC-1] The result is returned\n  without losing context.\n"))
@@ -641,12 +641,13 @@ describe("Empirical 0.22 Schema-5 core", () => {
     expect(report.issues.join(" ")).toContain("Superseded by");
   });
 
-  test("project integration stays MCP-only and v1 adoption remains non-destructive", async () => {
+  test("project integration adds local activation and v1 adoption remains non-destructive", async () => {
     const root = await temporaryProject();
     const { integrations } = await EmpiricalProject.initialize(root);
     expect(integrations.entrypoints).toEqual([]);
     expect(await readFile(join(root, ".mcp.json"), "utf8")).toContain("empirical");
-    await expect(readFile(join(root, ".agents/skills/empirical/SKILL.md"), "utf8")).rejects.toBeDefined();
+    expect(await readFile(join(root, ".agents/skills/empirical/SKILL.md"), "utf8"))
+      .toContain("Automatically route, track, resume, and complete Empirical work");
 
     const legacy = await temporaryProject();
     await mkdir(join(legacy, "ai/specs/legacy-feature"), { recursive: true });

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "collected-3b1581618be5fc2083a90559",
+  "criteria": [
+    "AC-1",
+    "AC-2"
+  ],
+  "evidenceKinds": [
+    "review"
+  ],
+  "summary": "Reviewed all seven exact replacement titles as one self-contained replay; no stale dependency or runtime scope exists.",
+  "passed": true,
+  "startedAt": "2026-08-11T18:40:55.022Z",
+  "completedAt": "2026-08-11T18:40:55.022Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "consolidate-explicit-init-capability-contract",
+    "specRevision": 2,
+    "specDigest": "sha256:537e1912a137ca5570390bf3df9e9c2f75a01a6feae01eb1740c682df56a2550",
+    "treeDigest": "sha256:a8e3f732927fb86af3d7955fc81548f98e3c024ee0ebb6cd2b7ecd60cc877f16",
+    "policyDigest": "sha256:888d86d00b83ec4a957413efb0701df5278d06de2077ba6b76f58dd2ba6eeeaf"
+  },
+  "digest": "sha256:130080c27c205fd0a147232184aab84dec44aafeaa12c01036a797813ba00cc3",
+  "kind": "collected",
+  "collector": "codex-manual-review",
+  "artifacts": [
+    {
+      "path": ".empirical/specs/consolidate-explicit-init-capability-contract/decisions.md",
+      "mediaType": "text/markdown",
+      "bytes": 748,
+      "digest": "sha256:088523593a68d59a4ec7257bdbf8d854a097b383ed96bddcdc71f134eedeef73"
+    },
+    {
+      "path": ".empirical/specs/consolidate-explicit-init-capability-contract/deltas/agent-integrations.md",
+      "mediaType": "text/markdown",
+      "bytes": 5377,
+      "digest": "sha256:ec160ddcc7da798b0a00f1f81e8850b2c8924e302a7485732ceb4cb615a3374a"
+    }
+  ]
+}

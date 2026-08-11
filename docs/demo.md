@@ -1,4 +1,4 @@
-# Empirical 0.22 demo
+# Empirical 0.23 demo
 
 ## Install once
 
@@ -7,27 +7,33 @@ npm install -g empirical-sdd
 empirical install
 ```
 
-Choose from the pinned 73-target catalog. Empirical writes the single skill once
-per unique root and performs no runtime network fetch during installation.
+Choose from the pinned 73-target catalog. Empirical writes the single explicit
+`empirical-init` skill once per unique root and performs no runtime network
+fetch during installation.
 
 ## Initialize deliberately
 
-In Codex, invoke `$empirical`. The agent first shows current or recommended
+In Codex, invoke `$empirical-init`. The agent first shows current or recommended
 Verification, Parallel work, and Decisions settings. Apply, customize, or
 cancel; cancellation writes nothing. Initialization then persists Schema 5,
-Policy v2, Manifest v2, and supported runtime bridges without creating feature
-state.
+Policy v2, Manifest v2, supported runtime bridges, and marker-owned local
+activation without creating feature state. In Claude Code use
+`/empirical-init`; in Windsurf use `@empirical-init`.
+
+Existing `0.22.x` repositories need the same explicit Init once after upgrade.
+That repair preserves stored configuration, context, selected work, history,
+and evidence unless you explicitly change a setup value.
 
 ## Normal mode
 
-> `$empirical` Fix the punctuation typo in the README heading.
+> Fix the punctuation typo in the README heading.
 
 Routing assigns the contract-neutral floor, so Fast implements the change,
 executes configured verification, records immutable test/review receipts, and
 conditionally refines repository Context when source fingerprints changed, and
 finishes at `verified`.
 
-> `$empirical` Add expiring team invitations with revocation and audit history.
+> Add expiring team invitations with revocation and audit history.
 
 Routing assigns at least the behavioral floor. Complex freezes an impact
 manifest and capability deltas, then advances through Specify, Design, Plan,
@@ -36,13 +42,15 @@ Integrate. If the request is
 materially ambiguous, the agent conducts and persists the five Socratic passes
 before drafting the contract.
 
-The same `$empirical` entrypoint drafts a known Complex request, conducts the
+The repository-local workflow drafts a known Complex request, conducts the
 five-pass interview when the idea is materially ambiguous, and resumes the
-exact selected revision when work already exists.
+exact selected revision when work already exists. A read-only request such as
+“explain the invitation flow” does not enter Empirical, and missing or invalid
+configuration never triggers implicit initialization.
 
 ## Bounded autonomous mode
 
-> `$empirical` Implement and integrate the approved invitation feature
+> Implement and integrate the approved invitation feature
 > autonomously through `integrated`; stop before external delivery.
 
 YOLO stores standing authorization through `integrated`, then continues without
@@ -52,7 +60,7 @@ other hard safety floor. It cannot authorize publication.
 
 ## Optional ticket mirror
 
-> `$empirical` Mirror this feature to our Linear board and create its ticket.
+> Mirror this feature to our Linear board and create its ticket.
 
 The agent collects the board identifiers, normalized status mapping, and the
 name of the host-provided credential variable. It stores no credential value.
@@ -61,8 +69,8 @@ revision, completion level, and blocker summary to that one ticket. The same
 flow supports attaching an existing Linear, GitHub, or Jira ticket.
 
 If the provider is unavailable, local SDD work continues and reports tracker
-health as `pending` or `failed`. A later `$empirical` invocation resumes the
-durable pending operation. If ticket creation has an ambiguous outcome,
+health as `pending` or `failed`. A later ordinary continuation request resumes
+the durable pending operation. If ticket creation has an ambiguous outcome,
 Empirical performs bounded reconciliation using the persisted create marker. If
 no unique ticket matches, it stops until the developer attaches the possibly
 created ticket or explicitly confirms another create attempt that may create a
@@ -96,10 +104,11 @@ artifact blocks the operation.
 empirical update
 ```
 
-This upgrades the package, reconciles the single managed skill, and removes
-marker-owned legacy Empirical skill entrypoints. A Schema 4
-repository migrates atomically to Schema 5 on its first mutating 0.22 workflow
-operation.
+This upgrades the package, reconciles the single managed `empirical-init` skill,
+and removes marker-owned legacy global Empirical entrypoints. Run Init once in
+each existing `0.22.x` repository to install automatic local activation. A
+Schema 4 repository migrates atomically to Schema 5 on its first mutating
+workflow operation.
 
 ## Uninstall safely
 

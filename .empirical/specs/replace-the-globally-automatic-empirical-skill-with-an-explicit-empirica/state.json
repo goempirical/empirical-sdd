@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 5,
+  "revision": 8,
+  "activeFeature": "replace-the-globally-automatic-empirical-skill-with-an-explicit-empirica",
+  "request": "Replace the globally automatic empirical skill with an explicit empirical-init bootstrap skill. After initialization, repositories containing valid .empirical state must automatically route ordinary repository-changing prompts through Empirical without requiring the user to type empirical, while read-only prompts and repositories without .empirical remain unaffected. Restore safe marker-owned repository-local activation for supported agents and preserve project MCP bridges. Migrate existing managed global skills safely, document the one-time repair required for existing repositories, add CHANGELOG.md and an explicit Semantic Versioning and changelog policy, and prepare version 0.23.0 consistently without publishing or releasing it.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "normal",
+  "phase": "done",
+  "status": "done",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: agent-integrations, package-distribution",
+  "implementationActor": "agent",
+  "specDigest": "sha256:642602fd578d0537a1d1fe5a435a19822f8e8260fa42bce42e4f58f4217a6fe4",
+  "approvedSpecRevision": 2,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:3ca5b5766a79ee88848c38ce162bbbd054e6bbaaac1065ff6ad8099d7c99d080",
+  "impactDigest": "sha256:7593307d76643ff98fd3346238fcb47039e23d9ce37e21b6efcfda43aa9d27ae",
+  "capabilityClaimId": "replace-the-globally-automatic-empirical-skill-with-an-explicit-empirica-42c449b41a7c",
+  "authorizationDigest": null,
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-0dd1388dbd3fc29d4f22de88",
+    "collected-33598fcbbfb68f965e744f87"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-11T18:24:33.717Z"
+}

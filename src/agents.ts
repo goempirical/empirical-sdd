@@ -27,7 +27,7 @@ export const SUPPORTED_AGENTS: SupportedAgentDefinition[] = [
     executables: ["codex"],
     skillSegments: [".codex", "skills"],
     invocation: "$empirical",
-    reload: "Restart or reopen Codex so it rescans user skills, then invoke any installed $empirical skill.",
+    reload: "Restart or reopen Codex so it rescans user skills, then invoke $empirical-init for repository setup or repair.",
     capability: "prompt",
   },
   {
@@ -36,7 +36,7 @@ export const SUPPORTED_AGENTS: SupportedAgentDefinition[] = [
     executables: ["claude"],
     skillSegments: [".claude", "skills"],
     invocation: "/empirical",
-    reload: "Restart Claude Code so it reloads the global Empirical skills, then invoke the desired /empirical skill.",
+    reload: "Restart Claude Code so it reloads the global Empirical Init skill, then invoke /empirical-init for repository setup or repair.",
     capability: "prompt",
   },
   {
@@ -63,7 +63,7 @@ export const SUPPORTED_AGENTS: SupportedAgentDefinition[] = [
     executables: ["windsurf"],
     skillSegments: [".codeium", "windsurf", "skills"],
     invocation: "@empirical",
-    reload: "Reload Windsurf or start a new Cascade session, then invoke the desired @empirical skill.",
+    reload: "Reload Windsurf or start a new Cascade session, then invoke @empirical-init for repository setup or repair.",
     capability: "workspace",
   },
 ];
