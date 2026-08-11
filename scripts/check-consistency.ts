@@ -102,12 +102,16 @@ const publish = await readFile(resolve(root, ".github/workflows/publish.yml"), "
 for (const required of [
   "release:",
   "types: [published]",
+  "workflow_dispatch:",
+  "Existing immutable release tag to retry",
   "github.repository == 'goempirical/empirical-sdd'",
+  "github.event_name == 'workflow_dispatch'",
   "github.event.release.prerelease == false",
   "environment: npm",
   "id-token: write",
   "persist-credentials: false",
   "git merge-base --is-ancestor HEAD origin/main",
+  "npm install --global npm@11.19.0",
   "bun run ci",
   "npm publish --access public --tag latest",
 ]) {
