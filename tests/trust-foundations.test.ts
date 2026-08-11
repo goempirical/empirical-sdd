@@ -199,8 +199,18 @@ describe("operation and skill registry", () => {
     });
     expect(operationAnnotations("tracker-bind")).toEqual({
       readOnlyHint: false,
-      destructiveHint: false,
+      destructiveHint: true,
       idempotentHint: false,
+    });
+    expect(operationAnnotations("tracker-configure")).toEqual({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
+    });
+    expect(operationAnnotations("tracker-sync")).toEqual({
+      readOnlyHint: false,
+      destructiveHint: true,
+      idempotentHint: true,
     });
     expect(OPERATIONS.filter((entry) => entry.readOnly && entry.destructive)).toEqual([]);
   });

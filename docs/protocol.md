@@ -121,14 +121,35 @@ Tracker Policy v1 is an optional sidecar to Schema 5. Its absence preserves
 existing repositories exactly and means `local-only`; it does not trigger a
 workflow schema migration. The policy chooses one GitHub, Linear, or Jira
 target, stores a complete normalized status map, and references credentials by
-environment-variable name only.
+environment-variable name only. Credential names use the strict uppercase
+runtime grammar; the host must inject nonblank values with access to the exact
+configured target into the Empirical process. Policy stores neither those
+values nor provider authorization.
 
 The local journal commits first. A tracker sync then writes a checksummed
-feature-local pending projection keyed by feature and revision, converges one
-bound ticket, and advances the binding only after remote success. The remote
-system is never read as workflow authority. Provider failures therefore change
-only tracker health (`pending` or `failed`) and cannot alter the phase, revision,
-criteria, or completion level.
+feature-local pending operation keyed by feature and revision, converges one
+target-bound ticket, and advances the binding only after remote success. The
+binding and pending operation retain digests of the exact provider target and
+effective policy. Reconfiguring the target therefore fails locally instead of
+combining an old remote identity with a new destination. Changing the status
+map for the same target invalidates the synchronized fast path and reprojects
+the committed revision through the new mapping.
+
+Durable pending work is the reconciliation source after interruption. Normal
+retry resumes that exact operation before deriving newer work. A persisted
+`dispatched` flag separates a create that has never been sent from one that may
+have reached the provider. Sync may send the initial create only while the
+intent is durably undispatched. Once it is marked dispatched, retry performs a
+bounded lookup for the exact persisted create marker and never sends that
+attempt again automatically; without one unique match, explicit attachment is
+required unless the caller confirms a new attempt while accepting duplicate
+risk.
+
+The remote system is never read as workflow authority. Provider failures
+therefore change only tracker health (`pending` or `failed`) and cannot alter
+the phase, revision, criteria, or completion level. Status reports committed,
+last-synchronized, and pending revisions plus bounded credential-safe failure
+context without contacting the provider.
 
 ## Persistence
 

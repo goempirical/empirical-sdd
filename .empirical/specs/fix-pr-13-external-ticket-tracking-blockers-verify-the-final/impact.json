@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "classification": "behavioral",
+  "capabilities": [
+    "exploratory-discovery",
+    "external-ticket-tracking",
+    "project-policy",
+    "repository-knowledge"
+  ],
+  "surfaces": [
+    "workflow"
+  ],
+  "regressionRationale": null,
+  "digest": "sha256:76b322f85fdca8307bfc348460598dcc6a75cff3779baf540114ba69fa790fb9"
+}

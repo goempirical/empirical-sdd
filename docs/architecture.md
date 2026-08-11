@@ -23,8 +23,9 @@ generated agent skill over one repository-native Schema 5 model.
   candidate validation, projection rollback, and integration receipts.
 - `delivery.ts` owns protected GitHub source/evidence PR convergence and
   explicit publication planning.
-- `tracking.ts` owns the optional provider-neutral ticket policy, feature-local
-  bindings and retry projections, and GitHub, Linear, and Jira adapters.
+- `tracking.ts` owns the optional provider-neutral ticket policy, target-bound
+  feature bindings, durable pending operations, and GitHub, Linear, and Jira
+  adapters.
 - `knowledge.ts` owns Manifest v2 fingerprints and fresh-by-default retrieval.
 - `doctor.ts` performs read-only cross-subsystem diagnostics.
 - `cli.ts`, `mcp.ts`, and `integrations.ts` are registry-backed adapters, not
@@ -82,10 +83,13 @@ both succeed.
 
 External tracking is a separate one-way projection boundary. Every workflow
 transition commits its local journal and state projection first. A later
-tracker sync snapshots that committed revision into a checksummed pending
-record, converges the bound remote ticket with a stable idempotency marker, and
-only then advances the binding's last-synced revision. Provider failure cannot
-roll back, demote, or block the local state machine.
+tracker sync resumes durable pending work or snapshots that committed revision
+into a checksummed pending record, converges the target-bound remote ticket with
+a stable idempotency marker, and only then advances the binding's
+last-synchronized revision. Binding target drift fails before a provider
+request; a same-target status-map change invalidates the synchronized fast path
+and reprojects the committed revision. Provider failure cannot roll back,
+demote, or block the local state machine.
 
 ## Delivery and publication
 

@@ -20,8 +20,10 @@
 
 - `.empirical/` is the durable contract and evidence source of truth.
 - Optional external ticket boards are one-way mirrors. Commit the local journal
-  first, persist only credential variable names, and report tracker health
-  without treating provider state as workflow authority.
+  first, persist only credential variable names, bind remote identities to the
+  exact configured target, and resume durable pending work without treating
+  provider state as workflow authority. Runtime values and provider permissions
+  come only from the approved host process.
 - Fast is restricted to explicit tiny low-risk non-UI work; substantial or UI
   changes use Complex. Source-changing Fast and Complex work must cross the
   conditional Context gate whenever repository knowledge is invalid.

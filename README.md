@@ -87,15 +87,23 @@ summary.
 The provider-neutral Tracker Policy v1 lives at `.empirical/tracker.json`.
 It selects exactly one provider, names its board/project and normalized status
 IDs, and stores only credential environment-variable names. Credential values
-are read at request time and are never written to `.empirical/`. Bindings and
-durable retry projections live under each feature's `tracker/` directory.
+are injected into the Empirical runtime by the host, must carry access to the
+configured provider target, and are never written to `.empirical/`. Bindings
+pin the exact provider target; changing that target fails closed until explicit
+replacement, while a same-target status-map change forces the committed
+revision to be projected again. Bindings and durable retry operations live
+under each feature's `tracker/` directory.
 
 After every local journal commit, the skill asks the granular MCP tracker layer
 to converge the remote ticket. A provider outage never rolls back or blocks
 local SDD progress. Status and action packets expose `local-only`, `synced`,
-`pending`, or `failed` tracker health so the same pending revision can be
-retried safely. See [MCP usage](docs/mcp.md#external-ticket-mirror) for the
-strict provider schemas and state mapping.
+`pending`, or `failed` tracker health. Ordinary retries resume the exact durable
+pending operation. If ticket creation has an ambiguous outcome, Empirical does
+not issue another create automatically: it first performs bounded reconciliation
+using the persisted marker. If no unique match is found, attachment is required
+unless the caller explicitly confirms a new attempt that may create a duplicate.
+See [MCP usage](docs/mcp.md#external-ticket-mirror) for the strict provider
+schemas, runtime permissions, state mapping, and recovery details.
 
 ## Repository model
 
@@ -104,8 +112,9 @@ fingerprints, impact manifests, receipts, Git-common-dir capability claims, and
 hash-chained per-feature journals. Terminal journals compact transactionally to
 a verified snapshot boundary. `empirical_doctor` diagnoses schema, journal,
 lock, claim, toolchain, policy, tracker configuration, credential presence,
-knowledge, evidence, worktree, and delivery
-state without mutating the repository.
+knowledge, evidence, worktree, and delivery state without mutating the
+repository. It still validates dormant feature binding and pending files when
+tracking is local-only or disabled.
 
 Schema 4 repositories migrate atomically on the first mutating 0.22 operation.
 The migration validates a complete candidate tree before promotion and retains

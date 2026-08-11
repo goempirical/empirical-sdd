@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "id": "collected-b8c2b4887d13b18810b9b19b",
+  "criteria": [
+    "AC-1",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-6"
+  ],
+  "evidenceKinds": [
+    "browser",
+    "human",
+    "screenshot"
+  ],
+  "summary": "SDD-7 has a full feature brief, readable delivery status, Backlog to In Progress to In Testing history, three implementation/QA comments, and the QA screenshot attached inside the Linear QA comment; sanitized source checks prove no raw HTML or visible digest prose.",
+  "passed": true,
+  "startedAt": "2026-08-11T17:10:07.304Z",
+  "completedAt": "2026-08-11T17:10:07.304Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "make-linear-tracker-descriptions-clean-and-readable-while-preserving-exa",
+    "specRevision": 2,
+    "specDigest": "sha256:9a499b7de5ac36128f8a94eded08d0639b852b101ed2e5ece4131b046b24d3e7",
+    "treeDigest": "sha256:0e2da8660210a29db05150af67c82c76e17f38d68cdb26c43e4478cb0a6b11b6",
+    "policyDigest": "sha256:888d86d00b83ec4a957413efb0701df5278d06de2077ba6b76f58dd2ba6eeeaf"
+  },
+  "digest": "sha256:b400cc2e81179ac3635b1712d205cab520f47bf854e08d8e2df7a6755d8f3ae1",
+  "kind": "collected",
+  "collector": "Linear live API verification and user-supplied QA screenshot",
+  "artifacts": [
+    {
+      "path": ".empirical/specs/make-linear-tracker-descriptions-clean-and-readable-while-preserving-exa/evidence/artifacts/live-linear-feature-demo.json",
+      "mediaType": "application/json",
+      "bytes": 831,
+      "digest": "sha256:468b3f21fc03f5890d29ce96189d7368cdcdb8604676d744ea38ee198a919b76"
+    },
+    {
+      "path": ".empirical/specs/make-linear-tracker-descriptions-clean-and-readable-while-preserving-exa/evidence/artifacts/qa-finding-original-linear-demo.png",
+      "mediaType": "image/png",
+      "bytes": 463089,
+      "digest": "sha256:ac37fa093192b7c9688e668cb9b2b0f2d04ed0c8e6de1048d477d2668a6032cc"
+    }
+  ]
+}

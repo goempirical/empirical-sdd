@@ -6,11 +6,12 @@ import { join } from "node:path";
 import { EmpiricalProject } from "../src/core.js";
 import { EmpiricalError } from "../src/errors.js";
 import { digestJson } from "../src/protocol.js";
-import { parseTrackerPolicy, trackerProgress } from "../src/tracking.js";
+import { createTrackerProjection, parseTrackerPolicy, trackerProgress } from "../src/tracking.js";
 import type {
   JiraTrackerPolicy,
   GitHubTrackerPolicy,
   LinearTrackerPolicy,
+  TrackerBindInput,
   TrackerHttpRequest,
   TrackerHttpResponse,
   TrackerStateMap,
@@ -107,6 +108,36 @@ function json(status: number, value: unknown): TrackerHttpResponse {
   return { status, body: JSON.stringify(value) };
 }
 
+function linearIssue(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "linear-uuid",
+    identifier: "EMP-1",
+    url: "https://linear.app/empirical/issue/EMP-1",
+    description: "",
+    team: { id: "team-1" },
+    project: { id: "project-1" },
+    ...overrides,
+  };
+}
+
+function jiraIssue(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "10010",
+    key: "ENG-7",
+    fields: {
+      status: { id: "state-old" },
+      project: { key: "ENG" },
+      issuetype: { id: "10001" },
+    },
+    ...overrides,
+  };
+}
+
+function requestBody(request: TrackerHttpRequest | undefined): Record<string, any> {
+  if (!request?.body) throw new Error("Expected a request body");
+  return JSON.parse(request.body) as Record<string, any>;
+}
+
 describe("external ticket tracking", () => {
   test("missing policy is local-only and status never contacts a provider", async () => {
     const { project, action } = await projectWithFastFeature();
@@ -128,6 +159,9 @@ describe("external ticket tracking", () => {
       },
     });
     expect(requests).toBe(0);
+    await project.configureTracker(linearPolicy());
+    await project.configureTracker(null);
+    expect((await project.statusReport()).tracker.health).toBe("local-only");
   });
 
   test("policy is strict, complete, credential-free, and rejects unsafe Jira sites", () => {
@@ -167,6 +201,8 @@ describe("external ticket tracking", () => {
     expect(trackerProgress({ ...base, phase: "done", status: "done" })).toBe("done");
     expect(trackerProgress({ ...base, phase: "implement", status: "blocked" })).toBe("blocked");
     expect(trackerProgress({ ...base, phase: "review", status: "awaiting_human" })).toBe("blocked");
+    expect(() => createTrackerProjection({ ...base, activeFeature: null } as WorkflowState))
+      .toThrow("requires an active feature");
   });
 
   test("missing credentials fail before transport and persist only the environment name", async () => {
@@ -194,6 +230,155 @@ describe("external ticket tracking", () => {
     ].join("\n");
     expect(persisted).toContain("LINEAR_API_KEY");
     expect(persisted).not.toContain("lin_api_");
+  });
+
+  test("status distinguishes synchronized, unresolved replacement, and target-drift records", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const initial = sequence([
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+    ]);
+    expect((await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: initial.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    )).tracker.health).toBe("synced");
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "synced",
+      provider: "linear",
+      url: "https://linear.app/empirical/issue/EMP-1",
+      pendingRevision: null,
+    });
+
+    const unavailable = sequence([{ status: 503, body: "replacement unavailable" }]);
+    await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1", replace: true },
+      { transport: unavailable.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "failed",
+      provider: "linear",
+      url: null,
+      failure: { code: "TRACKER_HTTP_FAILED" },
+    });
+
+    const pendingPath = join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json");
+    const stored = JSON.parse(await readFile(pendingPath, "utf8")) as Record<string, any>;
+    const { digest: _digest, ...pendingBody } = stored;
+    const retryableBody = {
+      ...pendingBody,
+      status: "pending",
+      failure: null,
+      updatedAt: "2026-08-11T16:00:00.000Z",
+    };
+    await writeFile(pendingPath, `${JSON.stringify({
+      ...retryableBody,
+      digest: digestJson(retryableBody),
+    }, null, 2)}\n`, "utf8");
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "pending",
+      provider: "linear",
+      url: null,
+      pendingRevision: action.revision,
+      failure: null,
+    });
+
+    const offTargetBody = {
+      ...retryableBody,
+      targetDigest: digestJson({ provider: "linear", target: "other" }),
+    };
+    await writeFile(pendingPath, `${JSON.stringify({
+      ...offTargetBody,
+      digest: digestJson(offTargetBody),
+    }, null, 2)}\n`, "utf8");
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "failed",
+      provider: "linear",
+      url: null,
+      failure: { code: "TRACKER_TARGET_MISMATCH" },
+    });
+
+    await rm(pendingPath);
+    const bindingPath = join(root, ".empirical", "specs", action.feature!, "tracker", "binding.json");
+    const storedBinding = JSON.parse(await readFile(bindingPath, "utf8")) as Record<string, any>;
+    const { digest: _bindingDigest, ...bindingBody } = storedBinding;
+    const wrongProviderBody = {
+      ...bindingBody,
+      provider: "github",
+      remoteId: "I_wrong_provider",
+      remoteKey: "1",
+      url: "https://github.com/goempirical/empirical-sdd/issues/1",
+      projectItemId: null,
+      markerId: null,
+    };
+    await writeFile(bindingPath, `${JSON.stringify({
+      ...wrongProviderBody,
+      digest: digestJson(wrongProviderBody),
+    }, null, 2)}\n`, "utf8");
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "failed",
+      provider: "linear",
+      url: null,
+      failure: { code: "TRACKER_PROVIDER_MISMATCH" },
+    });
+
+    await writeFile(bindingPath, `${JSON.stringify({
+      ...wrongProviderBody,
+      digest: `sha256:${"0".repeat(64)}`,
+    }, null, 2)}\n`, "utf8");
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "failed",
+      provider: "linear",
+      url: null,
+      failure: { code: "INVALID_TRACKER_DIGEST" },
+    });
+  });
+
+  test("status reports prepared no-binding work and rejects its later target drift", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    expect((await project.bindTracker({ mode: "create" }, { env: {} })).tracker)
+      .toMatchObject({ health: "failed", failure: { code: "TRACKER_CREDENTIAL_MISSING" } });
+
+    const pendingPath = join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json");
+    const stored = JSON.parse(await readFile(pendingPath, "utf8")) as Record<string, any>;
+    const { digest: _digest, ...pendingBody } = stored;
+    const preparedBody = {
+      ...pendingBody,
+      status: "pending",
+      failure: null,
+      updatedAt: "2026-08-11T16:01:00.000Z",
+    };
+    await writeFile(pendingPath, `${JSON.stringify({
+      ...preparedBody,
+      digest: digestJson(preparedBody),
+    }, null, 2)}\n`, "utf8");
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "pending",
+      provider: "linear",
+      url: null,
+      pendingRevision: action.revision,
+      failure: null,
+    });
+
+    await project.configureTracker({
+      ...linearPolicy(),
+      target: { teamId: "team-2", projectId: "project-2" },
+    });
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "failed",
+      provider: "linear",
+      url: null,
+      failure: { code: "TRACKER_TARGET_MISMATCH" },
+    });
+    await writeFile(join(root, ".empirical", "tracker.json"), "{}\n", "utf8");
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "failed",
+      provider: null,
+      url: null,
+      failure: { code: "INVALID_TRACKER_POLICY" },
+    });
   });
 
   test("rate limits and malformed provider responses remain retryable local failures", async () => {
@@ -228,11 +413,11 @@ describe("external ticket tracking", () => {
     const { root, project, action } = await projectWithFastFeature();
     await project.configureTracker(linearPolicy());
     const fake = sequence([
-      json(200, { data: { issueCreate: { success: true, issue: { id: "linear-uuid", identifier: "EMP-1", url: "https://linear.app/empirical/issue/EMP-1" } } } }),
-      json(200, { data: { issue: { id: "linear-uuid", identifier: "EMP-1", url: "https://linear.app/empirical/issue/EMP-1", description: "User description" } } }),
-      json(200, { data: { issueUpdate: { success: true, issue: { id: "linear-uuid", identifier: "EMP-1", url: "https://linear.app/empirical/issue/EMP-1" } } } }),
-      json(200, { data: { issue: { id: "linear-uuid", identifier: "EMP-1", url: "https://linear.app/empirical/issue/EMP-1", description: "User description" } } }),
-      json(200, { data: { issueUpdate: { success: true, issue: { id: "linear-uuid", identifier: "EMP-1", url: "https://linear.app/empirical/issue/EMP-1" } } } }),
+      json(200, { data: { issueCreate: { success: true, issue: linearIssue() } } }),
+      json(200, { data: { issue: linearIssue({ description: "User description" }) } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+      json(200, { data: { issue: linearIssue({ description: "User description" }) } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
     ]);
     const bound = await project.bindTracker(
       { mode: "create", title: "External ticket tracking" },
@@ -241,7 +426,31 @@ describe("external ticket tracking", () => {
     expect(bound.tracker).toMatchObject({ health: "synced", provider: "linear", lastSyncedRevision: 1 });
     expect(fake.calls[0]).toMatchObject({ method: "POST", url: "https://api.linear.app/graphql" });
     expect(fake.calls[0]?.headers.Authorization).toBe("linear-secret");
+    const createdDescription = requestBody(fake.calls[0]).variables.input.description as string;
+    expect(createdDescription).toContain("## [Delivery status]");
+    expect(createdDescription).toContain("[Crash-safe synchronization enabled]");
+    expect(createdDescription).toContain("- Phase: Implement");
+    expect(createdDescription).toContain("- Workflow: Waiting");
+    expect(createdDescription).toContain("- Completion: Not complete");
+    expect(createdDescription).toContain("sha256:");
+    expect(createdDescription).not.toContain("<!--");
+    expect(createdDescription).not.toContain("Empirical SDD create attempt");
     expect(fake.calls[2]?.body).toContain("empirical-sdd:add-a-local-tracker-fixture:r1");
+    expect(fake.calls[2]?.body).toContain("User description");
+    let duplicateBindRequests = 0;
+    const noDuplicateTransport: TrackerTransport = async () => {
+      duplicateBindRequests += 1;
+      return json(500, {});
+    };
+    expect((await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: noDuplicateTransport, env: { LINEAR_API_KEY: "linear-secret" } },
+    )).binding).toMatchObject({ remoteKey: "EMP-1" });
+    await expect(project.bindTracker(
+      { mode: "attach", ticket: "EMP-99" },
+      { transport: noDuplicateTransport, env: { LINEAR_API_KEY: "linear-secret" } },
+    )).rejects.toMatchObject({ code: "TRACKER_ALREADY_BOUND" });
+    expect(duplicateBindRequests).toBe(0);
 
     const persisted = await readFile(join(root, ".empirical", "tracker.json"), "utf8");
     expect(persisted).not.toContain("linear-secret");
@@ -296,11 +505,104 @@ describe("external ticket tracking", () => {
     expect(JSON.parse(await readFile(pendingPath, "utf8"))).toMatchObject({ status: "synced", failure: null });
   });
 
+  test("Linear migrates one legacy projection and recovery block without exposing machine metadata", async () => {
+    const { project } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const feature = "add-a-local-tracker-fixture";
+    const attempt = "a".repeat(64);
+    const legacyDescription = [
+      "Human introduction",
+      "",
+      `<!-- empirical-sdd:${feature}:start -->`,
+      "Empirical SDD · implement/waiting · revision 1",
+      "Progress: in-progress · completion: none",
+      `Marker: empirical-sdd:${feature}:r1`,
+      `<!-- empirical-sdd:${feature}:end -->`,
+      "",
+      "Human conclusion",
+      "",
+      `<!-- empirical-sdd-bind:${feature}:${attempt}:start -->`,
+      `Empirical SDD create attempt sha256:${attempt}`,
+      `<!-- empirical-sdd-bind:${feature}:${attempt}:end -->`,
+    ].join("\n");
+    const issue = linearIssue({ description: legacyDescription });
+    const fake = sequence([
+      json(200, { data: { issue } }),
+      json(200, { data: { issue } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+    ]);
+    const result = await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: fake.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(result.tracker.health).toBe("synced");
+    const migrated = requestBody(fake.calls[2]).variables.input.description as string;
+    expect(migrated).toContain("Human introduction");
+    expect(migrated).toContain("Human conclusion");
+    expect(migrated).toContain("## [Delivery status]");
+    expect(migrated).toContain("[Crash-safe synchronization enabled]");
+    expect(migrated).toContain(`sha256:${attempt}`);
+    expect(migrated).not.toContain("<!--");
+    expect(migrated).not.toContain("Empirical SDD create attempt");
+
+    const mixedProject = await projectWithFastFeature();
+    await mixedProject.project.configureTracker(linearPolicy());
+    const mixedDescription = `${legacyDescription}\n\n[**Empirical SDD**](https://github.com/goempirical/empirical-sdd#empirical-sdd:${feature}:start)`;
+    const mixedIssue = linearIssue({ description: mixedDescription });
+    const mixed = sequence([
+      json(200, { data: { issue: mixedIssue } }),
+      json(200, { data: { issue: mixedIssue } }),
+    ]);
+    const rejected = await mixedProject.project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: mixed.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(rejected.tracker).toMatchObject({ health: "failed", failure: { code: "TRACKER_MARKER_AMBIGUOUS" } });
+    expect(mixed.calls).toHaveLength(2);
+
+    const malformedProject = await projectWithFastFeature();
+    await malformedProject.project.configureTracker(linearPolicy());
+    const malformedDescription = [
+      "Human text",
+      `<!-- empirical-sdd-bind:${feature}:${attempt}:start -->`,
+      "tampered recovery body",
+      `<!-- empirical-sdd-bind:${feature}:${attempt}:end -->`,
+    ].join("\n");
+    const malformedIssue = linearIssue({ description: malformedDescription });
+    const malformed = sequence([
+      json(200, { data: { issue: malformedIssue } }),
+      json(200, { data: { issue: malformedIssue } }),
+    ]);
+    const malformedResult = await malformedProject.project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: malformed.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(malformedResult.tracker).toMatchObject({ health: "failed", failure: { code: "TRACKER_MARKER_AMBIGUOUS" } });
+    expect(malformed.calls).toHaveLength(2);
+
+    const malformedLinkProject = await projectWithFastFeature();
+    await malformedLinkProject.project.configureTracker(linearPolicy());
+    const malformedLinkIssue = linearIssue({
+      description: `[Recovery reference](https://github.com/goempirical/empirical-sdd#empirical-sdd-bind:${feature}:sha256:not-a-digest)`,
+    });
+    const malformedLink = sequence([
+      json(200, { data: { issue: malformedLinkIssue } }),
+      json(200, { data: { issue: malformedLinkIssue } }),
+    ]);
+    const malformedLinkResult = await malformedLinkProject.project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: malformedLink.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(malformedLinkResult.tracker).toMatchObject({ health: "failed", failure: { code: "TRACKER_MARKER_AMBIGUOUS" } });
+    expect(malformedLink.calls).toHaveLength(2);
+  });
+
   test("GitHub create keeps exactly one machine-owned marker in the project comment", async () => {
     const { project } = await projectWithFastFeature();
     await project.configureTracker(githubPolicy());
     const fake = sequence([
       json(201, { node_id: "I_kwDO_created", number: 43, html_url: "https://github.com/goempirical/empirical-sdd/issues/43" }),
+      json(200, { node_id: "I_kwDO_created", number: 43, html_url: "https://github.com/goempirical/empirical-sdd/issues/43" }),
       json(200, { data: { node: { projectItems: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
       json(200, { data: { addProjectV2ItemById: { item: { id: "PVTI_created" } } } }),
       json(200, []),
@@ -312,15 +614,16 @@ describe("external ticket tracking", () => {
       { transport: fake.transport, env: { GITHUB_TOKEN: "github-secret" } },
     );
     expect(result.tracker.health).toBe("synced");
-    expect(fake.calls[0]?.body).not.toContain("empirical-sdd:add-a-local-tracker-fixture:start");
-    expect(fake.calls[3]?.method).toBe("GET");
-    expect(fake.calls[4]?.body).toContain("empirical-sdd:add-a-local-tracker-fixture:start");
+    expect(fake.calls[0]?.body).toContain("empirical-sdd-bind:add-a-local-tracker-fixture");
+    expect(fake.calls[4]?.method).toBe("GET");
+    expect(fake.calls[5]?.body).toContain("empirical-sdd:add-a-local-tracker-fixture:start");
   });
 
   test("GitHub attachment adopts an existing Projects v2 item, upserts one comment, and moves Status", async () => {
     const { project } = await projectWithFastFeature();
     await project.configureTracker(githubPolicy());
     const fake = sequence([
+      json(200, { node_id: "I_kwDO_issue", number: 42, html_url: "https://github.com/goempirical/empirical-sdd/issues/42" }),
       json(200, { node_id: "I_kwDO_issue", number: 42, html_url: "https://github.com/goempirical/empirical-sdd/issues/42" }),
       json(200, { data: { node: { projectItems: { nodes: [{ id: "PVTI_item", project: { id: "PVT_project" } }], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
       json(200, [{ id: 987, body: "<!-- empirical-sdd:add-a-local-tracker-fixture:start -->\nstale\n<!-- empirical-sdd:add-a-local-tracker-fixture:end -->" }]),
@@ -338,11 +641,11 @@ describe("external ticket tracking", () => {
       markerId: "987",
       lastSyncedRevision: 1,
     });
-    expect(fake.calls.map(({ method }) => method)).toEqual(["GET", "POST", "GET", "PATCH", "POST"]);
-    expect(fake.calls[1]?.body).toContain("projectItems(first: 100");
-    expect(fake.calls[2]?.url).toContain("/issues/42/comments?per_page=100&page=1");
-    expect(fake.calls[3]?.url).toEndWith("/issues/comments/987");
-    expect(fake.calls[4]?.body).toContain("updateProjectV2ItemFieldValue");
+    expect(fake.calls.map(({ method }) => method)).toEqual(["GET", "GET", "POST", "GET", "PATCH", "POST"]);
+    expect(fake.calls[2]?.body).toContain("projectItems(first: 100");
+    expect(fake.calls[3]?.url).toContain("/issues/42/comments?per_page=100&page=1");
+    expect(fake.calls[4]?.url).toEndWith("/issues/comments/987");
+    expect(fake.calls[5]?.body).toContain("updateProjectV2ItemFieldValue");
   });
 
   test("Jira attachment writes the issue property and selects a transition by destination status", async () => {
@@ -351,8 +654,8 @@ describe("external ticket tracking", () => {
     await project.configureTracker(policy);
     const desired = policy.states["in-progress"];
     const fake = sequence([
-      json(200, { id: "10010", key: "ENG-7", fields: { status: { id: "state-old" } } }),
-      json(200, { id: "10010", key: "ENG-7", fields: { status: { id: "state-old" } } }),
+      json(200, jiraIssue()),
+      json(200, jiraIssue()),
       { status: 204, body: "" },
       json(200, { transitions: [{ id: "71", to: { id: desired } }] }),
       { status: 204, body: "" },
@@ -376,9 +679,9 @@ describe("external ticket tracking", () => {
     const { project, action } = await projectWithFastFeature();
     await project.configureTracker(linearPolicy());
     const initial = sequence([
-      json(200, { data: { issue: { id: "linear-uuid", identifier: "EMP-9", url: "https://linear.app/empirical/issue/EMP-9" } } }),
-      json(200, { data: { issue: { id: "linear-uuid", identifier: "EMP-9", url: "https://linear.app/empirical/issue/EMP-9", description: "" } } }),
-      json(200, { data: { issueUpdate: { success: true, issue: { id: "linear-uuid", identifier: "EMP-9", url: "https://linear.app/empirical/issue/EMP-9" } } } }),
+      json(200, { data: { issue: linearIssue({ identifier: "EMP-9", url: "https://linear.app/empirical/issue/EMP-9" }) } }),
+      json(200, { data: { issue: linearIssue({ identifier: "EMP-9", url: "https://linear.app/empirical/issue/EMP-9" }) } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue({ identifier: "EMP-9", url: "https://linear.app/empirical/issue/EMP-9" }) } } }),
     ]);
     expect((await project.bindTracker(
       { mode: "attach", ticket: "EMP-9" },
@@ -404,10 +707,570 @@ describe("external ticket tracking", () => {
     expect(await project.status()).toMatchObject({ phase: "done", status: "done", revision: completed.revision });
   });
 
+  test("bind input is a strict runtime discriminated union before pending mutation", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    let requests = 0;
+    const invalid: unknown[] = [
+      { mode: "bogus", ticket: "EMP-1" },
+      { mode: "create", ticket: "EMP-1" },
+      { mode: "attach", ticket: "EMP-1", title: "ignored" },
+      { mode: "attach", ticket: "EMP-1", description: "ignored" },
+      { mode: "attach", ticket: "EMP-1", confirmCreateRetry: true },
+      { mode: "create", unexpected: true },
+    ];
+    for (const input of invalid) {
+      await expect(project.bindTracker(input as TrackerBindInput, {
+        env: { LINEAR_API_KEY: "linear-secret" },
+        transport: async () => {
+          requests += 1;
+          return json(500, {});
+        },
+      })).rejects.toEqual(expect.objectContaining<Partial<EmpiricalError>>({ code: "INVALID_TRACKER_BIND_INPUT" }));
+    }
+    expect(requests).toBe(0);
+    expect(await Bun.file(join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json")).exists()).toBe(false);
+  });
+
+  test("all uncertain create responses become durable ambiguity after dispatch", async () => {
+    const variants: Array<TrackerHttpResponse | Error> = [
+      { status: 200, body: "{" },
+      { status: 502, body: "provider failure" },
+      json(200, { errors: [{ message: "unknown create outcome" }] }),
+      { status: 200, body: "x".repeat(1_048_577) },
+    ];
+    for (const response of variants) {
+      const { root, project, action } = await projectWithFastFeature();
+      await project.configureTracker(linearPolicy());
+      const fake = sequence([response]);
+      const result = await project.bindTracker(
+        { mode: "create" },
+        { transport: fake.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+      );
+      expect(result.tracker).toMatchObject({
+        health: "failed",
+        failure: { code: "TRACKER_CREATE_AMBIGUOUS" },
+      });
+      expect(fake.calls).toHaveLength(1);
+      const pending = JSON.parse(await readFile(
+        join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json"),
+        "utf8",
+      )) as Record<string, any>;
+      expect(pending).toMatchObject({ intent: { mode: "create", dispatched: true } });
+      expect(requestBody(fake.calls[0]).variables.input.description).toContain(pending.idempotencyKey);
+    }
+  });
+
+  test("sync retries a durable no-binding attach intent", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const first = sequence([{ status: 503, body: "unavailable" }]);
+    const failed = await project.bindTracker(
+      { mode: "attach", ticket: "EMP-3" },
+      { transport: first.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(failed).toMatchObject({ binding: null, tracker: { health: "failed" } });
+    const pendingPath = join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json");
+    expect(JSON.parse(await readFile(pendingPath, "utf8"))).toMatchObject({ intent: { mode: "attach", ticket: "EMP-3" } });
+
+    const issue = linearIssue({ id: "linear-3", identifier: "EMP-3", url: "https://linear.app/empirical/issue/EMP-3" });
+    const retry = sequence([
+      json(200, { data: { issue } }),
+      json(200, { data: { issue } }),
+      json(200, { data: { issueUpdate: { success: true, issue } } }),
+    ]);
+    const synced = await project.syncTracker({
+      transport: retry.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    expect(synced.tracker).toMatchObject({ health: "synced", lastSyncedRevision: 1 });
+    expect(synced.binding).toMatchObject({ remoteId: "linear-3", remoteKey: "EMP-3" });
+    expect(retry.remaining).toHaveLength(0);
+  });
+
+  test("a projection failure after create keeps the durable binding and is not ambiguous", async () => {
+    const { project } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const first = sequence([
+      json(200, { data: { issueCreate: { success: true, issue: linearIssue() } } }),
+      { status: 503, body: "projection unavailable" },
+    ]);
+    const failed = await project.bindTracker(
+      { mode: "create" },
+      { transport: first.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(failed.binding).toMatchObject({ remoteId: "linear-uuid", lastSyncedRevision: null });
+    expect(failed.tracker).toMatchObject({ health: "failed", failure: { code: "TRACKER_HTTP_FAILED" } });
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "failed",
+      provider: "linear",
+      url: "https://linear.app/empirical/issue/EMP-1",
+      lastSyncedRevision: null,
+      failure: { code: "TRACKER_HTTP_FAILED" },
+    });
+
+    const retry = sequence([
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+    ]);
+    const synced = await project.syncTracker({ transport: retry.transport, env: { LINEAR_API_KEY: "linear-secret" } });
+    expect(synced.tracker.health).toBe("synced");
+    expect([...first.calls, ...retry.calls].filter((call) => call.body?.includes("issueCreate(input"))).toHaveLength(1);
+  });
+
+  test("same-provider target drift fails closed while state-map drift forces a request", async () => {
+    const { project } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const initial = sequence([
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+    ]);
+    expect((await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: initial.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    )).tracker.health).toBe("synced");
+
+    await project.configureTracker({
+      ...linearPolicy(),
+      target: { teamId: "team-2", projectId: "project-2" },
+    });
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "failed",
+      failure: { code: "TRACKER_TARGET_MISMATCH" },
+    });
+    let driftRequests = 0;
+    const drift = await project.syncTracker({
+      env: { LINEAR_API_KEY: "linear-secret" },
+      transport: async () => {
+        driftRequests += 1;
+        return json(500, {});
+      },
+    });
+    expect(drift.tracker.failure?.code).toBe("TRACKER_TARGET_MISMATCH");
+    expect(driftRequests).toBe(0);
+
+    await project.configureTracker({
+      ...linearPolicy(),
+      states: { ...states, "in-progress": "state-work-v2" },
+    });
+    expect((await project.statusReport()).tracker.health).toBe("pending");
+    const policySync = sequence([
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+    ]);
+    expect((await project.syncTracker({
+      transport: policySync.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    })).tracker.health).toBe("synced");
+    expect(requestBody(policySync.calls[1]).variables.input.stateId).toBe("state-work-v2");
+    let repeatRequests = 0;
+    expect((await project.syncTracker({
+      env: { LINEAR_API_KEY: "linear-secret" },
+      transport: async () => {
+        repeatRequests += 1;
+        return json(500, {});
+      },
+    })).tracker.health).toBe("synced");
+    expect(repeatRequests).toBe(0);
+  });
+
+  test("Linear and Jira attachments reject tickets outside the configured target", async () => {
+    const linear = await projectWithFastFeature();
+    await linear.project.configureTracker(linearPolicy());
+    const wrongLinear = sequence([
+      json(200, { data: { issue: linearIssue({ team: { id: "team-2" } }) } }),
+    ]);
+    const linearResult = await linear.project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: wrongLinear.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(linearResult).toMatchObject({ binding: null, tracker: { failure: { code: "TRACKER_TARGET_MISMATCH" } } });
+    expect(wrongLinear.calls).toHaveLength(1);
+
+    const jira = await projectWithFastFeature();
+    await jira.project.configureTracker(jiraPolicy());
+    const wrongJira = sequence([
+      json(200, jiraIssue({
+        key: "OPS-7",
+        fields: { status: { id: "state-old" }, project: { key: "OPS" }, issuetype: { id: "10001" } },
+      })),
+    ]);
+    const jiraResult = await jira.project.bindTracker(
+      { mode: "attach", ticket: "OPS-7" },
+      { transport: wrongJira.transport, env: { JIRA_EMAIL: "dev@example.com", JIRA_API_TOKEN: "jira-secret" } },
+    );
+    expect(jiraResult).toMatchObject({ binding: null, tracker: { failure: { code: "TRACKER_TARGET_MISMATCH" } } });
+    expect(wrongJira.calls).toHaveLength(1);
+  });
+
+  test("provider update identity cannot replace the durable binding", async () => {
+    const { project, action } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const initial = sequence([
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+    ]);
+    const bound = await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: initial.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    await project.complete({ revision: action.revision, outcome: "passed", summary: "done" });
+    const changed = linearIssue({ id: "other-uuid", identifier: "EMP-99", url: "https://linear.app/empirical/issue/EMP-99" });
+    const fake = sequence([
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: changed } } }),
+    ]);
+    const result = await project.syncTracker({ transport: fake.transport, env: { LINEAR_API_KEY: "linear-secret" } });
+    expect(result.tracker).toMatchObject({ health: "failed", failure: { code: "TRACKER_IDENTITY_MISMATCH" }, lastSyncedRevision: 1 });
+    expect(result.binding).toMatchObject({ remoteId: bound.binding?.remoteId, remoteKey: bound.binding?.remoteKey });
+  });
+
+  test("opaque credentials from injected EmpiricalError transports are exactly redacted", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const secret = "opaque-credential-value";
+    const fake = sequence([
+      new EmpiricalError("TRACKER_PROVIDER_FAILED", `provider echoed ${secret} in an opaque location`),
+    ]);
+    const result = await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: fake.transport, env: { LINEAR_API_KEY: secret } },
+    );
+    expect(result.tracker.failure).toMatchObject({ code: "TRACKER_PROVIDER_FAILED" });
+    expect(result.tracker.failure?.summary).toContain("[REDACTED]");
+    expect(result.tracker.failure?.summary).not.toContain(secret);
+    expect(await readFile(
+      join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json"),
+      "utf8",
+    )).not.toContain(secret);
+  });
+
+  test("quoted or surrounded GitHub markers are not treated as machine-owned comments", async () => {
+    const { project } = await projectWithFastFeature();
+    await project.configureTracker(githubPolicy());
+    const start = "<!-- empirical-sdd:add-a-local-tracker-fixture:start -->";
+    const end = "<!-- empirical-sdd:add-a-local-tracker-fixture:end -->";
+    const fake = sequence([
+      json(200, { node_id: "I_kwDO_issue", number: 42, html_url: "https://github.com/goempirical/empirical-sdd/issues/42" }),
+      json(200, { node_id: "I_kwDO_issue", number: 42, html_url: "https://github.com/goempirical/empirical-sdd/issues/42" }),
+      json(200, { data: { node: { projectItems: { nodes: [{ id: "PVTI_item", project: { id: "PVT_project" } }], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
+      json(200, [
+        { id: 987, body: `A user quoted this:\n> ${start}\n> stale\n> ${end}` },
+        { id: 988, body: `prefix\n${start}\nstale\n${end}\nsuffix` },
+      ]),
+      json(201, { id: 989 }),
+      json(200, { data: { updateProjectV2ItemFieldValue: { projectV2Item: { id: "PVTI_item" } } } }),
+    ]);
+    const result = await project.bindTracker(
+      { mode: "attach", ticket: "42" },
+      { transport: fake.transport, env: { GITHUB_TOKEN: "github-secret" } },
+    );
+    expect(result.binding?.markerId).toBe("989");
+    expect(fake.calls.map(({ method }) => method)).toEqual(["GET", "GET", "POST", "GET", "POST", "POST"]);
+    expect(fake.calls.some(({ method }) => method === "PATCH")).toBe(false);
+  });
+
+  test("GitHub sync revalidates issue ownership and ignores forged persisted mutation ids", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    await project.configureTracker(githubPolicy());
+    const issue = { node_id: "I_kwDO_issue", number: 42, html_url: "https://github.com/goempirical/empirical-sdd/issues/42" };
+    const marker = "<!-- empirical-sdd:add-a-local-tracker-fixture:start -->\nstale\n<!-- empirical-sdd:add-a-local-tracker-fixture:end -->";
+    const initial = sequence([
+      json(200, issue),
+      json(200, issue),
+      json(200, { data: { node: { projectItems: { nodes: [{ id: "PVTI_legit", project: { id: "PVT_project" } }], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
+      json(200, [{ id: 987, body: marker }]),
+      json(200, { id: 987 }),
+      json(200, { data: { updateProjectV2ItemFieldValue: { projectV2Item: { id: "PVTI_legit" } } } }),
+    ]);
+    expect((await project.bindTracker(
+      { mode: "attach", ticket: "42" },
+      { transport: initial.transport, env: { GITHUB_TOKEN: "github-secret" } },
+    )).tracker.health).toBe("synced");
+    const bindingPath = join(root, ".empirical", "specs", action.feature!, "tracker", "binding.json");
+    const stored = JSON.parse(await readFile(bindingPath, "utf8")) as Record<string, any>;
+    const { digest: _digest, ...forgedBody } = {
+      ...stored,
+      projectItemId: "PVTI_forged",
+      markerId: "666",
+    };
+    await writeFile(bindingPath, `${JSON.stringify({ ...forgedBody, digest: digestJson(forgedBody) }, null, 2)}\n`, "utf8");
+    await project.complete({ revision: action.revision, outcome: "passed", summary: "advance" });
+    const sync = sequence([
+      json(200, issue),
+      json(200, { data: { node: { projectItems: { nodes: [{ id: "PVTI_legit", project: { id: "PVT_project" } }], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
+      json(200, [{ id: 987, body: marker }]),
+      json(200, { id: 987 }),
+      json(200, { data: { updateProjectV2ItemFieldValue: { projectV2Item: { id: "PVTI_legit" } } } }),
+    ]);
+    const result = await project.syncTracker({ transport: sync.transport, env: { GITHUB_TOKEN: "github-secret" } });
+    expect(result.binding).toMatchObject({ projectItemId: "PVTI_legit", markerId: "987" });
+    expect(JSON.stringify(sync.calls)).not.toContain("PVTI_forged");
+    expect(JSON.stringify(sync.calls)).not.toContain("/comments/666");
+
+    const rebound = JSON.parse(await readFile(bindingPath, "utf8")) as Record<string, any>;
+    const { digest: _reboundDigest, ...spoofedBody } = {
+      ...rebound,
+      url: "https://github.com/attacker/repository/issues/42",
+    };
+    await writeFile(bindingPath, `${JSON.stringify({ ...spoofedBody, digest: digestJson(spoofedBody) }, null, 2)}\n`, "utf8");
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "failed",
+      url: null,
+      failure: { code: "TRACKER_TARGET_MISMATCH" },
+    });
+  });
+
+  test("provider URL parsing accepts valid URLs longer than remote identifiers", async () => {
+    const { project } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const longUrl = `https://linear.app/${"workspace".repeat(40)}/issue/EMP-1`;
+    expect(longUrl.length).toBeGreaterThan(256);
+    const issue = linearIssue({ url: longUrl });
+    const fake = sequence([
+      json(200, { data: { issue } }),
+      json(200, { data: { issue } }),
+      json(200, { data: { issueUpdate: { success: true, issue } } }),
+    ]);
+    const result = await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: fake.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(result.tracker.health).toBe("synced");
+    expect(result.binding?.url).toBe(longUrl);
+  });
+
+  test("malformed GitHub project pagination fails before adding an item", async () => {
+    const { project } = await projectWithFastFeature();
+    await project.configureTracker(githubPolicy());
+    const issue = { node_id: "I_kwDO_issue", number: 42, html_url: "https://github.com/goempirical/empirical-sdd/issues/42" };
+    const fake = sequence([
+      json(200, issue),
+      json(200, issue),
+      json(200, { data: { node: { projectItems: { nodes: [], pageInfo: {} } } } }),
+    ]);
+    const result = await project.bindTracker(
+      { mode: "attach", ticket: "42" },
+      { transport: fake.transport, env: { GITHUB_TOKEN: "github-secret" } },
+    );
+    expect(result.tracker.failure?.code).toBe("TRACKER_MALFORMED_RESPONSE");
+    expect(fake.calls.filter((call) => call.body?.includes("addProjectV2ItemById"))).toHaveLength(0);
+  });
+
+  test("a malformed GitHub create response reconciles its exact marker without a second create", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    await project.configureTracker(githubPolicy());
+    const first = sequence([{ status: 201, body: "{" }]);
+    const ambiguous = await project.bindTracker(
+      { mode: "create", description: "Human issue body" },
+      { transport: first.transport, env: { GITHUB_TOKEN: "github-secret" } },
+    );
+    expect(ambiguous.tracker.failure?.code).toBe("TRACKER_CREATE_AMBIGUOUS");
+    const createdBody = requestBody(first.calls[0]).body as string;
+    const pending = JSON.parse(await readFile(
+      join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json"),
+      "utf8",
+    )) as Record<string, any>;
+    expect(createdBody).toContain(pending.idempotencyKey);
+    await project.complete({ revision: action.revision, outcome: "passed", summary: "local work completed during recovery" });
+
+    const recovery = sequence([
+      json(200, [{
+        node_id: "I_kwDO_recovered",
+        number: 43,
+        html_url: "https://github.com/goempirical/empirical-sdd/issues/43",
+        body: createdBody,
+      }]),
+      json(200, {
+        node_id: "I_kwDO_recovered",
+        number: 43,
+        html_url: "https://github.com/goempirical/empirical-sdd/issues/43",
+        body: createdBody,
+      }),
+      json(200, { data: { node: { projectItems: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
+      json(200, { data: { addProjectV2ItemById: { item: { id: "PVTI_recovered" } } } }),
+      json(200, []),
+      json(201, { id: 991 }),
+      json(200, { data: { updateProjectV2ItemFieldValue: { projectV2Item: { id: "PVTI_recovered" } } } }),
+    ]);
+    const synced = await project.syncTracker({
+      transport: recovery.transport,
+      env: { GITHUB_TOKEN: "github-secret" },
+    });
+    expect(synced.tracker).toMatchObject({ health: "synced", lastSyncedRevision: 2 });
+    expect(synced.binding).toMatchObject({ remoteKey: "43", bindIdempotencyKey: pending.idempotencyKey });
+    expect(recovery.calls.filter((call) => call.method === "POST" && call.url.endsWith("/issues"))).toHaveLength(0);
+  });
+
+  test("zero, duplicate, and malformed-pagination reconciliation results fail closed", async () => {
+    const expectedCodes = ["TRACKER_CREATE_AMBIGUOUS", "TRACKER_CREATE_COLLISION", "TRACKER_MALFORMED_RESPONSE"];
+    for (const kind of ["zero", "collision", "pagination"] as const) {
+      const { project } = await projectWithFastFeature();
+      await project.configureTracker(linearPolicy());
+      const first = sequence([new Error("lost response")]);
+      await project.bindTracker(
+        { mode: "create" },
+        { transport: first.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+      );
+      const description = requestBody(first.calls[0]).variables.input.description as string;
+      const nodes = kind === "collision"
+        ? [
+            linearIssue({ id: "one", identifier: "EMP-11", url: "https://linear.app/empirical/issue/EMP-11", description }),
+            linearIssue({ id: "two", identifier: "EMP-12", url: "https://linear.app/empirical/issue/EMP-12", description }),
+          ]
+        : [];
+      const lookup = sequence([
+        json(200, { data: { issues: { nodes, pageInfo: kind === "pagination" ? {} : { hasNextPage: false, endCursor: null } } } }),
+      ]);
+      const result = await project.syncTracker({ transport: lookup.transport, env: { LINEAR_API_KEY: "linear-secret" } });
+      expect(result.tracker.failure?.code).toBe(expectedCodes[["zero", "collision", "pagination"].indexOf(kind)]);
+      expect([...first.calls, ...lookup.calls].filter((call) => call.body?.includes("issueCreate(input"))).toHaveLength(1);
+    }
+  });
+
+  test("a prepared create safely dispatches once after credentials become available", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const prepared = await project.bindTracker({ mode: "create" }, { env: {} });
+    expect(prepared.tracker.failure?.code).toBe("TRACKER_CREDENTIAL_MISSING");
+    const pendingPath = join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json");
+    expect(JSON.parse(await readFile(pendingPath, "utf8"))).toMatchObject({ intent: { mode: "create", dispatched: false } });
+    const fake = sequence([
+      json(200, { data: { issueCreate: { success: true, issue: linearIssue() } } }),
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+    ]);
+    const synced = await project.syncTracker({ transport: fake.transport, env: { LINEAR_API_KEY: "linear-secret" } });
+    expect(synced.tracker.health).toBe("synced");
+    expect(fake.calls.filter((call) => call.body?.includes("issueCreate(input"))).toHaveLength(1);
+  });
+
+  test("explicit replace can supersede a provably undispatched pending create on a new target", async () => {
+    const { project } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    expect((await project.bindTracker({ mode: "create" }, { env: {} })).tracker.failure?.code).toBe("TRACKER_CREDENTIAL_MISSING");
+    const targetB: LinearTrackerPolicy = {
+      ...linearPolicy(),
+      target: { teamId: "team-2", projectId: "project-2" },
+    };
+    await project.configureTracker(targetB);
+    const issueB = linearIssue({
+      id: "linear-b",
+      identifier: "B-1",
+      url: "https://linear.app/empirical/issue/B-1",
+      team: { id: "team-2" },
+      project: { id: "project-2" },
+    });
+    const fake = sequence([
+      json(200, { data: { issue: issueB } }),
+      json(200, { data: { issue: issueB } }),
+      json(200, { data: { issueUpdate: { success: true, issue: issueB } } }),
+    ]);
+    const rebound = await project.bindTracker(
+      { mode: "attach", ticket: "B-1", replace: true },
+      { transport: fake.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(rebound.tracker.health).toBe("synced");
+    expect(rebound.binding).toMatchObject({ remoteId: "linear-b", remoteKey: "B-1" });
+    expect(fake.calls).toHaveLength(3);
+  });
+
+  test("manual attach resolves an ambiguous create only with its exact marker and preserves evidence on mismatch", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const first = sequence([new Error("lost response")]);
+    await project.bindTracker(
+      { mode: "create" },
+      { transport: first.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    const pendingPath = join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json");
+    const before = JSON.parse(await readFile(pendingPath, "utf8")) as Record<string, any>;
+    const wrong = sequence([
+      json(200, { data: { issue: linearIssue({ id: "linear-5", identifier: "EMP-5", url: "https://linear.app/empirical/issue/EMP-5", description: "no marker" }) } }),
+    ]);
+    const mismatch = await project.bindTracker(
+      { mode: "attach", ticket: "EMP-5" },
+      { transport: wrong.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(mismatch.tracker.failure?.code).toBe("TRACKER_CREATE_MARKER_MISMATCH");
+    const afterMismatch = JSON.parse(await readFile(pendingPath, "utf8")) as Record<string, any>;
+    expect(afterMismatch.idempotencyKey).toBe(before.idempotencyKey);
+    expect(afterMismatch.intent).toEqual(before.intent);
+
+    const description = requestBody(first.calls[0]).variables.input.description as string;
+    const issue = linearIssue({ id: "linear-5", identifier: "EMP-5", url: "https://linear.app/empirical/issue/EMP-5", description });
+    const recovery = sequence([
+      json(200, { data: { issue } }),
+      json(200, { data: { issue } }),
+      json(200, { data: { issueUpdate: { success: true, issue } } }),
+    ]);
+    const synced = await project.bindTracker(
+      { mode: "attach", ticket: "EMP-5" },
+      { transport: recovery.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(synced.tracker.health).toBe("synced");
+    expect(synced.binding).toMatchObject({ remoteKey: "EMP-5", bindIdempotencyKey: before.idempotencyKey });
+    expect([...first.calls, ...wrong.calls, ...recovery.calls].filter((call) => call.body?.includes("issueCreate(input"))).toHaveLength(1);
+  });
+
+  test("same-ticket replacement is associated with its new attempt and stays stable across revisions", async () => {
+    const { project, action } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const initial = sequence([
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+    ]);
+    const first = await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: initial.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    const replacement = sequence([
+      json(200, { data: { issue: linearIssue() } }),
+      { status: 503, body: "crash-window projection failure" },
+    ]);
+    const replaced = await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1", replace: true },
+      { transport: replacement.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(replaced.binding?.bindIdempotencyKey).not.toBe(first.binding?.bindIdempotencyKey);
+    expect(replaced.tracker).toMatchObject({ health: "failed", failure: { code: "TRACKER_HTTP_FAILED" } });
+    const recoverReplacement = sequence([
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+    ]);
+    expect((await project.syncTracker({
+      transport: recoverReplacement.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    })).tracker.health).toBe("synced");
+    let idleRequests = 0;
+    expect((await project.syncTracker({
+      env: { LINEAR_API_KEY: "linear-secret" },
+      transport: async () => {
+        idleRequests += 1;
+        return json(500, {});
+      },
+    })).tracker.health).toBe("synced");
+    expect(idleRequests).toBe(0);
+
+    await project.complete({ revision: action.revision, outcome: "passed", summary: "done" });
+    const next = sequence([
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+    ]);
+    expect((await project.syncTracker({ transport: next.transport, env: { LINEAR_API_KEY: "linear-secret" } })).tracker.health).toBe("synced");
+    expect(next.calls).toHaveLength(2);
+  });
+
   test("an ambiguous create is not repeated without explicit confirmation", async () => {
     const { project } = await projectWithFastFeature();
     await project.configureTracker(linearPolicy());
-    const failed = sequence([new Error("socket closed after upload")]);
+    const failed = sequence([
+      new Error("socket closed after upload"),
+      json(200, { data: { issues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } }),
+    ]);
     const first = await project.bindTracker(
       { mode: "create" },
       { transport: failed.transport, env: { LINEAR_API_KEY: "linear-secret" } },

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 5,
+  "revision": 12,
+  "activeFeature": "make-linear-tracker-descriptions-clean-and-readable-while-preserving-exa",
+  "request": "Make Linear tracker descriptions clean and readable while preserving exact crash-recovery reconciliation, migrate legacy HTML marker blocks, update the SDD-5 demo, verify the full suite, integrate, and deliver PR #13.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "normal",
+  "phase": "done",
+  "status": "done",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: external-ticket-tracking",
+  "implementationActor": "agent",
+  "specDigest": "sha256:9a499b7de5ac36128f8a94eded08d0639b852b101ed2e5ece4131b046b24d3e7",
+  "approvedSpecRevision": 2,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:7f70aaeba4a05a63a78f3b0dbc18a370cb53f01ab3036b140edcfbc2c8e4dbca",
+  "impactDigest": "sha256:df45bd06635a015c149817a6947b4b2b5124999fef4a81592452d0a8517299ac",
+  "capabilityClaimId": "make-linear-tracker-descriptions-clean-and-readable-while-preserving-exa-bb7db72afcc0",
+  "authorizationDigest": null,
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-d89ce4f7315e3616109997e5",
+    "executed-d198f5aae7b417ee8802bd35",
+    "collected-b8c2b4887d13b18810b9b19b",
+    "executed-ab807ab40314c2646547bc79"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-11T17:48:13.182Z"
+}

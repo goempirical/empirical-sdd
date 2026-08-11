@@ -1,4 +1,5 @@
 import { Buffer } from "node:buffer";
+import { randomUUID } from "node:crypto";
 import { rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
@@ -19,6 +20,7 @@ import type {
   LinearTrackerPolicy,
   GitHubTrackerPolicy,
   TrackerBindInput,
+  TrackerBindIntent,
   TrackerBindResult,
   TrackerBinding,
   TrackerDependencies,
@@ -134,15 +136,40 @@ const trackerBindingSchema = z.object({
   url: z.string().url().max(2048),
   projectItemId: remoteIdSchema.nullable(),
   markerId: remoteIdSchema.nullable(),
+  targetDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  bindIdempotencyKey: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   lastSyncedRevision: z.number().int().nonnegative().nullable(),
   lastSyncedDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/).nullable(),
+  lastSyncedPolicyDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/).nullable(),
   digest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
 }).strict();
+
+const trackerCreateIntentSchema = z.object({
+  mode: z.literal("create"),
+  title: z.string().min(1).max(200),
+  description: z.string().min(1).max(4_000),
+  marker: z.string().regex(/^empirical-sdd-bind:[a-z0-9][a-z0-9-]{0,79}$/),
+  dispatched: z.boolean(),
+}).strict();
+
+const trackerAttachIntentSchema = z.object({
+  mode: z.literal("attach"),
+  ticket: remoteIdSchema,
+}).strict();
+
+const trackerBindIntentSchema = z.discriminatedUnion("mode", [
+  trackerCreateIntentSchema,
+  trackerAttachIntentSchema,
+]);
 
 const trackerPendingSchema = z.object({
   schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
   provider: z.enum(["github", "linear", "jira"]),
+  targetDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  policyDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   projection: trackerProjectionSchema,
+  intent: trackerBindIntentSchema,
+  replacesBindingDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/).nullable(),
   idempotencyKey: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   attempts: z.number().int().nonnegative(),
   status: z.enum(["pending", "failed", "synced"]),
@@ -150,6 +177,37 @@ const trackerPendingSchema = z.object({
   updatedAt: z.string().datetime({ offset: true }),
   digest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
 }).strict();
+
+export const trackerCreateBindInputSchema = z.object({
+  mode: z.literal("create"),
+  title: z.string().trim().min(1).max(200).optional(),
+  description: z.string().trim().min(1).max(4_000).optional(),
+  replace: z.literal(true).optional(),
+  confirmCreateRetry: z.literal(true).optional(),
+}).strict();
+
+export const trackerAttachBindInputSchema = z.object({
+  mode: z.literal("attach"),
+  ticket: remoteIdSchema,
+  replace: z.literal(true).optional(),
+}).strict();
+
+export const trackerBindInputSchema = z.discriminatedUnion("mode", [
+  trackerCreateBindInputSchema,
+  trackerAttachBindInputSchema,
+]);
+
+export function parseTrackerBindInput(value: unknown): TrackerBindInput {
+  try {
+    return trackerBindInputSchema.parse(value) as TrackerBindInput;
+  } catch (error) {
+    throw new EmpiricalError(
+      "INVALID_TRACKER_BIND_INPUT",
+      "Tracker bind input must be a strict create or attach request with only mode-appropriate fields",
+      error,
+    );
+  }
+}
 
 export function parseTrackerPolicy(value: unknown): TrackerPolicy {
   let parsed: TrackerPolicy;
@@ -242,16 +300,79 @@ export async function trackerStatus(
       loadTrackerBinding(root, state.activeFeature),
       loadTrackerPending(root, state.activeFeature),
     ]);
+    if (
+      binding
+      && pending?.replacesBindingDigest === binding.digest
+      && pending.idempotencyKey !== binding.bindIdempotencyKey
+    ) {
+      try {
+        assertPendingScope(policy, pending);
+      } catch (error) {
+        return failedStatus(
+          state.revision,
+          policy.provider,
+          null,
+          null,
+          failureFrom(error, dependencies),
+          pending.projection.revision,
+        );
+      }
+      if (pending.status === "failed") {
+        return failedStatus(state.revision, policy.provider, null, null, pending.failure, pending.projection.revision);
+      }
+      return {
+        health: "pending",
+        provider: policy.provider,
+        url: null,
+        committedRevision: state.revision,
+        lastSyncedRevision: null,
+        pendingRevision: pending.projection.revision,
+        failure: null,
+      };
+    }
     if (binding && binding.provider !== policy.provider) {
       return failedStatus(
         state.revision,
         policy.provider,
-        binding.url,
+        null,
         binding.lastSyncedRevision,
         failure("TRACKER_PROVIDER_MISMATCH", "The feature binding belongs to a different configured provider", dependencies),
       );
     }
+    if (binding && binding.targetDigest !== trackerTargetDigest(policy)) {
+      return failedStatus(
+        state.revision,
+        policy.provider,
+        null,
+        binding.lastSyncedRevision,
+        failure("TRACKER_TARGET_MISMATCH", "The feature binding belongs to a different configured target", dependencies),
+      );
+    }
+    if (binding) {
+      try {
+        assertBindingScope(policy, binding);
+      } catch (error) {
+        return failedStatus(
+          state.revision,
+          policy.provider,
+          null,
+          binding.lastSyncedRevision,
+          failureFrom(error, dependencies),
+        );
+      }
+    }
+    if (pending && pending.targetDigest !== trackerTargetDigest(policy)) {
+      return failedStatus(
+        state.revision,
+        policy.provider,
+        binding?.url ?? null,
+        binding?.lastSyncedRevision ?? null,
+        failure("TRACKER_TARGET_MISMATCH", "Pending tracker work belongs to a different configured target", dependencies),
+        pending.projection.revision,
+      );
+    }
     if (!binding) {
+      if (!pending) return localOnlyStatus(state.revision);
       if (pending?.status === "failed") {
         return failedStatus(state.revision, policy.provider, null, null, pending.failure);
       }
@@ -268,6 +389,7 @@ export async function trackerStatus(
     if (
       binding.lastSyncedRevision === state.revision
       && binding.lastSyncedDigest === createTrackerProjection(state).digest
+      && binding.lastSyncedPolicyDigest === trackerProjectionPolicyDigest(policy)
       && (!pending || pending.status === "synced")
     ) {
       return {
@@ -310,6 +432,7 @@ export async function bindTracker(
   input: TrackerBindInput,
   dependencies: TrackerDependencies = {},
 ): Promise<TrackerBindResult> {
+  input = parseTrackerBindInput(input);
   if (!state.activeFeature || state.phase === "idle") {
     throw new EmpiricalError("TRACKER_FEATURE_REQUIRED", "Create or attach a ticket only after a feature starts");
   }
@@ -317,6 +440,7 @@ export async function bindTracker(
   const policy = await requireTrackerPolicy(root);
   return withTrackerLock(root, feature, async () => {
     const existing = await loadTrackerBinding(root, feature);
+    if (existing && input.replace !== true) assertBindingScope(policy, existing);
     if (existing && input.replace !== true) {
       if (input.mode === "attach" && input.ticket === existing.remoteKey) {
         return { binding: existing, tracker: await trackerStatus(root, state, dependencies) };
@@ -326,61 +450,167 @@ export async function bindTracker(
         `Feature ${state.activeFeature} is already bound to ${existing.provider}:${existing.remoteKey}`,
       );
     }
-    if (input.mode === "attach" && !input.ticket?.trim()) {
-      throw new EmpiricalError("TRACKER_TICKET_REQUIRED", "Attach mode requires a provider ticket id or key");
-    }
     const projection = createTrackerProjection(state);
-    const previousPending = await loadTrackerPending(root, feature);
-    if (
-      input.mode === "create"
-      && previousPending?.failure?.code === "TRACKER_CREATE_AMBIGUOUS"
-      && input.confirmCreateRetry !== true
-    ) {
-      throw new EmpiricalError(
-        "TRACKER_CREATE_CONFIRMATION_REQUIRED",
-        "The prior create may have succeeded; reconcile or explicitly confirm a new create attempt",
-      );
-    }
-    const pending = await persistPending(root, policy, projection, previousPending, dependencies);
-    let binding = existing;
+    const durablePending = await loadTrackerPending(root, feature);
+    const unresolvedDispatchedCreate = Boolean(
+      durablePending?.intent.mode === "create"
+      && durablePending.intent.dispatched
+      && durablePending.status !== "synced"
+      && (!existing || durablePending.replacesBindingDigest === existing.digest),
+    );
+    const recoverAmbiguousByAttach = unresolvedDispatchedCreate
+      && input.mode === "attach";
+    const supersedesPreparedPending = input.replace === true
+      && durablePending !== null
+      && (durablePending.intent.mode === "attach" || !durablePending.intent.dispatched);
+    const supersedesAcknowledgedPending = input.replace === true
+      && existing !== null
+      && durablePending?.replacesBindingDigest !== existing.digest;
+    const previousPending = supersedesPreparedPending || supersedesAcknowledgedPending
+      ? null
+      : durablePending;
+    if (previousPending) assertPendingScope(policy, previousPending);
+    const intent = trackerBindIntent(feature, input);
+    let credentials: string[];
     try {
-      const credentials = resolveCredentials(policy, dependencies.env ?? process.env);
-      const created = input.mode === "create"
-        ? await createRemoteTicket(policy, projection, input, credentials, dependencies)
-        : await attachRemoteTicket(policy, input.ticket!.trim(), credentials, dependencies);
-      binding = createBinding(feature, policy.provider, created);
-      await writeTrackerBinding(root, binding);
-      const synced = await synchronizeBound(
+      credentials = resolveCredentials(policy, dependencies.env ?? process.env);
+    } catch (error) {
+      if (recoverAmbiguousByAttach && durablePending) {
+        const recorded = await persistFailure(root, durablePending, error, dependencies);
+        return failedBindResult(state, policy, null, recorded);
+      }
+      const pending = await persistPending(
         root,
-        state,
         policy,
-        binding,
-        pending,
-        credentials,
+        projection,
+        intent,
+        previousPending,
+        dependencies,
+        false,
+        input.replace === true ? existing?.digest ?? null : previousPending?.replacesBindingDigest ?? null,
+      );
+      const recorded = await persistFailure(root, pending, error, dependencies);
+      return failedBindResult(state, policy, existing, recorded);
+    }
+
+    if (recoverAmbiguousByAttach && input.mode === "attach" && durablePending) {
+      let recoveredBinding: TrackerBinding;
+      try {
+        const remote = await attachAmbiguousCreate(policy, input.ticket, durablePending, credentials, dependencies);
+        recoveredBinding = createBinding(feature, policy, remote, durablePending.idempotencyKey);
+        await writeTrackerBinding(root, recoveredBinding);
+      } catch (error) {
+        return {
+          binding: null,
+          tracker: failedStatus(
+            state.revision,
+            policy.provider,
+            null,
+            null,
+            failureFrom(error, dependencies),
+            durablePending.projection.revision,
+          ),
+        };
+      }
+      const pending = await persistPending(
+        root,
+        policy,
+        projection,
+        durablePending.intent,
+        durablePending,
         dependencies,
       );
-      return { binding: synced.binding, tracker: synced.tracker };
+      try {
+        return await synchronizeBound(root, state, policy, recoveredBinding, pending, credentials, dependencies);
+      } catch (error) {
+        const recorded = await persistFailure(root, pending, error, dependencies);
+        return failedBindResult(state, policy, recoveredBinding, recorded);
+      }
+    }
+
+    if (
+      input.mode === "create"
+      && previousPending?.intent.mode === "create"
+      && previousPending.intent.dispatched
+      && (!existing || previousPending.replacesBindingDigest === existing.digest)
+    ) {
+      let recoveredBinding: TrackerBinding | null = null;
+      try {
+        const reconciled = await reconcileCreate(policy, previousPending, credentials, dependencies);
+        if (reconciled) {
+          recoveredBinding = createBinding(feature, policy, reconciled, previousPending.idempotencyKey);
+          await writeTrackerBinding(root, recoveredBinding);
+        }
+      } catch (error) {
+        const recorded = await persistFailure(root, previousPending, error, dependencies);
+        return failedBindResult(state, policy, null, recorded);
+      }
+      if (recoveredBinding) {
+        const pending = await persistPending(
+          root,
+          policy,
+          projection,
+          previousPending.intent,
+          previousPending,
+          dependencies,
+        );
+        try {
+          return await synchronizeBound(root, state, policy, recoveredBinding, pending, credentials, dependencies);
+        } catch (error) {
+          const recorded = await persistFailure(root, pending, error, dependencies);
+          return failedBindResult(state, policy, recoveredBinding, recorded);
+        }
+      }
+      if (input.confirmCreateRetry !== true) {
+        throw new EmpiricalError(
+          "TRACKER_CREATE_CONFIRMATION_REQUIRED",
+          "The prior create may have succeeded; reconciliation found no exact marker, so a new create requires explicit confirmation",
+        );
+      }
+    }
+
+    const pending = await persistPending(
+      root,
+      policy,
+      projection,
+      intent,
+      previousPending,
+      dependencies,
+      input.mode === "create" && previousPending?.intent.mode === "create" && input.confirmCreateRetry === true,
+      input.replace === true ? existing?.digest ?? null : previousPending?.replacesBindingDigest ?? null,
+    );
+    let activePending = pending;
+    let binding: TrackerBinding;
+    try {
+      if (input.mode === "create") activePending = await markCreateDispatched(root, pending, dependencies);
+      const remote = input.mode === "create"
+        ? await createRemoteTicket(policy, projection, activePending.intent as Extract<TrackerBindIntent, { mode: "create" }>, activePending.idempotencyKey, credentials, dependencies)
+        : await attachRemoteTicket(policy, input.ticket, credentials, dependencies);
+      binding = createBinding(feature, policy, remote, activePending.idempotencyKey);
+      await writeTrackerBinding(root, binding);
     } catch (error) {
-      const ambiguous = input.mode === "create" && errorCode(error) === "TRACKER_TRANSPORT_FAILED";
       const recorded = await persistFailure(
         root,
-        pending,
-        ambiguous
-          ? new EmpiricalError("TRACKER_CREATE_AMBIGUOUS", "The provider create response was not observed")
+        activePending,
+        input.mode === "create"
+          ? new EmpiricalError("TRACKER_CREATE_AMBIGUOUS", "The provider create outcome could not be durably confirmed")
           : error,
         dependencies,
       );
-      return {
-        binding,
-        tracker: failedStatus(
-          state.revision,
-          policy.provider,
-          binding?.url ?? null,
-          binding?.lastSyncedRevision ?? null,
-          recorded.failure,
-          projection.revision,
-        ),
-      };
+      return failedBindResult(state, policy, existing, recorded);
+    }
+
+    try {
+      const synced = await synchronizeBound(root, state, policy, binding, activePending, credentials, dependencies);
+      return { binding: synced.binding, tracker: synced.tracker };
+    } catch (error) {
+      const recorded = await persistFailure(
+        root,
+        activePending,
+        error,
+        dependencies,
+      );
+      return failedBindResult(state, policy, binding, recorded);
     }
   });
 }
@@ -396,39 +626,118 @@ export async function synchronizeTracker(
   const policy = await loadTrackerPolicy(root);
   if (!policy) return { binding: null, tracker: localOnlyStatus(state.revision), projection: null };
   return withTrackerLock(root, state.activeFeature, async () => {
-    const binding = await loadTrackerBinding(root, state.activeFeature!);
-    if (!binding) {
-      return {
-        binding: null,
-        tracker: await trackerStatus(root, state, dependencies),
-        projection: createTrackerProjection(state),
-      };
-    }
-    if (binding.provider !== policy.provider) {
-      const mismatch = failure(
-        "TRACKER_PROVIDER_MISMATCH",
-        "The feature binding belongs to a different configured provider",
+    const feature = state.activeFeature!;
+    const projection = createTrackerProjection(state);
+    let binding = await loadTrackerBinding(root, feature);
+    const previousPending = await loadTrackerPending(root, feature);
+    const bindingIsSuperseded = Boolean(
+      binding
+      && previousPending?.replacesBindingDigest === binding.digest
+      && previousPending.idempotencyKey !== binding.bindIdempotencyKey,
+    );
+    if (!binding || bindingIsSuperseded) {
+      if (!previousPending) {
+        return { binding: null, tracker: await trackerStatus(root, state, dependencies), projection };
+      }
+      try {
+        assertPendingScope(policy, previousPending);
+      } catch (error) {
+        return {
+          binding: null,
+          projection,
+          tracker: failedStatus(state.revision, policy.provider, null, null, failureFrom(error, dependencies), previousPending.projection.revision),
+        };
+      }
+      let credentials: string[];
+      try {
+        credentials = resolveCredentials(policy, dependencies.env ?? process.env);
+      } catch (error) {
+        const recorded = await persistFailure(root, previousPending, error, dependencies);
+        return { binding: null, projection, tracker: failedStatus(state.revision, policy.provider, null, null, recorded.failure, projection.revision) };
+      }
+      let recoveryPending = previousPending;
+      let dispatchedCreateNow = false;
+      try {
+        let remote: RemoteTicket | null;
+        if (previousPending.intent.mode === "attach") {
+          remote = await attachRemoteTicket(policy, previousPending.intent.ticket, credentials, dependencies);
+        } else if (!previousPending.intent.dispatched) {
+          recoveryPending = await markCreateDispatched(root, previousPending, dependencies);
+          dispatchedCreateNow = true;
+          remote = await createRemoteTicket(
+            policy,
+            recoveryPending.projection,
+            recoveryPending.intent as Extract<TrackerBindIntent, { mode: "create" }>,
+            recoveryPending.idempotencyKey,
+            credentials,
+            dependencies,
+          );
+        } else {
+          remote = await reconcileCreate(policy, previousPending, credentials, dependencies);
+        }
+        if (!remote) {
+          throw new EmpiricalError(
+            "TRACKER_CREATE_AMBIGUOUS",
+            "No exact provider marker was found; sync will not issue a blind replacement create",
+          );
+        }
+        binding = createBinding(feature, policy, remote, recoveryPending.idempotencyKey);
+        await writeTrackerBinding(root, binding);
+      } catch (error) {
+        const recorded = await persistFailure(
+          root,
+          recoveryPending,
+          dispatchedCreateNow
+            ? new EmpiricalError("TRACKER_CREATE_AMBIGUOUS", "The provider create outcome could not be durably confirmed")
+            : error,
+          dependencies,
+        );
+        return { binding: null, projection, tracker: failedStatus(state.revision, policy.provider, null, null, recorded.failure, projection.revision) };
+      }
+      const pending = await persistPending(
+        root,
+        policy,
+        projection,
+        recoveryPending.intent,
+        recoveryPending,
         dependencies,
       );
+      try {
+        return await synchronizeBound(root, state, policy, binding, pending, credentials, dependencies);
+      } catch (error) {
+        const recorded = await persistFailure(root, pending, error, dependencies);
+        return {
+          binding,
+          projection,
+          tracker: failedStatus(state.revision, policy.provider, binding.url, binding.lastSyncedRevision, recorded.failure, projection.revision),
+        };
+      }
+    }
+    try {
+      assertBindingScope(policy, binding);
+      if (previousPending) assertPendingScope(policy, previousPending);
+    } catch (error) {
+      const mismatch = failureFrom(error, dependencies);
       return {
         binding,
         tracker: failedStatus(state.revision, policy.provider, binding.url, binding.lastSyncedRevision, mismatch),
-        projection: createTrackerProjection(state),
+        projection,
       };
     }
-    const projection = createTrackerProjection(state);
     if (
       binding.lastSyncedRevision === projection.revision
       && binding.lastSyncedDigest === projection.digest
+      && binding.lastSyncedPolicyDigest === trackerProjectionPolicyDigest(policy)
     ) {
-      const pending = await loadTrackerPending(root, state.activeFeature!);
       if (
-        pending
-        && pending.projection.digest === projection.digest
-        && pending.status !== "synced"
+        previousPending
+        && previousPending.projection.digest === projection.digest
+        && previousPending.policyDigest === trackerProjectionPolicyDigest(policy)
+        && previousPending.status !== "synced"
       ) {
         await writeTrackerPending(root, createPendingRecord({
-          ...pending,
+          ...previousPending,
+          replacesBindingDigest: null,
           status: "synced",
           failure: null,
           updatedAt: now(dependencies),
@@ -448,8 +757,8 @@ export async function synchronizeTracker(
         },
       };
     }
-    const previousPending = await loadTrackerPending(root, state.activeFeature!);
-    const pending = await persistPending(root, policy, projection, previousPending, dependencies);
+    const intent = previousPending?.intent ?? { mode: "attach", ticket: binding.remoteKey };
+    const pending = await persistPending(root, policy, projection, intent, previousPending, dependencies);
     try {
       const credentials = resolveCredentials(policy, dependencies.env ?? process.env);
       return await synchronizeBound(
@@ -544,7 +853,8 @@ async function synchronizeBound(
   dependencies: TrackerDependencies,
 ): Promise<TrackerSyncResult> {
   const updated = await projectRemoteTicket(policy, binding, pending.projection, credentials, dependencies);
-  const nextBinding = createBinding(state.activeFeature!, policy.provider, {
+  assertRemoteIdentity(binding, updated);
+  const nextBinding = createBinding(state.activeFeature!, policy, {
     remoteId: updated.remoteId,
     remoteKey: updated.remoteKey,
     url: updated.url,
@@ -552,10 +862,12 @@ async function synchronizeBound(
     markerId: updated.markerId,
     lastSyncedRevision: pending.projection.revision,
     lastSyncedDigest: pending.projection.digest,
-  });
+    lastSyncedPolicyDigest: pending.policyDigest,
+  }, binding.bindIdempotencyKey);
   await writeTrackerBinding(root, nextBinding);
   const acknowledged = createPendingRecord({
     ...pending,
+    replacesBindingDigest: null,
     status: "synced",
     failure: null,
     updatedAt: now(dependencies),
@@ -584,20 +896,24 @@ interface RemoteTicket {
   markerId: string | null;
   lastSyncedRevision?: number | null;
   lastSyncedDigest?: string | null;
+  lastSyncedPolicyDigest?: string | null;
 }
 
 async function createRemoteTicket(
   policy: TrackerPolicy,
   projection: TrackerProjection,
-  input: TrackerBindInput,
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
   credentials: string[],
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
-  const title = safeText(input.title ?? titleFromFeature(projection.feature), 200);
-  const description = safeText(input.description ?? "Tracked by Empirical SDD", 4_000);
-  if (policy.provider === "github") return createGitHubTicket(policy, title, description, credentials[0]!, dependencies);
-  if (policy.provider === "linear") return createLinearTicket(policy, projection, title, description, credentials[0]!, dependencies);
-  return createJiraTicket(policy, projection, title, credentials[0]!, credentials[1]!, dependencies);
+  if (policy.provider === "github") {
+    return createGitHubTicket(policy, intent, idempotencyKey, credentials[0]!, dependencies);
+  }
+  if (policy.provider === "linear") {
+    return createLinearTicket(policy, projection, intent, idempotencyKey, credentials[0]!, dependencies);
+  }
+  return createJiraTicket(policy, projection, intent, idempotencyKey, credentials[0]!, credentials[1]!, dependencies);
 }
 
 async function attachRemoteTicket(
@@ -608,8 +924,69 @@ async function attachRemoteTicket(
 ): Promise<RemoteTicket> {
   if (!REMOTE_ID.test(ticket)) throw new EmpiricalError("INVALID_TRACKER_TICKET", "Tracker ticket id or key is invalid");
   if (policy.provider === "github") return attachGitHubTicket(policy, ticket, credentials[0]!, dependencies);
-  if (policy.provider === "linear") return attachLinearTicket(ticket, credentials[0]!, dependencies);
+  if (policy.provider === "linear") return attachLinearTicket(policy, ticket, credentials[0]!, dependencies);
   return attachJiraTicket(policy, ticket, credentials[0]!, credentials[1]!, dependencies);
+}
+
+async function attachAmbiguousCreate(
+  policy: TrackerPolicy,
+  ticket: string,
+  pending: TrackerPendingRecord,
+  credentials: string[],
+  dependencies: TrackerDependencies,
+): Promise<RemoteTicket> {
+  if (pending.intent.mode !== "create" || !pending.intent.dispatched) {
+    throw new EmpiricalError("INVALID_TRACKER_PENDING", "Ambiguous attach recovery requires a dispatched create intent");
+  }
+  if (policy.provider === "github") {
+    if (!/^\d+$/.test(ticket)) throw new EmpiricalError("INVALID_TRACKER_TICKET", "GitHub attachment requires an issue number");
+    const value = await requestJson(dependencies, {
+      method: "GET",
+      url: `https://api.github.com/repos/${encodeURIComponent(policy.target.owner)}/${encodeURIComponent(policy.target.repository)}/issues/${ticket}`,
+      headers: githubHeaders(credentials[0]!),
+    }, [200], [credentials[0]!]);
+    const issue = record(value, "GitHub ambiguous create issue");
+    const remote = parseGitHubIssue(policy, issue);
+    if (remote.remoteKey !== ticket || !hasExactCreateMarker(issue.body, pending.intent, pending.idempotencyKey)) {
+      throw new EmpiricalError("TRACKER_CREATE_MARKER_MISMATCH", "GitHub issue does not contain the exact pending create marker");
+    }
+    return remote;
+  }
+  if (policy.provider === "linear") {
+    const data = await linearGraphql(
+      `query Issue($id: String!) { issue(id: $id) { id identifier url description team { id } project { id } } }`,
+      { id: ticket },
+      credentials[0]!,
+      dependencies,
+    );
+    const issue = record(data.issue, "Linear ambiguous create issue");
+    const remote = parseLinearIssue(policy, issue);
+    if (
+      (ticket !== remote.remoteId && ticket !== remote.remoteKey)
+      || !hasExactLinearCreateMarker(issue.description, pending.intent, pending.idempotencyKey)
+    ) {
+      throw new EmpiricalError("TRACKER_CREATE_MARKER_MISMATCH", "Linear issue does not contain the exact pending create marker");
+    }
+    return remote;
+  }
+  const value = await requestJson(dependencies, {
+    method: "GET",
+    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(ticket)}?fields=status,project,issuetype&properties=empirical-sdd`,
+    headers: jiraHeaders(credentials[0]!, credentials[1]!),
+  }, [200], credentials);
+  const issue = record(value, "Jira ambiguous create issue");
+  const remote = parseJiraIssue(policy, issue, true);
+  const properties = record(issue.properties ?? {}, "Jira ambiguous create properties");
+  const empirical = record(properties["empirical-sdd"] ?? {}, "Jira Empirical create property");
+  const create = record(empirical.create ?? {}, "Jira Empirical create marker");
+  if (
+    (ticket !== remote.remoteId && ticket !== remote.remoteKey)
+    || create.marker !== pending.intent.marker
+    || create.idempotencyKey !== pending.idempotencyKey
+  ) {
+    throw new EmpiricalError("TRACKER_CREATE_MARKER_MISMATCH", "Jira issue does not contain the exact pending create marker");
+  }
+  return remote;
 }
 
 async function projectRemoteTicket(
@@ -626,8 +1003,8 @@ async function projectRemoteTicket(
 
 async function createGitHubTicket(
   policy: GitHubTrackerPolicy,
-  title: string,
-  description: string,
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
   token: string,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
@@ -637,7 +1014,10 @@ async function createGitHubTicket(
       method: "POST",
       url: `https://api.github.com/repos/${encodeURIComponent(policy.target.owner)}/${encodeURIComponent(policy.target.repository)}/issues`,
       headers: githubHeaders(token),
-      body: JSON.stringify({ title, body: description }),
+      body: JSON.stringify({
+        title: intent.title,
+        body: appendCreateMarker(intent.description, intent, idempotencyKey),
+      }),
     },
     [201],
     [token],
@@ -662,7 +1042,9 @@ async function attachGitHubTicket(
     [200],
     [token],
   );
-  return parseGitHubIssue(policy, issue);
+  const parsed = parseGitHubIssue(policy, issue);
+  if (parsed.remoteKey !== ticket) throw new EmpiricalError("TRACKER_IDENTITY_MISMATCH", "GitHub returned a different issue than requested");
+  return parsed;
 }
 
 async function syncGitHubTicket(
@@ -672,28 +1054,24 @@ async function syncGitHubTicket(
   token: string,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
-  let projectItemId = binding.projectItemId;
+  const current = await attachGitHubTicket(policy, binding.remoteKey, token, dependencies);
+  assertRemoteIdentity(binding, current);
+  let projectItemId = await findGitHubProjectItem(policy, binding.remoteId, token, dependencies);
   if (!projectItemId) {
-    projectItemId = await findGitHubProjectItem(policy, binding.remoteId, token, dependencies);
-    if (!projectItemId) {
-      const added = await githubGraphql(
-        `mutation Add($project: ID!, $content: ID!, $client: String!) {
-          addProjectV2ItemById(input: {projectId: $project, contentId: $content, clientMutationId: $client}) {
-            item { id }
-          }
-        }`,
-        { project: policy.target.projectId, content: binding.remoteId, client: idempotencyLabel(projection) },
-        token,
-        dependencies,
-      );
-      projectItemId = nestedString(added, ["addProjectV2ItemById", "item", "id"], "GitHub project item id");
-    }
+    const added = await githubGraphql(
+      `mutation Add($project: ID!, $content: ID!, $client: String!) {
+        addProjectV2ItemById(input: {projectId: $project, contentId: $content, clientMutationId: $client}) {
+          item { id }
+        }
+      }`,
+      { project: policy.target.projectId, content: binding.remoteId, client: idempotencyLabel(projection) },
+      token,
+      dependencies,
+    );
+    projectItemId = nestedString(added, ["addProjectV2ItemById", "item", "id"], "GitHub project item id");
   }
-  let markerId = binding.markerId;
+  let markerId = await findGitHubMarkerComment(policy, binding.remoteKey, projection.feature, token, dependencies);
   const comment = renderProjection(projection);
-  if (!markerId) {
-    markerId = await findGitHubMarkerComment(policy, binding.remoteKey, projection.feature, token, dependencies);
-  }
   if (markerId) {
     await requestJson(
       dependencies,
@@ -748,6 +1126,8 @@ async function findGitHubMarkerComment(
   dependencies: TrackerDependencies,
 ): Promise<string | null> {
   const marker = `<!-- empirical-sdd:${feature}:start -->`;
+  const endMarker = `<!-- empirical-sdd:${feature}:end -->`;
+  let match: string | null = null;
   for (let page = 1; page <= 100; page += 1) {
     const response = await requestJson(
       dependencies,
@@ -764,11 +1144,14 @@ async function findGitHubMarkerComment(
     }
     for (const rawComment of response) {
       const candidate = record(rawComment, "GitHub issue comment");
-      if (typeof candidate.body === "string" && candidate.body.includes(marker)) {
-        return String(requiredNumber(candidate, "id", "GitHub comment id"));
+      if (typeof candidate.body === "string" && isExactOwnedMarkerBlock(candidate.body, marker, endMarker)) {
+        if (match !== null) {
+          throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Multiple GitHub comments contain an exact Empirical-owned marker block");
+        }
+        match = String(requiredNumber(candidate, "id", "GitHub comment id"));
       }
     }
-    if (response.length < 100) return null;
+    if (response.length < 100) return match;
   }
   throw new EmpiricalError("TRACKER_COMMENT_LOOKUP_LIMIT", "GitHub marker lookup exceeded 10,000 comments");
 }
@@ -808,7 +1191,10 @@ async function findGitHubProjectItem(
       }
     }
     const pageInfo = record(connection.pageInfo ?? {}, "GitHub project item page info");
-    if (pageInfo.hasNextPage !== true) return null;
+    if (typeof pageInfo.hasNextPage !== "boolean") {
+      throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "GitHub project item pagination is malformed");
+    }
+    if (!pageInfo.hasNextPage) return null;
     after = requiredString(pageInfo, "endCursor", "GitHub project item cursor");
   }
   throw new EmpiricalError("TRACKER_PROJECT_LOOKUP_LIMIT", "GitHub project item lookup exceeded 10,000 items");
@@ -851,7 +1237,7 @@ function parseGitHubIssue(policy: GitHubTrackerPolicy, value: unknown): RemoteTi
   }
   const remoteId = requiredString(issue, "node_id", "GitHub issue node id");
   const remoteKey = String(requiredNumber(issue, "number", "GitHub issue number"));
-  const url = validateProviderUrl(requiredString(issue, "html_url", "GitHub issue URL"), "github.com");
+  const url = validateProviderUrl(requiredUrlString(issue, "html_url", "GitHub issue URL"), "github.com");
   const expectedPath = `/${policy.target.owner}/${policy.target.repository}/issues/${remoteKey}`.toLowerCase();
   if (new URL(url).pathname.toLowerCase() !== expectedPath) {
     throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "GitHub returned an issue URL outside the configured repository");
@@ -862,19 +1248,19 @@ function parseGitHubIssue(policy: GitHubTrackerPolicy, value: unknown): RemoteTi
 async function createLinearTicket(
   policy: LinearTrackerPolicy,
   projection: TrackerProjection,
-  title: string,
-  description: string,
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
   apiKey: string,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
   const data = await linearGraphql(
     `mutation Create($input: IssueCreateInput!) {
-      issueCreate(input: $input) { success issue { id identifier url } }
+      issueCreate(input: $input) { success issue { id identifier url team { id } project { id } } }
     }`,
     {
       input: {
-        title,
-        description: upsertMarkerBlock(description, projection),
+        title: intent.title,
+        description: appendLinearCreateMarker(upsertLinearMarkerBlock(intent.description, projection), intent, idempotencyKey),
         teamId: policy.target.teamId,
         ...(policy.target.projectId ? { projectId: policy.target.projectId } : {}),
         stateId: policy.states[projection.progress],
@@ -885,21 +1271,26 @@ async function createLinearTicket(
   );
   const create = record(data.issueCreate, "Linear issueCreate");
   if (create.success !== true) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Linear did not confirm issue creation");
-  return parseLinearIssue(create.issue);
+  return parseLinearIssue(policy, create.issue);
 }
 
 async function attachLinearTicket(
+  policy: LinearTrackerPolicy,
   ticket: string,
   apiKey: string,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
   const data = await linearGraphql(
-    `query Issue($id: String!) { issue(id: $id) { id identifier url } }`,
+    `query Issue($id: String!) { issue(id: $id) { id identifier url team { id } project { id } } }`,
     { id: ticket },
     apiKey,
     dependencies,
   );
-  return parseLinearIssue(data.issue);
+  const parsed = parseLinearIssue(policy, data.issue);
+  if (ticket !== parsed.remoteId && ticket !== parsed.remoteKey) {
+    throw new EmpiricalError("TRACKER_IDENTITY_MISMATCH", "Linear returned a different issue than requested");
+  }
+  return parsed;
 }
 
 async function syncLinearTicket(
@@ -910,21 +1301,24 @@ async function syncLinearTicket(
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
   const current = await linearGraphql(
-    `query Issue($id: String!) { issue(id: $id) { id identifier url description } }`,
+    `query Issue($id: String!) { issue(id: $id) { id identifier url description team { id } project { id } } }`,
     { id: binding.remoteId },
     apiKey,
     dependencies,
   );
   const issue = record(current.issue, "Linear issue");
+  const currentTicket = parseLinearIssue(policy, issue);
+  assertRemoteIdentity(binding, currentTicket);
   const description = typeof issue.description === "string" ? issue.description : "";
+  const migratedDescription = migrateLinearCreateMarker(description, projection.feature);
   const updated = await linearGraphql(
     `mutation Update($id: String!, $input: IssueUpdateInput!) {
-      issueUpdate(id: $id, input: $input) { success issue { id identifier url } }
+      issueUpdate(id: $id, input: $input) { success issue { id identifier url team { id } project { id } } }
     }`,
     {
       id: binding.remoteId,
       input: {
-        description: upsertMarkerBlock(description, projection),
+        description: upsertLinearMarkerBlock(migratedDescription, projection),
         stateId: policy.states[projection.progress],
       },
     },
@@ -933,7 +1327,7 @@ async function syncLinearTicket(
   );
   const update = record(updated.issueUpdate, "Linear issueUpdate");
   if (update.success !== true) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Linear did not confirm issue update");
-  return { ...parseLinearIssue(update.issue), projectItemId: null, markerId: null };
+  return { ...parseLinearIssue(policy, update.issue), projectItemId: null, markerId: null };
 }
 
 async function linearGraphql(
@@ -956,14 +1350,19 @@ async function linearGraphql(
   return graphqlData(response, "Linear");
 }
 
-function parseLinearIssue(value: unknown): RemoteTicket {
+function parseLinearIssue(policy: LinearTrackerPolicy, value: unknown): RemoteTicket {
   const issue = record(value, "Linear issue");
   const remoteKey = requiredString(issue, "identifier", "Linear issue identifier");
-  const url = validateProviderUrl(requiredString(issue, "url", "Linear issue URL"), "linear.app");
+  const url = validateProviderUrl(requiredUrlString(issue, "url", "Linear issue URL"), "linear.app");
   const segments = new URL(url).pathname.split("/").filter(Boolean);
   const issueIndex = segments.indexOf("issue");
   if (issueIndex < 0 || segments[issueIndex + 1] !== remoteKey) {
     throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Linear returned an issue URL with a mismatched identifier");
+  }
+  const teamId = nestedOptionalString(issue, ["team", "id"]);
+  const projectId = nestedOptionalString(issue, ["project", "id"]);
+  if (teamId !== policy.target.teamId || (policy.target.projectId !== null && projectId !== policy.target.projectId)) {
+    throw new EmpiricalError("TRACKER_TARGET_MISMATCH", "Linear issue is outside the configured team or project");
   }
   return {
     remoteId: requiredString(issue, "id", "Linear issue id"),
@@ -977,7 +1376,8 @@ function parseLinearIssue(value: unknown): RemoteTicket {
 async function createJiraTicket(
   policy: JiraTrackerPolicy,
   projection: TrackerProjection,
-  title: string,
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
   email: string,
   apiToken: string,
   dependencies: TrackerDependencies,
@@ -992,9 +1392,13 @@ async function createJiraTicket(
         fields: {
           project: { key: policy.target.projectKey },
           issuetype: { id: policy.target.issueTypeId },
-          summary: title,
+          summary: intent.title,
+          description: jiraAdf(intent.description),
         },
-        properties: [{ key: "empirical-sdd", value: projection }],
+        properties: [{
+          key: "empirical-sdd",
+          value: { projection, create: { marker: intent.marker, idempotencyKey } },
+        }],
       }),
     },
     [201],
@@ -1014,13 +1418,17 @@ async function attachJiraTicket(
     dependencies,
     {
       method: "GET",
-      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(ticket)}?fields=status`,
+      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(ticket)}?fields=status,project,issuetype`,
       headers: jiraHeaders(email, apiToken),
     },
     [200],
     [email, apiToken],
   );
-  return parseJiraIssue(policy, issue);
+  const parsed = parseJiraIssue(policy, issue, true);
+  if (ticket !== parsed.remoteId && ticket !== parsed.remoteKey) {
+    throw new EmpiricalError("TRACKER_IDENTITY_MISMATCH", "Jira returned a different issue than requested");
+  }
+  return parsed;
 }
 
 async function syncJiraTicket(
@@ -1035,13 +1443,15 @@ async function syncJiraTicket(
     dependencies,
     {
       method: "GET",
-      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}?fields=status`,
+      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}?fields=status,project,issuetype`,
       headers: jiraHeaders(email, apiToken),
     },
     [200],
     [email, apiToken],
   );
   const issueRecord = record(issue, "Jira issue");
+  const currentTicket = parseJiraIssue(policy, issueRecord, true);
+  assertRemoteIdentity(binding, currentTicket);
   await requestJson(
     dependencies,
     {
@@ -1101,12 +1511,20 @@ function jiraOrigin(policy: JiraTrackerPolicy): string {
   return new URL(policy.target.siteUrl).origin;
 }
 
-function parseJiraIssue(policy: JiraTrackerPolicy, value: unknown): RemoteTicket {
+function parseJiraIssue(policy: JiraTrackerPolicy, value: unknown, requireTargetFields = false): RemoteTicket {
   const issue = record(value, "Jira issue");
   const remoteId = requiredString(issue, "id", "Jira issue id");
   const remoteKey = requiredString(issue, "key", "Jira issue key");
   if (!/^[A-Z][A-Z0-9_]*-\d+$/.test(remoteKey)) {
     throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira returned an invalid issue key");
+  }
+  const projectKey = nestedOptionalString(issue, ["fields", "project", "key"]);
+  const issueTypeId = nestedOptionalString(issue, ["fields", "issuetype", "id"]);
+  if (
+    !remoteKey.startsWith(`${policy.target.projectKey}-`)
+    || (requireTargetFields && (projectKey !== policy.target.projectKey || issueTypeId !== policy.target.issueTypeId))
+  ) {
+    throw new EmpiricalError("TRACKER_TARGET_MISMATCH", "Jira issue is outside the configured project or issue type");
   }
   return {
     remoteId,
@@ -1132,8 +1550,21 @@ async function requestJson(
       maxResponseBytes: TRACKER_MAX_RESPONSE_BYTES,
     });
   } catch (error) {
-    if (error instanceof EmpiricalError) throw error;
+    if (error instanceof EmpiricalError) {
+      throw new EmpiricalError(error.code, safeDiagnostic(error.message, secrets));
+    }
     throw new EmpiricalError("TRACKER_TRANSPORT_FAILED", "Tracker request did not return a response", error);
+  }
+  if (
+    typeof response !== "object"
+    || response === null
+    || !Number.isInteger(response.status)
+    || typeof response.body !== "string"
+  ) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Tracker transport returned a malformed response envelope");
+  }
+  if (Buffer.byteLength(response.body, "utf8") > TRACKER_MAX_RESPONSE_BYTES) {
+    throw new EmpiricalError("TRACKER_RESPONSE_TOO_LARGE", "Tracker response exceeds the configured limit");
   }
   if (!expectedStatuses.includes(response.status)) {
     throw new EmpiricalError(
@@ -1179,15 +1610,47 @@ async function persistPending(
   root: string,
   policy: TrackerPolicy,
   projection: TrackerProjection,
+  intent: TrackerBindIntent,
   previous: TrackerPendingRecord | null,
   dependencies: TrackerDependencies,
+  newCreateAttempt = false,
+  replacesBindingDigest: string | null = previous?.replacesBindingDigest ?? null,
 ): Promise<TrackerPendingRecord> {
-  const same = previous?.projection.digest === projection.digest && previous.provider === policy.provider;
+  const targetDigest = trackerTargetDigest(policy);
+  const policyDigest = trackerProjectionPolicyDigest(policy);
+  const reuseBindAttempt = previous?.targetDigest === targetDigest
+    && previous.replacesBindingDigest === replacesBindingDigest
+    && (
+      (intent.mode === "create"
+        && previous.intent.mode === "create"
+        && previous.intent.marker === intent.marker
+        && !newCreateAttempt)
+      || (intent.mode === "attach"
+        && previous.intent.mode === "attach"
+        && previous.intent.ticket === intent.ticket)
+    );
+  const effectiveIntent = reuseBindAttempt ? previous.intent : intent;
+  const same = previous?.projection.digest === projection.digest
+    && previous.provider === policy.provider
+    && previous.targetDigest === targetDigest
+    && previous.policyDigest === policyDigest
+    && digestJson(previous.intent) === digestJson(effectiveIntent)
+    && previous.replacesBindingDigest === replacesBindingDigest;
   const pending = createPendingRecord({
     schemaVersion: TRACKER_SCHEMA_VERSION,
     provider: policy.provider,
+    targetDigest,
+    policyDigest,
     projection,
-    idempotencyKey: sha256(`empirical-sdd\0${policy.provider}\0${projection.feature}\0${projection.revision}\0${projection.digest}`),
+    intent: effectiveIntent,
+    replacesBindingDigest,
+    idempotencyKey: reuseBindAttempt
+      ? previous.idempotencyKey
+      : effectiveIntent.mode === "create"
+        ? sha256(`empirical-sdd-create\0${targetDigest}\0${projection.feature}\0${randomUUID()}`)
+        : replacesBindingDigest
+          ? sha256(`empirical-sdd-replace\0${targetDigest}\0${projection.feature}\0${effectiveIntent.ticket}\0${randomUUID()}`)
+          : sha256(`empirical-sdd-attach\0${targetDigest}\0${projection.feature}\0${effectiveIntent.ticket}`),
     attempts: same ? previous.attempts + 1 : 1,
     status: "pending",
     failure: null,
@@ -1213,6 +1676,23 @@ async function persistFailure(
   return failed;
 }
 
+async function markCreateDispatched(
+  root: string,
+  pending: TrackerPendingRecord,
+  dependencies: TrackerDependencies,
+): Promise<TrackerPendingRecord> {
+  if (pending.intent.mode !== "create") return pending;
+  const dispatched = createPendingRecord({
+    ...pending,
+    intent: { ...pending.intent, dispatched: true },
+    status: "pending",
+    failure: null,
+    updatedAt: now(dependencies),
+  });
+  await writeTrackerPending(root, dispatched);
+  return dispatched;
+}
+
 function createPendingRecord(
   input: Omit<TrackerPendingRecord, "digest"> & { digest?: string },
 ): TrackerPendingRecord {
@@ -1222,22 +1702,61 @@ function createPendingRecord(
 
 function createBinding(
   feature: string,
-  provider: TrackerProvider,
+  policy: TrackerPolicy,
   input: RemoteTicket,
+  bindIdempotencyKey: string,
 ): TrackerBinding {
   const body = {
     schemaVersion: TRACKER_SCHEMA_VERSION,
     feature,
-    provider,
+    provider: policy.provider,
     remoteId: input.remoteId,
     remoteKey: input.remoteKey,
     url: input.url,
     projectItemId: input.projectItemId,
     markerId: input.markerId,
+    targetDigest: trackerTargetDigest(policy),
+    bindIdempotencyKey,
     lastSyncedRevision: input.lastSyncedRevision ?? null,
     lastSyncedDigest: input.lastSyncedDigest ?? null,
+    lastSyncedPolicyDigest: input.lastSyncedPolicyDigest ?? null,
   } as const;
   return trackerBindingSchema.parse({ ...body, digest: digestJson(body) }) as TrackerBinding;
+}
+
+function trackerTargetDigest(policy: TrackerPolicy): string {
+  return digestJson({ provider: policy.provider, target: policy.target });
+}
+
+function trackerProjectionPolicyDigest(policy: TrackerPolicy): string {
+  return digestJson({ provider: policy.provider, target: policy.target, states: policy.states });
+}
+
+function assertBindingScope(policy: TrackerPolicy, binding: TrackerBinding): void {
+  if (binding.provider !== policy.provider) {
+    throw new EmpiricalError("TRACKER_PROVIDER_MISMATCH", "The feature binding belongs to a different configured provider");
+  }
+  if (binding.targetDigest !== trackerTargetDigest(policy)) {
+    throw new EmpiricalError("TRACKER_TARGET_MISMATCH", "The feature binding belongs to a different configured target");
+  }
+  const url = new URL(binding.url);
+  if (policy.provider === "github") {
+    const expectedPath = `/${policy.target.owner}/${policy.target.repository}/issues/${binding.remoteKey}`.toLowerCase();
+    if (url.hostname !== "github.com" || url.pathname.toLowerCase() !== expectedPath) {
+      throw new EmpiricalError("TRACKER_TARGET_MISMATCH", "GitHub binding URL is outside the configured repository");
+    }
+  } else if (policy.provider === "jira" && url.origin !== jiraOrigin(policy)) {
+    throw new EmpiricalError("TRACKER_TARGET_MISMATCH", "Jira binding URL is outside the configured site");
+  }
+}
+
+function assertPendingScope(policy: TrackerPolicy, pending: TrackerPendingRecord): void {
+  if (pending.provider !== policy.provider) {
+    throw new EmpiricalError("TRACKER_PROVIDER_MISMATCH", "Pending tracker work belongs to a different configured provider");
+  }
+  if (pending.targetDigest !== trackerTargetDigest(policy)) {
+    throw new EmpiricalError("TRACKER_TARGET_MISMATCH", "Pending tracker work belongs to a different configured target");
+  }
 }
 
 async function loadTrackerBinding(root: string, feature: string): Promise<TrackerBinding | null> {
@@ -1248,10 +1767,47 @@ async function loadTrackerBinding(root: string, feature: string): Promise<Tracke
     const parsed = trackerBindingSchema.parse(await readJson<unknown>(path, "INVALID_TRACKER_BINDING")) as TrackerBinding;
     verifyDigest(parsed, "Tracker binding");
     if (parsed.feature !== feature) throw new EmpiricalError("INVALID_TRACKER_BINDING", "Tracker binding feature does not match its path");
+    validateStoredBindingUrl(parsed);
     return parsed;
   } catch (error) {
     if (error instanceof EmpiricalError) throw error;
     throw new EmpiricalError("INVALID_TRACKER_BINDING", "Tracker binding is malformed", error);
+  }
+}
+
+function validateStoredBindingUrl(binding: TrackerBinding): void {
+  const stored = new URL(binding.url);
+  if (stored.username || stored.password || stored.search || stored.hash) {
+    throw new EmpiricalError("INVALID_TRACKER_BINDING", "Stored tracker binding URL contains credentials or mutable URL components");
+  }
+  if (binding.provider === "github") {
+    const url = new URL(validateProviderUrl(binding.url, "github.com"));
+    if (!url.pathname.toLowerCase().endsWith(`/issues/${binding.remoteKey}`.toLowerCase())) {
+      throw new EmpiricalError("INVALID_TRACKER_BINDING", "Stored GitHub binding URL does not match its issue key");
+    }
+    return;
+  }
+  if (binding.provider === "linear") {
+    const url = new URL(validateProviderUrl(binding.url, "linear.app"));
+    const segments = url.pathname.split("/").filter(Boolean);
+    const issueIndex = segments.indexOf("issue");
+    if (issueIndex < 0 || segments[issueIndex + 1] !== binding.remoteKey) {
+      throw new EmpiricalError("INVALID_TRACKER_BINDING", "Stored Linear binding URL does not match its issue key");
+    }
+    return;
+  }
+  const url = new URL(binding.url);
+  if (
+    url.protocol !== "https:"
+    || !url.hostname.endsWith(".atlassian.net")
+    || url.port
+    || url.username
+    || url.password
+    || url.search
+    || url.hash
+    || url.pathname !== `/browse/${binding.remoteKey}`
+  ) {
+    throw new EmpiricalError("INVALID_TRACKER_BINDING", "Stored Jira binding URL is outside a safe Atlassian issue origin");
   }
 }
 
@@ -1269,6 +1825,22 @@ async function loadTrackerPending(root: string, feature: string): Promise<Tracke
     if (error instanceof EmpiricalError) throw error;
     throw new EmpiricalError("INVALID_TRACKER_PENDING", "Tracker pending projection is malformed", error);
   }
+}
+
+/**
+ * Read and validate durable tracker records without taking a lock, contacting a
+ * provider, or mutating recovery state. This deliberately works without a
+ * configured policy so Doctor can detect dormant/corrupt tracker artifacts.
+ */
+export async function inspectTrackerRecords(
+  root: string,
+  feature: string,
+): Promise<{ binding: TrackerBinding | null; pending: TrackerPendingRecord | null }> {
+  const [binding, pending] = await Promise.all([
+    loadTrackerBinding(root, feature),
+    loadTrackerPending(root, feature),
+  ]);
+  return { binding, pending };
 }
 
 async function writeTrackerBinding(root: string, binding: TrackerBinding): Promise<void> {
@@ -1435,18 +2007,250 @@ function validateJiraSite(value: string): void {
 
 function validateProviderUrl(value: string, host: string): string {
   const url = new URL(value);
-  if (url.protocol !== "https:" || url.hostname !== host || url.port) {
+  if (
+    url.protocol !== "https:"
+    || url.hostname !== host
+    || url.port
+    || url.username
+    || url.password
+    || url.search
+    || url.hash
+  ) {
     throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `Tracker returned an unexpected ${host} URL`);
   }
-  url.username = "";
-  url.password = "";
-  url.search = "";
-  url.hash = "";
   return url.toString();
 }
 
+function trackerBindIntent(feature: string, input: TrackerBindInput): TrackerBindIntent {
+  if (input.mode === "attach") {
+    return trackerAttachIntentSchema.parse({ mode: "attach", ticket: input.ticket.trim() }) as TrackerBindIntent;
+  }
+  const description = safeText(input.description ?? "Tracked by Empirical SDD", 4_000);
+  const marker = `empirical-sdd-bind:${feature}`;
+  if (description.includes(`<!-- ${marker}:`)) {
+    throw new EmpiricalError("INVALID_TRACKER_BIND_INPUT", "Create description cannot contain an Empirical binding marker");
+  }
+  return trackerCreateIntentSchema.parse({
+    mode: "create",
+    title: safeText(input.title ?? titleFromFeature(feature), 200),
+    description,
+    marker,
+    dispatched: false,
+  }) as TrackerBindIntent;
+}
+
+function failedBindResult(
+  state: WorkflowState,
+  policy: TrackerPolicy,
+  binding: TrackerBinding | null,
+  pending: TrackerPendingRecord,
+): TrackerBindResult {
+  return {
+    binding,
+    tracker: failedStatus(
+      state.revision,
+      policy.provider,
+      binding?.url ?? null,
+      binding?.lastSyncedRevision ?? null,
+      pending.failure,
+      pending.projection.revision,
+    ),
+  };
+}
+
+function assertRemoteIdentity(binding: TrackerBinding, remote: RemoteTicket): void {
+  if (binding.remoteId !== remote.remoteId || binding.remoteKey !== remote.remoteKey) {
+    throw new EmpiricalError("TRACKER_IDENTITY_MISMATCH", "Provider response identity does not match the durable tracker binding");
+  }
+}
+
+function createMarkerBlock(
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
+): string {
+  const attempt = idempotencyKey.slice("sha256:".length);
+  return [
+    `<!-- ${intent.marker}:${attempt}:start -->`,
+    `Empirical SDD create attempt ${idempotencyKey}`,
+    `<!-- ${intent.marker}:${attempt}:end -->`,
+  ].join("\n");
+}
+
+function appendCreateMarker(
+  existing: string,
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
+): string {
+  const block = createMarkerBlock(intent, idempotencyKey);
+  return `${existing.trim()}${existing.trim() ? "\n\n" : ""}${block}`;
+}
+
+function hasExactCreateMarker(
+  value: unknown,
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
+): boolean {
+  if (typeof value !== "string") return false;
+  const block = createMarkerBlock(intent, idempotencyKey);
+  return value.split(block).length === 2;
+}
+
+function jiraAdf(description: string): Record<string, unknown> {
+  return {
+    type: "doc",
+    version: 1,
+    content: description.split(/\n+/).filter(Boolean).map((text) => ({
+      type: "paragraph",
+      content: [{ type: "text", text }],
+    })),
+  };
+}
+
+async function reconcileCreate(
+  policy: TrackerPolicy,
+  pending: TrackerPendingRecord,
+  credentials: string[],
+  dependencies: TrackerDependencies,
+): Promise<RemoteTicket | null> {
+  if (pending.intent.mode !== "create") {
+    throw new EmpiricalError("INVALID_TRACKER_PENDING", "Create reconciliation requires a durable create intent");
+  }
+  const matches = policy.provider === "github"
+    ? await reconcileGitHubCreate(policy, pending, credentials[0]!, dependencies)
+    : policy.provider === "linear"
+      ? await reconcileLinearCreate(policy, pending, credentials[0]!, dependencies)
+      : await reconcileJiraCreate(policy, pending, credentials[0]!, credentials[1]!, dependencies);
+  if (matches.length > 1) {
+    throw new EmpiricalError("TRACKER_CREATE_COLLISION", "Multiple provider tickets contain the exact Empirical create marker");
+  }
+  return matches[0] ?? null;
+}
+
+async function reconcileGitHubCreate(
+  policy: GitHubTrackerPolicy,
+  pending: TrackerPendingRecord,
+  token: string,
+  dependencies: TrackerDependencies,
+): Promise<RemoteTicket[]> {
+  if (pending.intent.mode !== "create") return [];
+  const matches: RemoteTicket[] = [];
+  for (let page = 1; page <= 100; page += 1) {
+    const response = await requestJson(dependencies, {
+      method: "GET",
+      url: `https://api.github.com/repos/${encodeURIComponent(policy.target.owner)}/${encodeURIComponent(policy.target.repository)}/issues?state=all&per_page=100&page=${page}`,
+      headers: githubHeaders(token),
+    }, [200], [token]);
+    if (!Array.isArray(response)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "GitHub issue reconciliation response is malformed");
+    for (const raw of response) {
+      const issue = record(raw, "GitHub reconciliation issue");
+      if (issue.pull_request !== undefined) continue;
+      if (hasExactCreateMarker(issue.body, pending.intent, pending.idempotencyKey)) {
+        matches.push(parseGitHubIssue(policy, issue));
+      }
+    }
+    if (response.length < 100) return matches;
+  }
+  throw new EmpiricalError("TRACKER_RECONCILIATION_LIMIT", "GitHub create reconciliation exceeded 10,000 issues");
+}
+
+async function reconcileLinearCreate(
+  policy: LinearTrackerPolicy,
+  pending: TrackerPendingRecord,
+  apiKey: string,
+  dependencies: TrackerDependencies,
+): Promise<RemoteTicket[]> {
+  if (pending.intent.mode !== "create") return [];
+  const matches: RemoteTicket[] = [];
+  let after: string | null = null;
+  for (let page = 0; page < 100; page += 1) {
+    const data = await linearGraphql(
+      `query Reconcile($team: ID!, $marker: String!, $after: String) {
+        issues(first: 100, after: $after, includeArchived: true,
+          filter: {team: {id: {eq: $team}}, description: {contains: $marker}}) {
+          nodes { id identifier url description team { id } project { id } }
+          pageInfo { hasNextPage endCursor }
+        }
+      }`,
+      { team: policy.target.teamId, marker: pending.idempotencyKey, after },
+      apiKey,
+      dependencies,
+    );
+    const connection = record(data.issues, "Linear reconciliation issues");
+    if (!Array.isArray(connection.nodes)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Linear reconciliation nodes are malformed");
+    for (const raw of connection.nodes) {
+      const issue = record(raw, "Linear reconciliation issue");
+      if (hasExactLinearCreateMarker(issue.description, pending.intent, pending.idempotencyKey)) {
+        matches.push(parseLinearIssue(policy, issue));
+      }
+    }
+    const pageInfo = record(connection.pageInfo ?? {}, "Linear reconciliation page info");
+    if (typeof pageInfo.hasNextPage !== "boolean") {
+      throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Linear reconciliation pagination is malformed");
+    }
+    if (!pageInfo.hasNextPage) return matches;
+    after = requiredString(pageInfo, "endCursor", "Linear reconciliation cursor");
+  }
+  throw new EmpiricalError("TRACKER_RECONCILIATION_LIMIT", "Linear create reconciliation exceeded 10,000 issues");
+}
+
+async function reconcileJiraCreate(
+  policy: JiraTrackerPolicy,
+  pending: TrackerPendingRecord,
+  email: string,
+  apiToken: string,
+  dependencies: TrackerDependencies,
+): Promise<RemoteTicket[]> {
+  if (pending.intent.mode !== "create") return [];
+  const matches: RemoteTicket[] = [];
+  let nextPageToken: string | null = null;
+  for (let page = 0; page < 100; page += 1) {
+    const response = await requestJson(dependencies, {
+      method: "POST",
+      url: `${jiraOrigin(policy)}/rest/api/3/search/jql`,
+      headers: jiraHeaders(email, apiToken),
+      body: JSON.stringify({
+        jql: `project = ${policy.target.projectKey} ORDER BY created DESC`,
+        maxResults: 100,
+        ...(nextPageToken ? { nextPageToken } : {}),
+        fields: ["status", "project", "issuetype"],
+        properties: ["empirical-sdd"],
+      }),
+    }, [200], [email, apiToken]);
+    const result = record(response, "Jira reconciliation response");
+    if (result.warnings !== undefined) {
+      if (!Array.isArray(result.warnings) || result.warnings.some((warning) => typeof warning !== "string")) {
+        throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira reconciliation warnings are malformed");
+      }
+      if (result.warnings.length > 0) {
+        throw new EmpiricalError("TRACKER_RECONCILIATION_INCOMPLETE", "Jira reported an incomplete create reconciliation result");
+      }
+    }
+    if (!Array.isArray(result.issues)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira reconciliation issues are malformed");
+    for (const raw of result.issues) {
+      const issue = record(raw, "Jira reconciliation issue");
+      const properties = record(issue.properties ?? {}, "Jira reconciliation properties");
+      const empirical = properties["empirical-sdd"];
+      if (typeof empirical !== "object" || empirical === null || Array.isArray(empirical)) continue;
+      const create = record((empirical as Record<string, unknown>).create ?? {}, "Jira reconciliation create marker");
+      if (create.marker === pending.intent.marker && create.idempotencyKey === pending.idempotencyKey) {
+        matches.push(parseJiraIssue(policy, issue, true));
+      }
+    }
+    if (typeof result.isLast !== "boolean") {
+      throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira reconciliation pagination is malformed");
+    }
+    if (result.isLast) return matches;
+    nextPageToken = requiredString(result, "nextPageToken", "Jira reconciliation next-page token");
+  }
+  throw new EmpiricalError("TRACKER_RECONCILIATION_LIMIT", "Jira create reconciliation exceeded 10,000 issues");
+}
+
 function renderProjection(projection: TrackerProjection): string {
-  const gate = projection.summary ? `\nGate: ${projection.summary}` : "";
+  const summary = projection.summary
+    ?.replace(/<!--|-->/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const gate = summary ? `\nGate: ${summary}` : "";
   return [
     `<!-- empirical-sdd:${projection.feature}:start -->`,
     `Empirical SDD · ${projection.phase}/${projection.status} · revision ${projection.revision}`,
@@ -1460,12 +2264,222 @@ function upsertMarkerBlock(existing: string, projection: TrackerProjection): str
   const block = renderProjection(projection);
   const start = `<!-- empirical-sdd:${projection.feature}:start -->`;
   const end = `<!-- empirical-sdd:${projection.feature}:end -->`;
-  const startIndex = existing.indexOf(start);
-  const endIndex = existing.indexOf(end);
-  if (startIndex >= 0 && endIndex >= startIndex) {
-    return `${existing.slice(0, startIndex)}${block}${existing.slice(endIndex + end.length)}`.trim();
+  const lines = existing.split("\n");
+  const starts = lines.flatMap((line, index) => line === start ? [index] : []);
+  const ends = lines.flatMap((line, index) => line === end ? [index] : []);
+  if (starts.length === 1 && ends.length === 1 && ends[0]! >= starts[0]!) {
+    return [
+      ...lines.slice(0, starts[0]),
+      ...block.split("\n"),
+      ...lines.slice(ends[0]! + 1),
+    ].join("\n").trim();
+  }
+  if (starts.length !== 0 || ends.length !== 0) {
+    throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Existing tracker description contains duplicate or unbalanced Empirical markers");
   }
   return `${existing.trim()}${existing.trim() ? "\n\n" : ""}${block}`;
+}
+
+const LINEAR_MARKER_ORIGIN = "https://github.com/goempirical/empirical-sdd";
+
+function linearProjectionBoundary(feature: string, boundary: "start" | "end"): string {
+  const label = boundary === "start" ? "Delivery status" : "Managed by Empirical SDD · local workflow is authoritative";
+  const heading = boundary === "start" ? "## " : "";
+  return `${heading}[${label}](<${LINEAR_MARKER_ORIGIN}#empirical-sdd:${feature}:${boundary}>)`;
+}
+
+function linearCreateMarkerLine(
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
+): string {
+  return `[Crash-safe synchronization enabled](<${LINEAR_MARKER_ORIGIN}#${intent.marker}:${idempotencyKey}>)`;
+}
+
+function readableTrackerToken(value: string): string {
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`)
+    .join(" ");
+}
+
+function readableCompletionLevel(value: string): string {
+  return value === "none" ? "Not complete" : readableTrackerToken(value);
+}
+
+function renderLinearProjection(projection: TrackerProjection): string {
+  const summary = projection.summary
+    ?.replace(/<!--|-->/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return [
+    linearProjectionBoundary(projection.feature, "start"),
+    `[${readableTrackerToken(projection.progress)}](<${LINEAR_MARKER_ORIGIN}#${projection.marker}>)`,
+    `- Phase: ${readableTrackerToken(projection.phase)}`,
+    `- Workflow: ${readableTrackerToken(projection.status)}`,
+    `- Revision: ${projection.revision}`,
+    `- Completion: ${readableCompletionLevel(projection.completionLevel)}`,
+    ...(summary ? [`Gate: ${summary}`] : []),
+    "",
+    linearProjectionBoundary(projection.feature, "end"),
+  ].join("\n");
+}
+
+function upsertLinearMarkerBlock(existing: string, projection: TrackerProjection): string {
+  const block = renderLinearProjection(projection);
+  const legacyStart = `<!-- empirical-sdd:${projection.feature}:start -->`;
+  const legacyEnd = `<!-- empirical-sdd:${projection.feature}:end -->`;
+  const readableStart = linearProjectionBoundary(projection.feature, "start");
+  const readableEnd = linearProjectionBoundary(projection.feature, "end");
+  const priorReadableStart = `[**Empirical SDD**](${LINEAR_MARKER_ORIGIN}#empirical-sdd:${projection.feature}:start)`;
+  const priorCanonicalStart = `**[Empirical SDD](<${LINEAR_MARKER_ORIGIN}#empirical-sdd:${projection.feature}:start>)`;
+  const priorReadableEnd = `[Managed projection](${LINEAR_MARKER_ORIGIN}#empirical-sdd:${projection.feature}:end)`;
+  const priorCanonicalEnd = `[Managed projection](<${LINEAR_MARKER_ORIGIN}#empirical-sdd:${projection.feature}:end>)`;
+  const priorHeadingStart = `## [Empirical SDD](<${LINEAR_MARKER_ORIGIN}#empirical-sdd:${projection.feature}:start>)`;
+  const priorIndentedReadableEnd = `  ${readableEnd}`;
+  const markerFragments = [
+    `empirical-sdd:${projection.feature}:start`,
+    `empirical-sdd:${projection.feature}:end`,
+  ];
+  const lines = existing.replace(/\r\n/g, "\n").split("\n");
+  const starts = lines.flatMap((line, index) => [legacyStart, readableStart, priorReadableStart, priorCanonicalStart, priorHeadingStart].includes(line) ? [index] : []);
+  const ends = lines.flatMap((line, index) => [legacyEnd, readableEnd, priorReadableEnd, priorCanonicalEnd, priorIndentedReadableEnd].includes(line) ? [index] : []);
+  const malformed = lines.some((line) => markerFragments.some((fragment) => line.includes(fragment))
+    && line !== legacyStart
+    && line !== legacyEnd
+    && line !== readableStart
+    && line !== readableEnd
+    && line !== priorReadableStart
+    && line !== priorCanonicalStart
+    && line !== priorReadableEnd
+    && line !== priorCanonicalEnd
+    && line !== priorHeadingStart
+    && line !== priorIndentedReadableEnd);
+  if (
+    !malformed
+    && starts.length === 1
+    && ends.length === 1
+    && ends[0]! >= starts[0]!
+    && ((lines[starts[0]!] === legacyStart && lines[ends[0]!] === legacyEnd)
+      || (lines[starts[0]!] !== legacyStart && lines[ends[0]!] !== legacyEnd))
+  ) {
+    return [
+      ...lines.slice(0, starts[0]),
+      ...block.split("\n"),
+      ...lines.slice(ends[0]! + 1),
+    ].join("\n").trim();
+  }
+  if (malformed || starts.length !== 0 || ends.length !== 0) {
+    throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Existing Linear description contains duplicate, mixed, malformed, or unbalanced Empirical projection markers");
+  }
+  return `${existing.trim()}${existing.trim() ? "\n\n" : ""}${block}`;
+}
+
+function appendLinearCreateMarker(
+  existing: string,
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
+): string {
+  const marker = linearCreateMarkerLine(intent, idempotencyKey);
+  return `${existing.trim()}${existing.trim() ? "\n\n" : ""}${marker}`;
+}
+
+interface LinearCreateMarkerMatch {
+  kind: "legacy" | "readable";
+  start: number;
+  end: number;
+  idempotencyKey: string;
+}
+
+function linearCreateMarkerMatches(value: string, marker: string): { matches: LinearCreateMarkerMatch[]; malformed: boolean } {
+  const lines = value.replace(/\r\n/g, "\n").split("\n");
+  const markerPrefix = `${marker}:`;
+  const legacyStartPrefix = `<!-- ${markerPrefix}`;
+  const readablePrefixes = [
+    `[Recovery reference](${LINEAR_MARKER_ORIGIN}#${markerPrefix}`,
+    `[Crash-safe synchronization enabled](${LINEAR_MARKER_ORIGIN}#${markerPrefix}`,
+  ];
+  const canonicalReadablePrefixes = [
+    `[Recovery reference](<${LINEAR_MARKER_ORIGIN}#${markerPrefix}`,
+    `[Crash-safe synchronization enabled](<${LINEAR_MARKER_ORIGIN}#${markerPrefix}`,
+  ];
+  const matches: LinearCreateMarkerMatch[] = [];
+  const consumed = new Set<number>();
+  let malformed = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    if (line.startsWith(legacyStartPrefix) && line.endsWith(":start -->")) {
+      const attempt = line.slice(legacyStartPrefix.length, -":start -->".length);
+      const idempotencyKey = `sha256:${attempt}`;
+      if (
+        /^[a-f0-9]{64}$/.test(attempt)
+        && lines[index + 1] === `Empirical SDD create attempt ${idempotencyKey}`
+        && lines[index + 2] === `<!-- ${marker}:${attempt}:end -->`
+      ) {
+        matches.push({ kind: "legacy", start: index, end: index + 2, idempotencyKey });
+        consumed.add(index);
+        consumed.add(index + 1);
+        consumed.add(index + 2);
+        index += 2;
+        continue;
+      }
+      malformed = true;
+      continue;
+    }
+    const canonicalReadablePrefix = canonicalReadablePrefixes.find((prefix) => line.startsWith(prefix));
+    const readablePrefix = readablePrefixes.find((prefix) => line.startsWith(prefix));
+    const activeReadablePrefix = canonicalReadablePrefix ?? readablePrefix ?? null;
+    if (activeReadablePrefix && line.endsWith(canonicalReadablePrefix ? ">)" : ")")) {
+      const idempotencyKey = line.slice(activeReadablePrefix.length, canonicalReadablePrefix ? -2 : -1);
+      if (/^sha256:[a-f0-9]{64}$/.test(idempotencyKey)) {
+        matches.push({ kind: "readable", start: index, end: index, idempotencyKey });
+        consumed.add(index);
+        continue;
+      }
+      malformed = true;
+    }
+  }
+  lines.forEach((line, index) => {
+    if (line.includes(marker) && !consumed.has(index)) malformed = true;
+  });
+  return { matches, malformed };
+}
+
+function hasExactLinearCreateMarker(
+  value: unknown,
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
+): boolean {
+  if (typeof value !== "string") return false;
+  const result = linearCreateMarkerMatches(value, intent.marker);
+  return !result.malformed
+    && result.matches.length === 1
+    && result.matches[0]!.idempotencyKey === idempotencyKey;
+}
+
+function migrateLinearCreateMarker(existing: string, feature: string): string {
+  const marker = `empirical-sdd-bind:${feature}`;
+  const result = linearCreateMarkerMatches(existing, marker);
+  if (result.malformed || result.matches.length > 1) {
+    throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Existing Linear description contains duplicate, mixed, or malformed Empirical recovery markers");
+  }
+  const match = result.matches[0];
+  if (!match || match.kind === "readable") return existing;
+  const lines = existing.replace(/\r\n/g, "\n").split("\n");
+  const replacement = `[Crash-safe synchronization enabled](<${LINEAR_MARKER_ORIGIN}#${marker}:${match.idempotencyKey}>)`;
+  return [
+    ...lines.slice(0, match.start),
+    replacement,
+    ...lines.slice(match.end + 1),
+  ].join("\n");
+}
+
+function isExactOwnedMarkerBlock(body: string, start: string, end: string): boolean {
+  const lines = body.replace(/\r\n/g, "\n").split("\n");
+  return lines[0] === start
+    && lines.at(-1) === end
+    && lines.filter((line) => line === start).length === 1
+    && lines.filter((line) => line === end).length === 1;
 }
 
 function idempotencyLabel(projection: TrackerProjection): string {
@@ -1486,6 +2500,19 @@ function record(value: unknown, label: string): Record<string, unknown> {
 function requiredString(value: Record<string, unknown>, key: string, label: string): string {
   const result = value[key];
   if (typeof result !== "string" || !result.trim() || !REMOTE_ID.test(result.trim())) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `${label} is missing or malformed`);
+  }
+  return result.trim();
+}
+
+function requiredUrlString(value: Record<string, unknown>, key: string, label: string): string {
+  const result = value[key];
+  if (typeof result !== "string" || !result.trim() || result.trim().length > 2_048) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `${label} is missing or malformed`);
+  }
+  try {
+    new URL(result.trim());
+  } catch {
     throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `${label} is missing or malformed`);
   }
   return result.trim();

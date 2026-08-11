@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "issueKey": "SDD-7",
+  "issueUrl": "https://linear.app/empirical/issue/SDD-7/readable-linear-feature-tickets-with-crash-safe-synchronization",
+  "title": "Readable Linear feature tickets with crash-safe synchronization",
+  "finalState": "In Testing",
+  "transitions": [
+    "Backlog",
+    "In Progress",
+    "In Testing"
+  ],
+  "commentsCreated": 3,
+  "screenshotUploadedInQaComment": true,
+  "presentation": {
+    "featureBrief": true,
+    "readableStatus": true,
+    "noRawHtml": true,
+    "noVisibleDigestProse": true,
+    "qaComment": true,
+    "qaScreenshotInComment": true,
+    "implementationComment": true,
+    "finalState": true
+  },
+  "credentialHandling": {
+    "freshSecurePrompt": true,
+    "exposedChatCredentialUsed": false,
+    "credentialValueRecorded": false
+  }
+}

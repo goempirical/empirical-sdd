@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "id": "collected-c31696b3b5c72adc50e46fb7",
+  "criteria": [
+    "AC-6"
+  ],
+  "evidenceKinds": [
+    "test"
+  ],
+  "summary": "The live adapter test migrated SDD-5, then created and verified the replacement SDD-7 feature ticket; sanitized assertions prove readable status, preserved brief, comments-only QA screenshot, exact markers, and In Testing state.",
+  "passed": true,
+  "startedAt": "2026-08-11T17:15:26.226Z",
+  "completedAt": "2026-08-11T17:15:26.226Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "make-linear-tracker-descriptions-clean-and-readable-while-preserving-exa",
+    "specRevision": 2,
+    "specDigest": "sha256:9a499b7de5ac36128f8a94eded08d0639b852b101ed2e5ece4131b046b24d3e7",
+    "treeDigest": "sha256:0e2da8660210a29db05150af67c82c76e17f38d68cdb26c43e4478cb0a6b11b6",
+    "policyDigest": "sha256:888d86d00b83ec4a957413efb0701df5278d06de2077ba6b76f58dd2ba6eeeaf"
+  },
+  "digest": "sha256:91ff8e7ffb2844eadd3b17f684cdfc8598b0328d8693f685849397a52f988922",
+  "kind": "collected",
+  "collector": "Live Linear adapter verification harness",
+  "artifacts": [
+    {
+      "path": ".empirical/specs/make-linear-tracker-descriptions-clean-and-readable-while-preserving-exa/evidence/artifacts/live-linear-feature-demo.json",
+      "mediaType": "application/json",
+      "bytes": 831,
+      "digest": "sha256:468b3f21fc03f5890d29ce96189d7368cdcdb8604676d744ea38ee198a919b76"
+    }
+  ]
+}

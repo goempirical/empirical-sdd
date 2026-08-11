@@ -49,6 +49,7 @@ import {
   type SetupSettings,
 } from "./setup.js";
 import { ProjectStore } from "./storage.js";
+import { parseTrackerBindInput } from "./tracking.js";
 import { detectBase } from "./worktrees.js";
 import {
   PRODUCT_VERSION,
@@ -61,6 +62,8 @@ import {
   type FeatureStartResult,
   type IntegrationReport,
   type ProjectConfigurationInput,
+  type ProjectStatus,
+  type TrackerStatus,
   type UninstallReport,
   type WorktreeHandoff,
   type WorktreeProposal,
@@ -475,7 +478,7 @@ async function main(): Promise<void> {
       assertNoArgs(context.args, "status");
       const project = await EmpiricalProject.openReadOnly(context.root);
       const state = await project.statusReport();
-      emit(state, context.json, () => `feature=${state.activeFeature ?? "none"} phase=${state.phase} status=${state.status} revision=${state.revision} profile=${state.profile} tracker=${state.tracker.health}`);
+      emit(state, context.json, renderStatus);
       return;
     }
     case "next": {
@@ -499,11 +502,11 @@ async function main(): Promise<void> {
       return;
     }
     case "tracker-bind": {
-      const input = await readJsonInput<import("./types.js").TrackerBindInput>(context.args, "tracker-bind");
+      const input = parseTrackerBindInput(await readJsonInput<unknown>(context.args, "tracker-bind"));
       const project = await EmpiricalProject.open(context.root);
       emit(await project.bindTracker(input), context.json, (value) => {
         const result = value as import("./types.js").TrackerBindResult;
-        return `External ${result.tracker.provider ?? "ticket"} mirror is ${result.tracker.health}${result.tracker.url ? `: ${result.tracker.url}` : "."}`;
+        return renderTrackerStatus(result.tracker);
       });
       return;
     }
@@ -512,7 +515,7 @@ async function main(): Promise<void> {
       const project = await EmpiricalProject.open(context.root);
       emit(await project.syncTracker(), context.json, (value) => {
         const result = value as import("./types.js").TrackerSyncResult;
-        return `External ${result.tracker.provider ?? "ticket"} mirror is ${result.tracker.health}${result.tracker.url ? `: ${result.tracker.url}` : "."}`;
+        return renderTrackerStatus(result.tracker);
       });
       return;
     }
@@ -1378,7 +1381,7 @@ function renderAction(value: unknown): string {
   const header = action.feature ? `${action.feature}: ${action.phase} (${action.profile}, ${action.status}, revision ${action.revision})` : `Empirical: ${action.phase}`;
   const progress = phaseProgress(action.profile, action.phase);
   const sections = [`Empirical${progress ? ` · ${progress}` : ""}`, header, action.instructions];
-  sections.push(`External tracker: ${action.tracker.health}${action.tracker.url ? ` (${action.tracker.url})` : ""}`);
+  sections.push(renderTrackerStatus(action.tracker));
   if (action.projectContext.length) sections.push(`Project context:\n${action.projectContext.map((item) => `- ${item}`).join("\n")}`);
   if (action.knowledgeContext.length) sections.push(`Repository knowledge:\n${action.knowledgeContext.map((item) => `- ${item}`).join("\n")}`);
   if (action.capabilityContext.length) sections.push(`Living capability context:\n${action.capabilityContext.map((item) => `- ${item}`).join("\n")}`);
@@ -1387,6 +1390,84 @@ function renderAction(value: unknown): string {
   if (action.requiredEvidence.length) sections.push(`Required evidence: ${action.requiredEvidence.join(", ")}`);
   if (action.completion.available) sections.push(`Complete with: ${action.completion.cli}`);
   return sections.join("\n\n");
+}
+
+function renderStatus(value: unknown): string {
+  const state = value as ProjectStatus;
+  return [
+    `feature=${state.activeFeature ?? "none"} phase=${state.phase} status=${state.status} revision=${state.revision} profile=${state.profile}`,
+    renderTrackerStatus(state.tracker),
+  ].join("\n\n");
+}
+
+function renderTrackerStatus(tracker: TrackerStatus): string {
+  const failure = tracker.failure
+    ? `${boundedHumanText(tracker.failure.code, 64)} — ${boundedHumanText(tracker.failure.summary, 500)}`
+    : "none";
+  const failureAt = tracker.failure ? boundedHumanText(tracker.failure.at, 64) : "none";
+  const recovery = tracker.failure
+    ? boundedHumanText(trackerRecoveryHint(tracker.failure.code), 500)
+    : "none";
+  return [
+    "External tracker:",
+    `- Health: ${tracker.health}`,
+    `- Provider: ${tracker.provider ?? "none"}`,
+    `- URL: ${safeTrackerUrl(tracker)}`,
+    `- Committed revision: ${tracker.committedRevision}`,
+    `- Last-synced revision: ${tracker.lastSyncedRevision ?? "none"}`,
+    `- Pending revision: ${tracker.pendingRevision ?? "none"}`,
+    `- Failure: ${failure}`,
+    `- Failure at: ${failureAt}`,
+    `- Recovery: ${recovery}`,
+  ].join("\n");
+}
+
+function trackerRecoveryHint(code: string): string {
+  if (code === "TRACKER_CREATE_AMBIGUOUS") {
+    return "Run tracker-sync to reconcile the attempted create. If it remains ambiguous, locate and attach the ticket or explicitly confirm a duplicate-risk create retry.";
+  }
+  if (code === "TRACKER_TARGET_MISMATCH" || code === "TRACKER_PROVIDER_MISMATCH") {
+    return "Restore the policy target that owns this binding, or explicitly replace and revalidate the binding for the intended target.";
+  }
+  if (code === "TRACKER_CREDENTIAL_MISSING") {
+    return "Inject the configured credential environment variable into the MCP or CLI host process, then run tracker-sync again.";
+  }
+  return "Resolve the reported tracker or provider failure, then run tracker-sync to retry the durable pending revision.";
+}
+
+function safeTrackerUrl(tracker: TrackerStatus): string {
+  if (!tracker.url) return "none";
+  try {
+    const value = new URL(tracker.url);
+    const expectedHost = tracker.provider === "github"
+      ? value.hostname === "github.com"
+      : tracker.provider === "linear"
+        ? value.hostname === "linear.app"
+        : tracker.provider === "jira"
+          ? value.hostname.endsWith(".atlassian.net")
+          : false;
+    if (
+      value.protocol !== "https:"
+      || !expectedHost
+      || value.port
+      || value.username
+      || value.password
+      || value.search
+      || value.hash
+      || tracker.url.length > 2048
+    ) return "unavailable";
+    return boundedHumanText(tracker.url, 2048);
+  } catch {
+    return "unavailable";
+  }
+}
+
+function boundedHumanText(value: string, limit: number): string {
+  return value
+    .replace(/[\u0000-\u001f\u007f-\u009f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, limit);
 }
 
 function phaseProgress(profile: ActionPacket["profile"], phase: ActionPacket["phase"]): string | null {

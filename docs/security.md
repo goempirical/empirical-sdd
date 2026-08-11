@@ -25,11 +25,16 @@ untrusted.
   secret-like, binary, and oversized paths. It stores fingerprints, not a
   remote semantic index. Stale generated pages are not silently retrieved.
 - Tracker Policy v1 stores only provider target IDs, normalized status IDs, and
-  credential environment-variable names. Runtime values are never serialized.
-  Provider requests use fixed HTTPS endpoints, bounded timeouts and responses,
-  redacted diagnostics, checksummed feature-local state, and a stable
-  idempotency marker. Remote input is never allowed to mutate local workflow
-  state or acceptance criteria.
+  credential environment-variable names matching
+  `^(?=.{2,64}$)[A-Z][A-Z0-9]*_[A-Z0-9_]+$`. Runtime values are never
+  serialized. The host must inject the named nonblank values into the Empirical
+  process and grant only the provider permissions needed to
+  read/create/update the exact configured ticket target. Provider requests use
+  fixed HTTPS endpoints, bounded timeouts and responses, checksummed
+  target-bound feature state, and a stable idempotency marker. Diagnostics are
+  bounded and credential-redacted before return or persistence, including
+  failures raised by an injected transport. Remote input is never allowed to
+  mutate local workflow state or acceptance criteria.
 - Reserved migration stage/marker/backup paths are transaction state rather
   than source. Pre-marker failure removes only its owned stage; evidence,
   knowledge, and integration overlays exclude scratch, while Doctor diagnoses

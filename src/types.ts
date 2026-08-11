@@ -182,15 +182,43 @@ export interface TrackerBinding {
   url: string;
   projectItemId: string | null;
   markerId: string | null;
+  /** Digest of the provider and remote target this binding is confined to. */
+  targetDigest: string;
+  /** Durable bind attempt that produced this remote association. */
+  bindIdempotencyKey: string;
   lastSyncedRevision: number | null;
   lastSyncedDigest: string | null;
+  /** Digest of the target and state mapping used by the last acknowledged projection. */
+  lastSyncedPolicyDigest: string | null;
   digest: string;
 }
+
+export interface TrackerCreateIntent {
+  mode: "create";
+  title: string;
+  description: string;
+  /** Stable logical marker for this feature/target; the pending idempotency key identifies the attempt. */
+  marker: string;
+  /** Set durably immediately before the provider create request is dispatched. */
+  dispatched: boolean;
+}
+
+export interface TrackerAttachIntent {
+  mode: "attach";
+  ticket: string;
+}
+
+export type TrackerBindIntent = TrackerCreateIntent | TrackerAttachIntent;
 
 export interface TrackerPendingRecord {
   schemaVersion: 1;
   provider: TrackerProvider;
+  targetDigest: string;
+  policyDigest: string;
   projection: TrackerProjection;
+  intent: TrackerBindIntent;
+  /** Binding superseded by an explicit replacement; it must never satisfy this pending intent. */
+  replacesBindingDigest: string | null;
   idempotencyKey: string;
   attempts: number;
   status: "pending" | "failed" | "synced";
@@ -213,14 +241,21 @@ export interface ProjectStatus extends WorkflowState {
   tracker: TrackerStatus;
 }
 
-export interface TrackerBindInput {
-  mode: "create" | "attach";
-  ticket?: string;
+export interface TrackerCreateBindInput {
+  mode: "create";
   title?: string;
   description?: string;
   replace?: true;
   confirmCreateRetry?: true;
 }
+
+export interface TrackerAttachBindInput {
+  mode: "attach";
+  ticket: string;
+  replace?: true;
+}
+
+export type TrackerBindInput = TrackerCreateBindInput | TrackerAttachBindInput;
 
 export interface TrackerHttpRequest {
   method: "GET" | "POST" | "PATCH" | "PUT";
