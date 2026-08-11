@@ -11,7 +11,7 @@
   "legacySource": null,
   "isolation": {
     "mode": "ask",
-    "baseBranch": "auto",
+    "baseBranch": "develop",
     "worktreePath": "../{repo}-{feature}",
     "branchPattern": "{type}/{feature}"
   },
