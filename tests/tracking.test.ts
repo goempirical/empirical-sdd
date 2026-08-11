@@ -426,6 +426,15 @@ describe("external ticket tracking", () => {
     expect(bound.tracker).toMatchObject({ health: "synced", provider: "linear", lastSyncedRevision: 1 });
     expect(fake.calls[0]).toMatchObject({ method: "POST", url: "https://api.linear.app/graphql" });
     expect(fake.calls[0]?.headers.Authorization).toBe("linear-secret");
+    const createdDescription = requestBody(fake.calls[0]).variables.input.description as string;
+    expect(createdDescription).toContain("## [Delivery status]");
+    expect(createdDescription).toContain("[Crash-safe synchronization enabled]");
+    expect(createdDescription).toContain("- Phase: Implement");
+    expect(createdDescription).toContain("- Workflow: Waiting");
+    expect(createdDescription).toContain("- Completion: Not complete");
+    expect(createdDescription).toContain("sha256:");
+    expect(createdDescription).not.toContain("<!--");
+    expect(createdDescription).not.toContain("Empirical SDD create attempt");
     expect(fake.calls[2]?.body).toContain("empirical-sdd:add-a-local-tracker-fixture:r1");
     expect(fake.calls[2]?.body).toContain("User description");
     let duplicateBindRequests = 0;
@@ -494,6 +503,98 @@ describe("external ticket tracking", () => {
     expect(repairRequests).toBe(0);
     expect(repaired.tracker.health).toBe("synced");
     expect(JSON.parse(await readFile(pendingPath, "utf8"))).toMatchObject({ status: "synced", failure: null });
+  });
+
+  test("Linear migrates one legacy projection and recovery block without exposing machine metadata", async () => {
+    const { project } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const feature = "add-a-local-tracker-fixture";
+    const attempt = "a".repeat(64);
+    const legacyDescription = [
+      "Human introduction",
+      "",
+      `<!-- empirical-sdd:${feature}:start -->`,
+      "Empirical SDD · implement/waiting · revision 1",
+      "Progress: in-progress · completion: none",
+      `Marker: empirical-sdd:${feature}:r1`,
+      `<!-- empirical-sdd:${feature}:end -->`,
+      "",
+      "Human conclusion",
+      "",
+      `<!-- empirical-sdd-bind:${feature}:${attempt}:start -->`,
+      `Empirical SDD create attempt sha256:${attempt}`,
+      `<!-- empirical-sdd-bind:${feature}:${attempt}:end -->`,
+    ].join("\n");
+    const issue = linearIssue({ description: legacyDescription });
+    const fake = sequence([
+      json(200, { data: { issue } }),
+      json(200, { data: { issue } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+    ]);
+    const result = await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: fake.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(result.tracker.health).toBe("synced");
+    const migrated = requestBody(fake.calls[2]).variables.input.description as string;
+    expect(migrated).toContain("Human introduction");
+    expect(migrated).toContain("Human conclusion");
+    expect(migrated).toContain("## [Delivery status]");
+    expect(migrated).toContain("[Crash-safe synchronization enabled]");
+    expect(migrated).toContain(`sha256:${attempt}`);
+    expect(migrated).not.toContain("<!--");
+    expect(migrated).not.toContain("Empirical SDD create attempt");
+
+    const mixedProject = await projectWithFastFeature();
+    await mixedProject.project.configureTracker(linearPolicy());
+    const mixedDescription = `${legacyDescription}\n\n[**Empirical SDD**](https://github.com/goempirical/empirical-sdd#empirical-sdd:${feature}:start)`;
+    const mixedIssue = linearIssue({ description: mixedDescription });
+    const mixed = sequence([
+      json(200, { data: { issue: mixedIssue } }),
+      json(200, { data: { issue: mixedIssue } }),
+    ]);
+    const rejected = await mixedProject.project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: mixed.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(rejected.tracker).toMatchObject({ health: "failed", failure: { code: "TRACKER_MARKER_AMBIGUOUS" } });
+    expect(mixed.calls).toHaveLength(2);
+
+    const malformedProject = await projectWithFastFeature();
+    await malformedProject.project.configureTracker(linearPolicy());
+    const malformedDescription = [
+      "Human text",
+      `<!-- empirical-sdd-bind:${feature}:${attempt}:start -->`,
+      "tampered recovery body",
+      `<!-- empirical-sdd-bind:${feature}:${attempt}:end -->`,
+    ].join("\n");
+    const malformedIssue = linearIssue({ description: malformedDescription });
+    const malformed = sequence([
+      json(200, { data: { issue: malformedIssue } }),
+      json(200, { data: { issue: malformedIssue } }),
+    ]);
+    const malformedResult = await malformedProject.project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: malformed.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(malformedResult.tracker).toMatchObject({ health: "failed", failure: { code: "TRACKER_MARKER_AMBIGUOUS" } });
+    expect(malformed.calls).toHaveLength(2);
+
+    const malformedLinkProject = await projectWithFastFeature();
+    await malformedLinkProject.project.configureTracker(linearPolicy());
+    const malformedLinkIssue = linearIssue({
+      description: `[Recovery reference](https://github.com/goempirical/empirical-sdd#empirical-sdd-bind:${feature}:sha256:not-a-digest)`,
+    });
+    const malformedLink = sequence([
+      json(200, { data: { issue: malformedLinkIssue } }),
+      json(200, { data: { issue: malformedLinkIssue } }),
+    ]);
+    const malformedLinkResult = await malformedLinkProject.project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: malformedLink.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(malformedLinkResult.tracker).toMatchObject({ health: "failed", failure: { code: "TRACKER_MARKER_AMBIGUOUS" } });
+    expect(malformedLink.calls).toHaveLength(2);
   });
 
   test("GitHub create keeps exactly one machine-owned marker in the project comment", async () => {

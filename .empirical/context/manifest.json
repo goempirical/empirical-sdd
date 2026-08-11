@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generator": "empirical-0.22.1",
-  "sourceDigest": "sha256:1a916cd9c996f0e756a5d2a813d2894fd4f0d5efc597379d1b9cfa7eec75b657",
+  "sourceDigest": "sha256:97688f8f9c2a6dec80a4932cc537730a6fc7d025831718c77cd13161e7687ddf",
   "files": [
     {
       "path": ".codex/config.toml",
@@ -295,8 +295,8 @@
     },
     {
       "path": "src/tracking.ts",
-      "size": 89264,
-      "digest": "sha256:3d1636252be69fd056dbd8935783cb035b9359cf24a47e47875a7b304dd95520"
+      "size": 97914,
+      "digest": "sha256:4c67b4a994c4bf8f5b3caa2f1a6bc78d780737e8cc1b58a4fc940e1e84dddb1c"
     },
     {
       "path": "src/types.ts",
@@ -400,8 +400,8 @@
     },
     {
       "path": "tests/tracking.test.ts",
-      "size": 54097,
-      "digest": "sha256:4a01b74150934d30fbcb9472e2957c87f8ac5b61fa64d1b2aef20148c881788a"
+      "size": 59263,
+      "digest": "sha256:5fe9218f945ef084aae2dec403fc742ce0e792927bd8319e4024acf377177301"
     },
     {
       "path": "tests/trust-foundations.test.ts",
@@ -509,7 +509,7 @@
         "tests/worktree-isolation.test.ts",
         "tsconfig.json"
       ],
-      "sourceDigest": "sha256:1a916cd9c996f0e756a5d2a813d2894fd4f0d5efc597379d1b9cfa7eec75b657",
+      "sourceDigest": "sha256:97688f8f9c2a6dec80a4932cc537730a6fc7d025831718c77cd13161e7687ddf",
       "digest": "sha256:115ed9cd78d6b52b32f64442f1681aad4203d6e9f8f9d1dbe1bd520b62ad6eb8",
       "freshness": "fresh"
     },
@@ -567,7 +567,7 @@
         "src/types.ts",
         "src/worktrees.ts"
       ],
-      "sourceDigest": "sha256:6a79c4a3e634de59cd4b57bf21d663365533a4e86c61b77ac6def23052969150",
+      "sourceDigest": "sha256:390b640122d696df1097308c98cbb1240d491a45bc85c471c698656a7f6e954e",
       "digest": "sha256:17c2a3ec84d285fb9da64d7dcab1cd1e05edfd1173107434f1b242628239b5b6",
       "freshness": "fresh"
     },
@@ -606,5 +606,5 @@
     }
   ],
   "truncated": false,
-  "digest": "sha256:95597bb7031e04843eafebcb9f99e9a05d52fcd7ded6726f9c59ddbc97b1210a"
+  "digest": "sha256:a285804234e4a69af2a996977024e062db64a95ab2931aa6448f5a1c27affd91"
 }

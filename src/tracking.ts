@@ -963,7 +963,7 @@ async function attachAmbiguousCreate(
     const remote = parseLinearIssue(policy, issue);
     if (
       (ticket !== remote.remoteId && ticket !== remote.remoteKey)
-      || !hasExactCreateMarker(issue.description, pending.intent, pending.idempotencyKey)
+      || !hasExactLinearCreateMarker(issue.description, pending.intent, pending.idempotencyKey)
     ) {
       throw new EmpiricalError("TRACKER_CREATE_MARKER_MISMATCH", "Linear issue does not contain the exact pending create marker");
     }
@@ -1260,7 +1260,7 @@ async function createLinearTicket(
     {
       input: {
         title: intent.title,
-        description: appendCreateMarker(upsertMarkerBlock(intent.description, projection), intent, idempotencyKey),
+        description: appendLinearCreateMarker(upsertLinearMarkerBlock(intent.description, projection), intent, idempotencyKey),
         teamId: policy.target.teamId,
         ...(policy.target.projectId ? { projectId: policy.target.projectId } : {}),
         stateId: policy.states[projection.progress],
@@ -1310,6 +1310,7 @@ async function syncLinearTicket(
   const currentTicket = parseLinearIssue(policy, issue);
   assertRemoteIdentity(binding, currentTicket);
   const description = typeof issue.description === "string" ? issue.description : "";
+  const migratedDescription = migrateLinearCreateMarker(description, projection.feature);
   const updated = await linearGraphql(
     `mutation Update($id: String!, $input: IssueUpdateInput!) {
       issueUpdate(id: $id, input: $input) { success issue { id identifier url team { id } project { id } } }
@@ -1317,7 +1318,7 @@ async function syncLinearTicket(
     {
       id: binding.remoteId,
       input: {
-        description: upsertMarkerBlock(description, projection),
+        description: upsertLinearMarkerBlock(migratedDescription, projection),
         stateId: policy.states[projection.progress],
       },
     },
@@ -2178,7 +2179,7 @@ async function reconcileLinearCreate(
     if (!Array.isArray(connection.nodes)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Linear reconciliation nodes are malformed");
     for (const raw of connection.nodes) {
       const issue = record(raw, "Linear reconciliation issue");
-      if (hasExactCreateMarker(issue.description, pending.intent, pending.idempotencyKey)) {
+      if (hasExactLinearCreateMarker(issue.description, pending.intent, pending.idempotencyKey)) {
         matches.push(parseLinearIssue(policy, issue));
       }
     }
@@ -2277,6 +2278,200 @@ function upsertMarkerBlock(existing: string, projection: TrackerProjection): str
     throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Existing tracker description contains duplicate or unbalanced Empirical markers");
   }
   return `${existing.trim()}${existing.trim() ? "\n\n" : ""}${block}`;
+}
+
+const LINEAR_MARKER_ORIGIN = "https://github.com/goempirical/empirical-sdd";
+
+function linearProjectionBoundary(feature: string, boundary: "start" | "end"): string {
+  const label = boundary === "start" ? "Delivery status" : "Managed by Empirical SDD · local workflow is authoritative";
+  const heading = boundary === "start" ? "## " : "";
+  return `${heading}[${label}](<${LINEAR_MARKER_ORIGIN}#empirical-sdd:${feature}:${boundary}>)`;
+}
+
+function linearCreateMarkerLine(
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
+): string {
+  return `[Crash-safe synchronization enabled](<${LINEAR_MARKER_ORIGIN}#${intent.marker}:${idempotencyKey}>)`;
+}
+
+function readableTrackerToken(value: string): string {
+  return value
+    .split(/[-_]/)
+    .filter(Boolean)
+    .map((part) => `${part[0]?.toUpperCase() ?? ""}${part.slice(1)}`)
+    .join(" ");
+}
+
+function readableCompletionLevel(value: string): string {
+  return value === "none" ? "Not complete" : readableTrackerToken(value);
+}
+
+function renderLinearProjection(projection: TrackerProjection): string {
+  const summary = projection.summary
+    ?.replace(/<!--|-->/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  return [
+    linearProjectionBoundary(projection.feature, "start"),
+    `[${readableTrackerToken(projection.progress)}](<${LINEAR_MARKER_ORIGIN}#${projection.marker}>)`,
+    `- Phase: ${readableTrackerToken(projection.phase)}`,
+    `- Workflow: ${readableTrackerToken(projection.status)}`,
+    `- Revision: ${projection.revision}`,
+    `- Completion: ${readableCompletionLevel(projection.completionLevel)}`,
+    ...(summary ? [`Gate: ${summary}`] : []),
+    "",
+    linearProjectionBoundary(projection.feature, "end"),
+  ].join("\n");
+}
+
+function upsertLinearMarkerBlock(existing: string, projection: TrackerProjection): string {
+  const block = renderLinearProjection(projection);
+  const legacyStart = `<!-- empirical-sdd:${projection.feature}:start -->`;
+  const legacyEnd = `<!-- empirical-sdd:${projection.feature}:end -->`;
+  const readableStart = linearProjectionBoundary(projection.feature, "start");
+  const readableEnd = linearProjectionBoundary(projection.feature, "end");
+  const priorReadableStart = `[**Empirical SDD**](${LINEAR_MARKER_ORIGIN}#empirical-sdd:${projection.feature}:start)`;
+  const priorCanonicalStart = `**[Empirical SDD](<${LINEAR_MARKER_ORIGIN}#empirical-sdd:${projection.feature}:start>)`;
+  const priorReadableEnd = `[Managed projection](${LINEAR_MARKER_ORIGIN}#empirical-sdd:${projection.feature}:end)`;
+  const priorCanonicalEnd = `[Managed projection](<${LINEAR_MARKER_ORIGIN}#empirical-sdd:${projection.feature}:end>)`;
+  const priorHeadingStart = `## [Empirical SDD](<${LINEAR_MARKER_ORIGIN}#empirical-sdd:${projection.feature}:start>)`;
+  const priorIndentedReadableEnd = `  ${readableEnd}`;
+  const markerFragments = [
+    `empirical-sdd:${projection.feature}:start`,
+    `empirical-sdd:${projection.feature}:end`,
+  ];
+  const lines = existing.replace(/\r\n/g, "\n").split("\n");
+  const starts = lines.flatMap((line, index) => [legacyStart, readableStart, priorReadableStart, priorCanonicalStart, priorHeadingStart].includes(line) ? [index] : []);
+  const ends = lines.flatMap((line, index) => [legacyEnd, readableEnd, priorReadableEnd, priorCanonicalEnd, priorIndentedReadableEnd].includes(line) ? [index] : []);
+  const malformed = lines.some((line) => markerFragments.some((fragment) => line.includes(fragment))
+    && line !== legacyStart
+    && line !== legacyEnd
+    && line !== readableStart
+    && line !== readableEnd
+    && line !== priorReadableStart
+    && line !== priorCanonicalStart
+    && line !== priorReadableEnd
+    && line !== priorCanonicalEnd
+    && line !== priorHeadingStart
+    && line !== priorIndentedReadableEnd);
+  if (
+    !malformed
+    && starts.length === 1
+    && ends.length === 1
+    && ends[0]! >= starts[0]!
+    && ((lines[starts[0]!] === legacyStart && lines[ends[0]!] === legacyEnd)
+      || (lines[starts[0]!] !== legacyStart && lines[ends[0]!] !== legacyEnd))
+  ) {
+    return [
+      ...lines.slice(0, starts[0]),
+      ...block.split("\n"),
+      ...lines.slice(ends[0]! + 1),
+    ].join("\n").trim();
+  }
+  if (malformed || starts.length !== 0 || ends.length !== 0) {
+    throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Existing Linear description contains duplicate, mixed, malformed, or unbalanced Empirical projection markers");
+  }
+  return `${existing.trim()}${existing.trim() ? "\n\n" : ""}${block}`;
+}
+
+function appendLinearCreateMarker(
+  existing: string,
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
+): string {
+  const marker = linearCreateMarkerLine(intent, idempotencyKey);
+  return `${existing.trim()}${existing.trim() ? "\n\n" : ""}${marker}`;
+}
+
+interface LinearCreateMarkerMatch {
+  kind: "legacy" | "readable";
+  start: number;
+  end: number;
+  idempotencyKey: string;
+}
+
+function linearCreateMarkerMatches(value: string, marker: string): { matches: LinearCreateMarkerMatch[]; malformed: boolean } {
+  const lines = value.replace(/\r\n/g, "\n").split("\n");
+  const markerPrefix = `${marker}:`;
+  const legacyStartPrefix = `<!-- ${markerPrefix}`;
+  const readablePrefixes = [
+    `[Recovery reference](${LINEAR_MARKER_ORIGIN}#${markerPrefix}`,
+    `[Crash-safe synchronization enabled](${LINEAR_MARKER_ORIGIN}#${markerPrefix}`,
+  ];
+  const canonicalReadablePrefixes = [
+    `[Recovery reference](<${LINEAR_MARKER_ORIGIN}#${markerPrefix}`,
+    `[Crash-safe synchronization enabled](<${LINEAR_MARKER_ORIGIN}#${markerPrefix}`,
+  ];
+  const matches: LinearCreateMarkerMatch[] = [];
+  const consumed = new Set<number>();
+  let malformed = false;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
+    if (line.startsWith(legacyStartPrefix) && line.endsWith(":start -->")) {
+      const attempt = line.slice(legacyStartPrefix.length, -":start -->".length);
+      const idempotencyKey = `sha256:${attempt}`;
+      if (
+        /^[a-f0-9]{64}$/.test(attempt)
+        && lines[index + 1] === `Empirical SDD create attempt ${idempotencyKey}`
+        && lines[index + 2] === `<!-- ${marker}:${attempt}:end -->`
+      ) {
+        matches.push({ kind: "legacy", start: index, end: index + 2, idempotencyKey });
+        consumed.add(index);
+        consumed.add(index + 1);
+        consumed.add(index + 2);
+        index += 2;
+        continue;
+      }
+      malformed = true;
+      continue;
+    }
+    const canonicalReadablePrefix = canonicalReadablePrefixes.find((prefix) => line.startsWith(prefix));
+    const readablePrefix = readablePrefixes.find((prefix) => line.startsWith(prefix));
+    const activeReadablePrefix = canonicalReadablePrefix ?? readablePrefix ?? null;
+    if (activeReadablePrefix && line.endsWith(canonicalReadablePrefix ? ">)" : ")")) {
+      const idempotencyKey = line.slice(activeReadablePrefix.length, canonicalReadablePrefix ? -2 : -1);
+      if (/^sha256:[a-f0-9]{64}$/.test(idempotencyKey)) {
+        matches.push({ kind: "readable", start: index, end: index, idempotencyKey });
+        consumed.add(index);
+        continue;
+      }
+      malformed = true;
+    }
+  }
+  lines.forEach((line, index) => {
+    if (line.includes(marker) && !consumed.has(index)) malformed = true;
+  });
+  return { matches, malformed };
+}
+
+function hasExactLinearCreateMarker(
+  value: unknown,
+  intent: Extract<TrackerBindIntent, { mode: "create" }>,
+  idempotencyKey: string,
+): boolean {
+  if (typeof value !== "string") return false;
+  const result = linearCreateMarkerMatches(value, intent.marker);
+  return !result.malformed
+    && result.matches.length === 1
+    && result.matches[0]!.idempotencyKey === idempotencyKey;
+}
+
+function migrateLinearCreateMarker(existing: string, feature: string): string {
+  const marker = `empirical-sdd-bind:${feature}`;
+  const result = linearCreateMarkerMatches(existing, marker);
+  if (result.malformed || result.matches.length > 1) {
+    throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Existing Linear description contains duplicate, mixed, or malformed Empirical recovery markers");
+  }
+  const match = result.matches[0];
+  if (!match || match.kind === "readable") return existing;
+  const lines = existing.replace(/\r\n/g, "\n").split("\n");
+  const replacement = `[Crash-safe synchronization enabled](<${LINEAR_MARKER_ORIGIN}#${marker}:${match.idempotencyKey}>)`;
+  return [
+    ...lines.slice(0, match.start),
+    replacement,
+    ...lines.slice(match.end + 1),
+  ].join("\n");
 }
 
 function isExactOwnedMarkerBlock(body: string, start: string, end: string): boolean {

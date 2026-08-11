@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "feature": "make-linear-tracker-descriptions-clean-and-readable-while-preserving-exa",
+  "claimId": "make-linear-tracker-descriptions-clean-and-readable-while-preserving-exa-bb7db72afcc0",
+  "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+  "baseCommit": "f0295a99197b4a380ef91ff4ecfc8a30badf15e9",
+  "baseTree": "2eb1838017f0da6e5f0ddaa02890215e8121abb0",
+  "featureTree": "sha256:0e2da8660210a29db05150af67c82c76e17f38d68cdb26c43e4478cb0a6b11b6",
+  "targetCommit": "f0295a99197b4a380ef91ff4ecfc8a30badf15e9",
+  "targetTree": "2eb1838017f0da6e5f0ddaa02890215e8121abb0",
+  "capabilityBaseDigests": {
+    "external-ticket-tracking": "sha256:6e1c1991ab58747883247396154f0add626bff13ddb51863ca780eaf7c386c22"
+  },
+  "deltaDigest": "sha256:18e6eb1cef646f2ea5897f5ed8385b22e903ead481846db43e343dd2db2ec218",
+  "resultDigests": {
+    "external-ticket-tracking": "sha256:3040eec3b9e25e2e6f1978ca5d3925df05635157f5974985dbc28b8c0b8252bc"
+  },
+  "verificationReceiptDigests": [
+    "sha256:f94b701530ed9fe2154db6952ac8d0711cb93f8ead1e78cc7febad6c651f98e5"
+  ],
+  "integratedAt": "2026-08-11T17:48:12.967Z",
+  "digest": "sha256:ea42f0b026590e918426f910c9fd408f5adeb2e0e4ac05360ed01e905df84b68"
+}
