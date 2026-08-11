@@ -10,12 +10,17 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ### Changed
 
-- Nothing yet.
+- Simplified the README around installation, everyday use, safety, and links to
+  the detailed project documentation.
+
+### Fixed
+
+- Completed the lower stem of the terminal brand mark so its outline renders as
+  a closed cross.
 
 ## [0.23.0] - 2026-08-11
 
-This version is prepared in the repository but is not published by the version
-change alone.
+Published through GitHub Actions trusted publishing with npm provenance.
 
 ### Changed
 
