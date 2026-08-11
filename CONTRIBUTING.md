@@ -43,3 +43,8 @@ The npm trusted publisher must be bound to organization `goempirical`,
 repository `empirical-sdd`, workflow `publish.yml`, environment `npm`, and the
 `npm publish` action. The release workflow uses OIDC and must not receive a
 long-lived npm write token.
+
+If a release run fails before `npm publish`, keep the immutable tag and GitHub
+Release unchanged. After merging the repair, retry `publish.yml` manually with
+that exact existing tag. The workflow repeats every version, ancestry, and npm
+existence check before publishing.
