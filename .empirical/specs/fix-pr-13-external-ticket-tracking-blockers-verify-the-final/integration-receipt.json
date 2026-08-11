@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "feature": "fix-pr-13-external-ticket-tracking-blockers-verify-the-final",
+  "claimId": "fix-pr-13-external-ticket-tracking-blockers-verify-the-final-bb7db72afcc0",
+  "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+  "baseCommit": "083390a1cfd296e1bf261947ab5168e95cbe9d29",
+  "baseTree": "07ecd98769efad0492480faeadcfa69d0ce47c56",
+  "featureTree": "sha256:7dbff78a0834c0590c62daaa39676ab14fa41fcdae26896488b6bd6ffeaebe76",
+  "targetCommit": "083390a1cfd296e1bf261947ab5168e95cbe9d29",
+  "targetTree": "07ecd98769efad0492480faeadcfa69d0ce47c56",
+  "capabilityBaseDigests": {
+    "exploratory-discovery": "sha256:8afc13c71bf33bbe332ef9b58e56ee5939a228059b6d811f53a83e11aa3a00e2",
+    "external-ticket-tracking": "sha256:d8506be4ff6bd6ed6d80a53284323a6d4f38b01f67de04deb44abb8908e6838a",
+    "project-policy": "sha256:9d698f7f28fe11b66a86af35ca10808c3c3827a63adad90a73a7138c2b1e4b97",
+    "repository-knowledge": "sha256:f0446a1673aab7ce9faf66f3e5435778bbc8b1930fba4be70dc02ed883de68dc"
+  },
+  "deltaDigest": "sha256:875a3595f15eef913bcb9384a73bc9716288e34ada52c3aaf517a8c1858cc7a8",
+  "resultDigests": {
+    "exploratory-discovery": "sha256:cf1acf085309424d13d433d34e3f35dc8aee2397d9caee56e333b04b04c18f30",
+    "external-ticket-tracking": "sha256:6e1c1991ab58747883247396154f0add626bff13ddb51863ca780eaf7c386c22",
+    "project-policy": "sha256:0829624206f8c3685084e144dc26ff347e811ee8e66b489f5b3be4cc1175144b",
+    "repository-knowledge": "sha256:ea4d5b4048d6c91c93682c83354f27109c0e7a40be165bd7ca3339105d2bdf0b"
+  },
+  "verificationReceiptDigests": [
+    "sha256:dba51a072dd869293de8f999ab44a05f50fc544e9ed75b7de805e91fb3a72d50"
+  ],
+  "integratedAt": "2026-08-11T16:28:31.937Z",
+  "digest": "sha256:ecdf17e1c9b3e94c465eab7ef213e1c12e2350e01f69006ad94fb9726ce47ab7"
+}

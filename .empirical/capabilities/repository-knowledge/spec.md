@@ -9,10 +9,11 @@ network service, embeddings, or a vector database.
 
 ### Requirement: Initialization creates compact repository knowledge
 
-First agent-owned initialization and explicit `empirical-init` MUST create the
-bounded inventory and navigable topic pages. When a nonempty repository still
-has managed or legacy placeholder topic pages, reports MUST identify those
-paths as refinement-required and MUST NOT expose them as usable knowledge.
+First agent-owned initialization through the single `empirical` skill MUST
+create the bounded inventory and navigable topic pages through its setup and
+context operations. When a nonempty repository still has managed or legacy
+placeholder topic pages, reports MUST identify those paths as
+refinement-required and MUST NOT expose them as usable knowledge.
 
 #### Scenario: An empty repository gains its first implementation
 

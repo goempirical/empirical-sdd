@@ -61,8 +61,12 @@ revision, completion level, and blocker summary to that one ticket. The same
 flow supports attaching an existing Linear, GitHub, or Jira ticket.
 
 If the provider is unavailable, local SDD work continues and reports tracker
-health as `pending` or `failed`. A later `$empirical` invocation retries the
-durable projection and converges the same ticket instead of creating a duplicate.
+health as `pending` or `failed`. A later `$empirical` invocation resumes the
+durable pending operation. If ticket creation has an ambiguous outcome,
+Empirical performs bounded reconciliation using the persisted create marker. If
+no unique ticket matches, it stops until the developer attaches the possibly
+created ticket or explicitly confirms another create attempt that may create a
+duplicate.
 
 ## Parallel work
 

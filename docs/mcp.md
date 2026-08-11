@@ -44,7 +44,8 @@ Schema-5 integration requirement.
 1. Inspect setup without writing, show the complete settings, and persist only
    after confirmation.
 2. Resume selected non-terminal work before treating request text as new work.
-3. Use five-pass discovery only for material ambiguity or explicit Socratic use.
+3. Use five-pass discovery only for material ambiguity or when the `$empirical`
+   request explicitly asks for an interview.
 4. Call `empirical_route`; Fast is legal only at the contract-neutral floor.
 5. In YOLO, obey the recorded ceiling and ask only for a product blocker,
    missing permission, or hard safety boundary.
@@ -91,7 +92,7 @@ Provider-specific policy fields are:
 {
   "schemaVersion": 1,
   "provider": "linear",
-  "target": { "teamId": "team-id", "projectId": "project-id-or-null" },
+  "target": { "teamId": "team-id", "projectId": null },
   "credentialEnv": { "apiKey": "LINEAR_API_KEY" },
   "states": { "specification": "...", "planned": "...", "in-progress": "...", "verification": "...", "review": "...", "blocked": "...", "done": "..." }
 }
@@ -117,15 +118,54 @@ Provider-specific policy fields are:
 }
 ```
 
+Linear's `projectId` key is required. Use a provider project id string to pin
+the mirror to that project, or the literal JSON value `null` for a team-only
+ticket; do not omit the key or use the string `"null"`.
+
+Every `credentialEnv` value is an environment-variable **name**, never a
+credential. Names are 3–64 uppercase ASCII letters, digits, or underscores,
+start with a letter, and contain at least one underscore. The host must inject
+a nonblank runtime value into the Empirical MCP/agent process. The credential
+must be authorized for the exact configured target and effects:
+
+- Linear: read, create, and update issues in the configured team and optional
+  project.
+- GitHub: read and write the configured repository's issues and comments, and
+  add/update items and the Status field in the configured Projects v2 project.
+- Jira: read, create, and update issues and issue properties, and perform the
+  configured status transitions in the configured Cloud project.
+
+Empirical does not discover credentials, elevate provider permissions, or
+serialize runtime values. Missing variables are reported by name only.
+
 `empirical_tracker_bind` accepts `{ "mode": "create" }` or
 `{ "mode": "attach", "ticket": "..." }`. An existing binding is immutable
-unless the caller explicitly supplies `replace: true`; an ambiguous create
-requires `confirmCreateRetry: true` before another create request. The binding
-and pending projection are checksummed and feature-local. The remote marker
-contains feature identity, phase, workflow status, exact revision, completion
-level, blocker summary, and an idempotency marker. Status and action packets
-report `local-only`, `synced`, `pending`, or `failed` without making remote
-requests.
+unless the caller explicitly supplies `replace: true`. Bindings and pending
+operations are checksummed, feature-local, and retain digests of the exact
+provider target and effective policy. A target change therefore fails locally
+until explicit replacement; a same-target state-map change invalidates the
+same-revision acknowledgment and projects the committed state through the new
+mapping.
+
+Pending work is the durable reconciliation source. Normal synchronization
+resumes that exact operation before deriving newer work. A durable `dispatched`
+flag distinguishes a create intent that has never been sent from one that may
+have reached the provider. Sync may send the first create only while the intent
+is durably undispatched; after marking it dispatched, Empirical never sends
+that create again automatically. `empirical_tracker_sync` instead performs a
+bounded lookup for the exact persisted create marker. If no unique match can be
+reconciled, the caller can attach the possibly created ticket. Supplying
+`confirmCreateRetry: true` explicitly accepts a new create attempt and its
+duplicate-ticket risk; it is not an exactly-once guarantee.
+
+The remote marker contains feature identity, phase, workflow status, exact
+revision, completion level, blocker summary, and an idempotency marker. Status
+and action packets report `local-only`, `synced`, `pending`, or `failed` without
+making remote requests. They retain the committed, last-synchronized, and
+pending revisions plus a bounded credential-safe failure code, summary, and
+timestamp. Keep local progress; provide a named missing credential, explicitly
+rebind target drift, reconcile an ambiguous create, or call
+`empirical_tracker_sync` again for an ordinary pending update as reported.
 
 The normalized projection is `shape/specify/design → specification`,
 `plan → planned`, `implement/context → in-progress`, `verify → verification`,

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "status": "passed",
+  "team": {
+    "id": "759936b8-0971-44ad-9162-6909afdd4467",
+    "key": "SDD",
+    "name": "Empirical SDD"
+  },
+  "disposableRecovery": {
+    "issueKey": "SDD-4",
+    "issueCreateRequests": 1,
+    "exactMarkerMatches": 1,
+    "markerOccurrences": 1,
+    "projectionUpdatesObserved": 4,
+    "archived": true
+  },
+  "visibleDemo": {
+    "issueKey": "SDD-5",
+    "url": "https://linear.app/empirical/issue/SDD-5/empirical-sdd-pr-13-external-tracker-demo",
+    "retainedAtUserRequest": true
+  },
+  "credentialHandling": {
+    "freshSecurePrompt": true,
+    "exposedChatCredentialUsed": false,
+    "secretValueRecorded": false
+  }
+}

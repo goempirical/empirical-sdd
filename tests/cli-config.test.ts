@@ -1,10 +1,26 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
+import { digestJson } from "../src/protocol.js";
 
 const directories: string[] = [];
 const cli = resolve(import.meta.dir, "../src/cli.ts");
+const trackerPolicy = {
+  schemaVersion: 1,
+  provider: "linear",
+  target: { teamId: "linear-team", projectId: null },
+  credentialEnv: { apiKey: "EMPIRICAL_TEST_UNSET_LINEAR_API_KEY" },
+  states: {
+    specification: "linear-state-specification",
+    planned: "linear-state-planned",
+    "in-progress": "linear-state-progress",
+    verification: "linear-state-verification",
+    review: "linear-state-review",
+    blocked: "linear-state-blocked",
+    done: "linear-state-done",
+  },
+} as const;
 afterEach(async () => Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true, force: true }))));
 
 async function root(): Promise<string> {
@@ -122,6 +138,111 @@ describe("first-run configuration CLI", () => {
     const command = await run(["workstream", "list", "--root", directory]);
     expect(command.exitCode).toBe(1);
     expect(command.stderr).toContain("UNKNOWN_COMMAND");
+  });
+
+  test("tracker-bind validates strict mode-specific JSON before opening a project", async () => {
+    const directory = await root();
+    for (const input of [
+      { mode: "invalid" },
+      { mode: "attach" },
+      { mode: "attach", ticket: "LIN-1", title: "Not applicable" },
+      { mode: "attach", ticket: "LIN-1", description: "Not applicable" },
+      { mode: "attach", ticket: "LIN-1", confirmCreateRetry: true },
+      { mode: "create", ticket: "LIN-1" },
+      { mode: "create", unknown: true },
+    ]) {
+      const result = await run(internal([
+        "tracker-bind", "--input", "-", "--root", directory,
+      ]), JSON.stringify(input));
+      expect(result.exitCode).toBe(1);
+      expect(result.stderr).toContain("INVALID_TRACKER_BIND_INPUT");
+      expect(result.stderr).not.toContain("PROJECT_NOT_INITIALIZED");
+    }
+    expect(await stat(join(directory, ".empirical")).then(() => true, () => false)).toBe(false);
+  });
+
+  test("tracker status, action, bind, and sync human output expose bounded recovery state", async () => {
+    const directory = await root();
+    await run(internal(["init", "--defaults", "--no-integrations", "--root", directory]));
+    await run(internal(["fast", "Make tracker recovery observable", "--root", directory]));
+    const configured = await run(internal([
+      "tracker-configure", "--input", "-", "--root", directory,
+    ]), JSON.stringify(trackerPolicy));
+    expect(configured.exitCode).toBe(0);
+
+    const bound = await run(internal([
+      "tracker-bind", "--input", "-", "--root", directory,
+    ]), JSON.stringify({ mode: "create" }));
+    const action = await run(internal(["next", "--root", directory]));
+    const status = await run(internal(["status", "--root", directory]));
+    const synced = await run(internal(["tracker-sync", "--root", directory]));
+
+    for (const result of [bound, action, status, synced]) {
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toBe("");
+      expect(result.stdout).toContain("External tracker:");
+      expect(result.stdout).toContain("- Health: failed");
+      expect(result.stdout).toContain("- Provider: linear");
+      expect(result.stdout).toContain("- URL: none");
+      expect(result.stdout).toContain("- Committed revision: 1");
+      expect(result.stdout).toContain("- Last-synced revision: none");
+      expect(result.stdout).toContain("- Pending revision: 1");
+      expect(result.stdout).toContain("- Failure: TRACKER_CREDENTIAL_MISSING —");
+      expect(result.stdout).toContain("- Failure at:");
+      expect(result.stdout).toContain("- Recovery: Inject the configured credential environment variable");
+      const failureLine = result.stdout.split("\n").find((line) => line.startsWith("- Failure:"));
+      expect(failureLine?.length).toBeLessThanOrEqual(580);
+    }
+  });
+
+  test("tracker status and action human output expose a validated bound URL", async () => {
+    const directory = await root();
+    await run(internal(["init", "--defaults", "--no-integrations", "--root", directory]));
+    const started = await run(internal([
+      "fast", "Show a safe tracker URL", "--json", "--root", directory,
+    ]));
+    expect(started.exitCode).toBe(0);
+    const feature = (JSON.parse(started.stdout) as { feature: string }).feature;
+    await run(internal([
+      "tracker-configure", "--input", "-", "--root", directory,
+    ]), JSON.stringify(trackerPolicy));
+
+    const bindingBody = {
+      schemaVersion: 1,
+      feature,
+      provider: "linear",
+      remoteId: "linear-uuid",
+      remoteKey: "LIN-1",
+      url: "https://linear.app/empirical/issue/LIN-1",
+      projectItemId: null,
+      markerId: null,
+      targetDigest: digestJson({ provider: trackerPolicy.provider, target: trackerPolicy.target }),
+      bindIdempotencyKey: digestJson({ feature, provider: "linear", remoteId: "linear-uuid" }),
+      lastSyncedRevision: null,
+      lastSyncedDigest: null,
+      lastSyncedPolicyDigest: null,
+    } as const;
+    const trackerDirectory = join(directory, ".empirical", "specs", feature, "tracker");
+    await mkdir(trackerDirectory, { recursive: true });
+    await writeFile(join(trackerDirectory, "binding.json"), `${JSON.stringify({
+      ...bindingBody,
+      digest: digestJson(bindingBody),
+    }, null, 2)}\n`, "utf8");
+
+    for (const result of [
+      await run(internal(["status", "--root", directory])),
+      await run(internal(["next", "--root", directory])),
+    ]) {
+      expect(result.exitCode).toBe(0);
+      expect(result.stderr).toBe("");
+      expect(result.stdout).toContain("- Health: pending");
+      expect(result.stdout).toContain("- Provider: linear");
+      expect(result.stdout).toContain("- URL: https://linear.app/empirical/issue/LIN-1");
+      expect(result.stdout).toContain("- Committed revision: 1");
+      expect(result.stdout).toContain("- Last-synced revision: none");
+      expect(result.stdout).toContain("- Pending revision: 1");
+      expect(result.stdout).toContain("- Failure: none");
+    }
   });
 
   test("interactive/default modes reject conflicting configuration flags before mutation", async () => {

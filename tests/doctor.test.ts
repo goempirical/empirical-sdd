@@ -117,6 +117,67 @@ describe("read-only Doctor diagnostics", () => {
     expect(gitSnapshot(root)).toEqual(beforeGit);
   });
 
+  test("validates dormant tracker records without policy and leaves their hashes unchanged", async () => {
+    const { root } = await fixture();
+    for (const [feature, name] of [
+      ["dormant-binding", "binding.json"],
+      ["dormant-pending", "pending.json"],
+    ] as const) {
+      const trackerDirectory = join(root, ".empirical", "specs", feature, "tracker");
+      await mkdir(trackerDirectory, { recursive: true });
+      await writeFile(join(trackerDirectory, name), '{"schemaVersion":1}\n', "utf8");
+    }
+    const unsafeFeature = "dormant-unsafe-binding";
+    const unsafeBinding = {
+      schemaVersion: 1,
+      feature: unsafeFeature,
+      provider: "linear",
+      remoteId: "linear-uuid",
+      remoteKey: "EMP-1",
+      url: "https://user:secret@linear.app/example/issue/EMP-1?token=value#fragment",
+      projectItemId: null,
+      markerId: null,
+      targetDigest: digestJson({ provider: "linear", target: { teamId: "team-1", projectId: null } }),
+      lastSyncedRevision: null,
+      lastSyncedDigest: null,
+      lastSyncedPolicyDigest: null,
+    } as const;
+    const unsafeTrackerDirectory = join(root, ".empirical", "specs", unsafeFeature, "tracker");
+    await mkdir(unsafeTrackerDirectory, { recursive: true });
+    await writeFile(
+      join(unsafeTrackerDirectory, "binding.json"),
+      `${JSON.stringify({ ...unsafeBinding, digest: digestJson(unsafeBinding) }, null, 2)}\n`,
+      "utf8",
+    );
+    const beforeFiles = await fileSnapshot(root);
+    const beforeGit = gitSnapshot(root);
+
+    const report = await doctorRepository(root);
+
+    expect(report.readonly).toBe(true);
+    expect(report.status).toBe("errors");
+    expect(report.findings).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "TRACKER_LOCAL_ONLY", severity: "ok" }),
+      expect.objectContaining({
+        code: "TRACKER_STATE_INVALID",
+        severity: "error",
+        scope: "tracker:dormant-binding",
+      }),
+      expect.objectContaining({
+        code: "TRACKER_STATE_INVALID",
+        severity: "error",
+        scope: "tracker:dormant-pending",
+      }),
+      expect.objectContaining({
+        code: "TRACKER_STATE_INVALID",
+        severity: "error",
+        scope: "tracker:dormant-unsafe-binding",
+      }),
+    ]));
+    expect(await fileSnapshot(root)).toEqual(beforeFiles);
+    expect(gitSnapshot(root)).toEqual(beforeGit);
+  });
+
   test("validates tracker policy and reports only missing credential variable names", async () => {
     const { root } = await fixture();
     const variable = "EMPIRICAL_TEST_LINEAR_API_KEY_MISSING";

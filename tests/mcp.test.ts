@@ -5,9 +5,27 @@ import { tmpdir } from "node:os";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
 import { EmpiricalProject } from "../src/core.js";
-import { OPERATIONS } from "../src/operations.js";
+import { OPERATIONS, operationAnnotations } from "../src/operations.js";
 
 const directories: string[] = [];
+
+const trackerStates = {
+  specification: "linear-state-specification",
+  planned: "linear-state-planned",
+  "in-progress": "linear-state-progress",
+  verification: "linear-state-verification",
+  review: "linear-state-review",
+  blocked: "linear-state-blocked",
+  done: "linear-state-done",
+} as const;
+
+const linearTrackerPolicy = {
+  schemaVersion: 1,
+  provider: "linear",
+  target: { teamId: "linear-team", projectId: null },
+  credentialEnv: { apiKey: "EMPIRICAL_TEST_UNSET_LINEAR_API_KEY" },
+  states: trackerStates,
+} as const;
 
 afterEach(async () => {
   await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
@@ -50,6 +68,72 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
       "empirical_tracker_bind",
       "empirical_tracker_sync",
     ]));
+    const trackerConfigureTool = listed.tools.find((tool) => tool.name === "empirical_tracker_configure");
+    const trackerBindTool = listed.tools.find((tool) => tool.name === "empirical_tracker_bind");
+    const trackerSyncTool = listed.tools.find((tool) => tool.name === "empirical_tracker_sync");
+    for (const [tool, operation] of [
+      [trackerConfigureTool, "tracker-configure"],
+      [trackerBindTool, "tracker-bind"],
+      [trackerSyncTool, "tracker-sync"],
+    ] as const) {
+      expect(tool?.annotations).toEqual(operationAnnotations(operation));
+      expect(tool?.annotations?.destructiveHint).toBe(true);
+    }
+
+    const configureSchema = trackerConfigureTool?.inputSchema as {
+      additionalProperties?: boolean;
+      properties?: { policy?: { anyOf?: Array<{ oneOf?: unknown[]; type?: string }> } };
+    };
+    expect(configureSchema.additionalProperties).toBe(false);
+    const policyChoices = configureSchema.properties?.policy?.anyOf ?? [];
+    const providerChoices = policyChoices.find((choice) => choice.oneOf)?.oneOf ?? [];
+    expect(providerChoices).toHaveLength(3);
+    expect(JSON.stringify(providerChoices)).toContain('"const":"github"');
+    expect(JSON.stringify(providerChoices)).toContain('"const":"linear"');
+    expect(JSON.stringify(providerChoices)).toContain('"const":"jira"');
+    expect(policyChoices.some((choice) => choice.type === "null")).toBe(true);
+    for (const providerChoice of providerChoices as Array<{
+      additionalProperties?: boolean;
+      properties?: Record<string, {
+        additionalProperties?: boolean;
+        required?: string[];
+      }>;
+      required?: string[];
+    }>) {
+      expect(providerChoice.additionalProperties).toBe(false);
+      expect(providerChoice.required).toEqual(expect.arrayContaining([
+        "schemaVersion", "provider", "target", "credentialEnv", "states",
+      ]));
+      for (const property of ["target", "credentialEnv", "states"]) {
+        expect(providerChoice.properties?.[property]?.additionalProperties).toBe(false);
+      }
+      expect(providerChoice.properties?.states?.required).toEqual(expect.arrayContaining([
+        "specification", "planned", "in-progress", "verification", "review", "blocked", "done",
+      ]));
+    }
+
+    const bindSchema = trackerBindTool?.inputSchema as {
+      additionalProperties?: boolean;
+      properties?: Record<string, unknown>;
+      oneOf?: Array<{
+        properties?: Record<string, { const?: string }>;
+        required?: string[];
+        not?: { anyOf?: Array<{ required?: string[] }> };
+      }>;
+    };
+    expect(bindSchema.additionalProperties).toBe(false);
+    expect(Object.keys(bindSchema.properties ?? {}).sort()).toEqual([
+      "confirmCreateRetry", "description", "mode", "replace", "root", "ticket", "title",
+    ]);
+    expect(bindSchema.oneOf).toHaveLength(2);
+    const createSchema = bindSchema.oneOf?.find((choice) => choice.properties?.mode?.const === "create");
+    const attachSchema = bindSchema.oneOf?.find((choice) => choice.properties?.mode?.const === "attach");
+    expect(createSchema?.required).toEqual(["mode"]);
+    expect(createSchema?.not?.anyOf?.map((condition) => condition.required)).toEqual([["ticket"]]);
+    expect(attachSchema?.required).toEqual(["mode", "ticket"]);
+    expect(attachSchema?.not?.anyOf?.map((condition) => condition.required)).toEqual([
+      ["title"], ["description"], ["confirmCreateRetry"],
+    ]);
 
     const initialized = await client.callTool({
       name: "empirical_init",
@@ -141,6 +225,44 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
     });
     expect(idempotentFast.isError).not.toBe(true);
     expect(idempotentFast.structuredContent).toEqual(started.structuredContent);
+
+    const invalidTrackerPolicy = await client.callTool({
+      name: "empirical_tracker_configure",
+      arguments: { root, policy: { ...linearTrackerPolicy, unexpected: true } },
+    });
+    expect(invalidTrackerPolicy.isError).toBe(true);
+    expect(JSON.stringify(invalidTrackerPolicy.content)).toContain("Input validation error");
+
+    const trackerConfigured = await client.callTool({
+      name: "empirical_tracker_configure",
+      arguments: { root, policy: linearTrackerPolicy },
+    });
+    expect(trackerConfigured.isError).not.toBe(true);
+    expect(trackerConfigured.structuredContent).toMatchObject(linearTrackerPolicy);
+
+    for (const arguments_ of [
+      { root, mode: "create", ticket: "LIN-1" },
+      { root, mode: "create", unexpected: true },
+      { root, mode: "attach", ticket: "LIN-1", title: "Not applicable" },
+      { root, mode: "attach", ticket: "LIN-1", description: "Not applicable" },
+      { root, mode: "attach", ticket: "LIN-1", confirmCreateRetry: true },
+      { root, mode: "attach" },
+      { root, mode: "invalid" },
+    ]) {
+      const rejected = await client.callTool({
+        name: "empirical_tracker_bind",
+        arguments: arguments_,
+      });
+      expect(rejected.isError).toBe(true);
+      expect(JSON.stringify(rejected.content)).toContain("Input validation error");
+    }
+
+    const trackerDisabled = await client.callTool({
+      name: "empirical_tracker_configure",
+      arguments: { root, policy: null },
+    });
+    expect(trackerDisabled.isError).not.toBe(true);
+    expect(trackerDisabled.structuredContent).toEqual({ value: null });
 
     const configured = await client.callTool({
       name: "empirical_configure",

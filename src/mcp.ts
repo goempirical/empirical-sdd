@@ -9,6 +9,13 @@ import {
   executionModeSchema,
   workflowSchema,
 } from "./protocol.js";
+import {
+  parseTrackerBindInput,
+  trackerAttachBindInputSchema,
+  trackerBindInputSchema,
+  trackerCreateBindInputSchema,
+  trackerPolicySchema,
+} from "./tracking.js";
 import { PRODUCT_VERSION, type AgentIntegrationId } from "./types.js";
 
 const profileSchema = z.enum(["fast", "complex"]);
@@ -43,6 +50,44 @@ const deliveryCommitSchema = z.object({
   title: z.string().min(1),
   body: z.string().min(1),
 }).strict();
+// MCP SDK 1.30 advertises only root object schemas. Preserve the core union at
+// runtime and mirror its branch applicability in the emitted Draft-7 schema.
+const trackerBindToolSchema = z.object({
+  root: z.string().optional(),
+  mode: z.enum(["create", "attach"]),
+  ticket: trackerAttachBindInputSchema.shape.ticket.optional(),
+  title: trackerCreateBindInputSchema.shape.title,
+  description: trackerCreateBindInputSchema.shape.description,
+  replace: trackerCreateBindInputSchema.shape.replace,
+  confirmCreateRetry: trackerCreateBindInputSchema.shape.confirmCreateRetry,
+}).strict().superRefine(({ root: _root, ...input }, context) => {
+  const parsed = trackerBindInputSchema.safeParse(input);
+  if (!parsed.success) {
+    context.addIssue({
+      code: "custom",
+      message: parsed.error.issues.map((issue) => issue.message).join("; "),
+    });
+  }
+}).meta({
+  oneOf: [
+    {
+      properties: { mode: { const: "create" } },
+      required: ["mode"],
+      not: { anyOf: [{ required: ["ticket"] }] },
+    },
+    {
+      properties: { mode: { const: "attach" } },
+      required: ["mode", "ticket"],
+      not: {
+        anyOf: [
+          { required: ["title"] },
+          { required: ["description"] },
+          { required: ["confirmCreateRetry"] },
+        ],
+      },
+    },
+  ],
+});
 
 export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
   const registered = new Set<string>();
@@ -296,10 +341,10 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
   server.registerTool(operationName("tracker-configure"), {
     title: "Configure external ticket tracking",
     description: operationSummary("tracker-configure"),
-    inputSchema: {
+    inputSchema: z.object({
       root: z.string().optional(),
-      policy: z.unknown().nullable(),
-    },
+      policy: trackerPolicySchema.nullable(),
+    }).strict(),
     annotations: operationAnnotations("tracker-configure"),
   }, async ({ root, policy }) => toolResult(async () =>
     (await EmpiricalProject.open(root ?? defaultRoot)).configureTracker(policy)));
@@ -307,25 +352,10 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
   server.registerTool(operationName("tracker-bind"), {
     title: "Create or attach an external ticket",
     description: operationSummary("tracker-bind"),
-    inputSchema: {
-      root: z.string().optional(),
-      mode: z.enum(["create", "attach"]),
-      ticket: z.string().min(1).optional(),
-      title: z.string().min(1).optional(),
-      description: z.string().optional(),
-      replace: z.literal(true).optional(),
-      confirmCreateRetry: z.literal(true).optional(),
-    },
+    inputSchema: trackerBindToolSchema,
     annotations: operationAnnotations("tracker-bind"),
-  }, async ({ root, mode, ticket, title, description, replace, confirmCreateRetry }) => toolResult(async () =>
-    (await EmpiricalProject.open(root ?? defaultRoot)).bindTracker({
-      mode,
-      ...(ticket ? { ticket } : {}),
-      ...(title ? { title } : {}),
-      ...(description !== undefined ? { description } : {}),
-      ...(replace ? { replace } : {}),
-      ...(confirmCreateRetry ? { confirmCreateRetry } : {}),
-    })));
+  }, async ({ root, ...input }) => toolResult(async () =>
+    (await EmpiricalProject.open(root ?? defaultRoot)).bindTracker(parseTrackerBindInput(input))));
 
   server.registerTool(operationName("tracker-sync"), {
     title: "Synchronize external ticket tracking",

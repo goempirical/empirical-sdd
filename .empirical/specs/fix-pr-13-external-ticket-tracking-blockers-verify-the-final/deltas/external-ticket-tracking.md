@@ -1,11 +1,4 @@
-# External Ticket Tracking Specification
-
-## Purpose
-
-Mirror authoritative Empirical progress to one optional external ticket without
-allowing remote availability or state to weaken the local SDD protocol.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Tracking is optional and one-way
 
