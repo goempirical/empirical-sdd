@@ -10,11 +10,15 @@ const packageJson = JSON.parse(await readFile(resolve(root, "package.json"), "ut
   version: string;
   engines?: { node?: string };
   exports?: Record<string, unknown>;
+  repository?: { url?: string };
 };
 assertRegistryIntegrity();
 if (packageJson.version !== PRODUCT_VERSION) throw new Error("package and protocol versions differ");
 if (SCHEMA_VERSION !== 5) throw new Error("product consistency requires Schema 5");
 if (packageJson.engines?.node !== ">=22") throw new Error("package runtime must be Node >=22");
+if (packageJson.repository?.url !== "git+https://github.com/goempirical/empirical-sdd.git") {
+  throw new Error("package repository must match the canonical GitHub repository used by npm OIDC");
+}
 if (JSON.stringify(Object.keys(packageJson.exports ?? {}).sort()) !== JSON.stringify([".", "./integrations", "./mcp", "./protocol"])) {
   throw new Error("package exports must contain only the four supported entrypoints");
 }
@@ -65,6 +69,25 @@ if (!/node:\s*\[22,\s*24,\s*26\]/.test(ci)) {
 }
 for (const gate of ["test:coverage", "test:dist", "test:package", "test:consistency"]) {
   if (!ci.includes(`bun run ${gate}`)) throw new Error(`CI omits ${gate}`);
+}
+
+const publish = await readFile(resolve(root, ".github/workflows/publish.yml"), "utf8");
+for (const required of [
+  "release:",
+  "types: [published]",
+  "github.repository == 'goempirical/empirical-sdd'",
+  "github.event.release.prerelease == false",
+  "environment: npm",
+  "id-token: write",
+  "persist-credentials: false",
+  "git merge-base --is-ancestor HEAD origin/main",
+  "bun run ci",
+  "npm publish --access public --tag latest",
+]) {
+  if (!publish.includes(required)) throw new Error(`npm publish workflow omits ${required}`);
+}
+if (/NPM_(?:TOKEN|AUTH_TOKEN)|NODE_AUTH_TOKEN/.test(publish)) {
+  throw new Error("npm publish workflow must use trusted publishing instead of a long-lived token");
 }
 
 console.log(`Consistency gate: Empirical ${PRODUCT_VERSION}, Schema ${SCHEMA_VERSION}, ${SKILLS.length} skill${SKILLS.length === 1 ? "" : "s"}, ${OPERATIONS.length} operations.`);
