@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generator": "empirical-0.23.0",
-  "sourceDigest": "sha256:ad71845b908ae0f809291b18cd232207b51b2ec0f782809c761e0c8928fd97a1",
+  "sourceDigest": "sha256:a70ccaa7bc54274a63be9c61bf453ea814a509b40964dbbf421783fe618cd277",
   "files": [
     {
       "path": ".codex/config.toml",
@@ -24,6 +24,11 @@
       "digest": "sha256:c57fbaab8d15596be42cf9561dcdeadd0b8b498d19d43c3a822c7bc182e258f0"
     },
     {
+      "path": ".github/workflows/publish.yml",
+      "size": 1842,
+      "digest": "sha256:faf022e419c02dd0ecd43035e22d5d02d7c04baafe095041089e42396683005c"
+    },
+    {
       "path": ".gitignore",
       "size": 306,
       "digest": "sha256:738c8947353a8233a194bd38e7f3e2d39cbbac3bf97919c42419de5ecb8fc336"
@@ -40,8 +45,8 @@
     },
     {
       "path": "CONTRIBUTING.md",
-      "size": 1214,
-      "digest": "sha256:e9fbf6b98aad3f2c92a8537847bdbd2fe492a5bb20128c964f814dbc17d8e068"
+      "size": 1911,
+      "digest": "sha256:22eef2444b15d7520882f76fd5305d624aa3c7fc356495a160503936641166a3"
     },
     {
       "path": "LICENSE",
@@ -110,8 +115,8 @@
     },
     {
       "path": "package.json",
-      "size": 2109,
-      "digest": "sha256:bb748a498eecb01aa2055db3a7a1e1ca35bcae3769cf747068b7cc1e48fa8e90"
+      "size": 2094,
+      "digest": "sha256:c3cb5d46c381b18a5ad0ca2940da593a026239b008d551802a0a7eef29416395"
     },
     {
       "path": "scripts/build.ts",
@@ -120,8 +125,8 @@
     },
     {
       "path": "scripts/check-consistency.ts",
-      "size": 4740,
-      "digest": "sha256:d43af6020dc4d0ac147d9fdaf8a8fbe250bd8a6c737081fae8eea4f1ac47dc4d"
+      "size": 5678,
+      "digest": "sha256:3ca8a147628d282b633c68e4e8a66f3ed33a633059bb13d5365a46e86d03e616"
     },
     {
       "path": "scripts/check-coverage.ts",
@@ -439,6 +444,7 @@
         ".cursor/mcp.json",
         ".gemini/settings.json",
         ".github/workflows/ci.yml",
+        ".github/workflows/publish.yml",
         ".gitignore",
         ".mcp.json",
         "CHANGELOG.md",
@@ -521,7 +527,7 @@
         "tests/worktree-isolation.test.ts",
         "tsconfig.json"
       ],
-      "sourceDigest": "sha256:ad71845b908ae0f809291b18cd232207b51b2ec0f782809c761e0c8928fd97a1",
+      "sourceDigest": "sha256:a70ccaa7bc54274a63be9c61bf453ea814a509b40964dbbf421783fe618cd277",
       "digest": "sha256:62c1e429f938bf5a727c9e089eb965df0b29d2db55837334cad4cb68a75a8ab9",
       "freshness": "fresh"
     },
@@ -533,7 +539,7 @@
         "README.md",
         "package.json"
       ],
-      "sourceDigest": "sha256:53b184ba70f3fe440ac5a30120c6298a8071e6a5c1ea543029aac8a4a8e42061",
+      "sourceDigest": "sha256:fa66c00d1b7aebd094e69d9a699e467b9283af71ee0a28509c3820ac389f995d",
       "digest": "sha256:30bc451fac5fa8e21662312c12f4ea57798c9fdaa6c3582bb9a069527e77e4c8",
       "freshness": "fresh"
     },
@@ -579,7 +585,7 @@
         "src/types.ts",
         "src/worktrees.ts"
       ],
-      "sourceDigest": "sha256:3f51b2b6b1fa223e8df43b07d95122ff9c6685bea819a683bcf8dad2e0ec78d3",
+      "sourceDigest": "sha256:fd0529e9937dca7b445810cc6b91ffa6945859a42dc2d8b6cab4b6d73101562a",
       "digest": "sha256:8a3ce40862fa2601df89006351d195308b09680274472f9e2d1d8130c4db7b8b",
       "freshness": "fresh"
     },
@@ -589,6 +595,7 @@
       "managed": false,
       "dependencies": [
         ".github/workflows/ci.yml",
+        ".github/workflows/publish.yml",
         "package.json",
         "scripts/build.ts",
         "scripts/check-consistency.ts",
@@ -598,7 +605,7 @@
         "scripts/smoke-mcp.ts",
         "scripts/test-package.ts"
       ],
-      "sourceDigest": "sha256:0f324164501e0d9140788770d070fbbeae77c16f30a2a7cd91cab11a48bcf233",
+      "sourceDigest": "sha256:c6c28085d274d46caa1ea0a2ec2a8b4f1762d6b8e0dcae057757be0618824f7d",
       "digest": "sha256:6582b97fdadb423928980f6a90300c1ab6bf17637880e37f1cffb3092a4d2638",
       "freshness": "fresh"
     },
@@ -612,11 +619,11 @@
         "tests/agents.test.ts",
         "tsconfig.json"
       ],
-      "sourceDigest": "sha256:f9221d0219c041c484b2713185891be56670c68eff820e37d2ccc742da8ea794",
+      "sourceDigest": "sha256:27a2e233950ae5e94abb1b6aad9090e19770613d10533da09767fdf345bd6f58",
       "digest": "sha256:0d52698a96335da7bd590428bc2b6fd677efbabe085f7332b72af310e36b3a3f",
       "freshness": "fresh"
     }
   ],
   "truncated": false,
-  "digest": "sha256:4dfa52822f2b94be46742c5c73d47523407b4f0131f22bb4127de851d73302d8"
+  "digest": "sha256:53e221c58a56884541e5d44247d90b0b0a912e37eabd03e5b0e70638c0790adf"
 }
