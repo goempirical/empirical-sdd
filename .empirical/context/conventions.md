@@ -14,7 +14,7 @@
   worktrees where isolation behavior matters.
 - Changes must pass type checking, the full suite, built distribution smoke,
   npm package inspection, and `git diff --check`.
-- Version `0.23.0` remains alpha; `src/protocol.ts` is canonical, changelog and
+- Version `0.24.0` remains alpha; `src/protocol.ts` is canonical, changelog and
   package surfaces must agree, and publication is a separate explicit action.
 
 ## Repository-specific constraints

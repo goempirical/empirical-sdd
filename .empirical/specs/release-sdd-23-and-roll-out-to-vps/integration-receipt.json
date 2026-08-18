@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "feature": "release-sdd-23-and-roll-out-to-vps",
+  "claimId": "release-sdd-23-and-roll-out-to-vps-b24af25e7b8c",
+  "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+  "baseCommit": "6175ea3170d43415155c4c4628367c513970878f",
+  "baseTree": "f878764e87a4c81f599bd9e98cd04d0ef5d1b49d",
+  "featureTree": "sha256:c22980ca569ed875876e1043be9cbb8c7352e1b5222b5b11bf993e53c09adbb6",
+  "targetCommit": "e48869e3197b00fa78841b5303f140c5b5f6f9ed",
+  "targetTree": "f878764e87a4c81f599bd9e98cd04d0ef5d1b49d",
+  "capabilityBaseDigests": {
+    "package-distribution": "sha256:66e78ff3a7b3cb320493142aa67cf169947d5e106f43ab7825b014357dcd397a"
+  },
+  "deltaDigest": "sha256:874c519518c25f75350db0254c72680481ba67789c53b7dd754e434faae843ba",
+  "resultDigests": {
+    "package-distribution": "sha256:edfaf724b6c20e9572e16e0dc726c1ca0f97a5028cc88499b160712d7b990fb8"
+  },
+  "verificationReceiptDigests": [
+    "sha256:3130f6ddd3cd6726401b899e40dab3e4d56679ca6308c3a16c6cbdbdb0fa5736"
+  ],
+  "integratedAt": "2026-08-18T21:04:02.660Z",
+  "digest": "sha256:330e5d0ba5c72647bc3e5184ac30971bd357d6fa3470b976b114b5b5d9717d67"
+}

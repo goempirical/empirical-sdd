@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "classification": "non-behavioral",
+  "capabilities": [],
+  "surfaces": [
+    "workflow"
+  ],
+  "regressionRationale": "Operational delivery of already verified and integrated behavior; existing CI and delivery tests preserve the current product contract.",
+  "digest": "sha256:4ac3fe8f667210cc088c5d4e1dbb88973cd045fe86cccea9826f7da276b134de"
+}

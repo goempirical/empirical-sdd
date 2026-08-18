@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "sequence": 9,
+  "previousDigest": "sha256:40033d8f4a9bd0968a55ca973d0165dec43c3a10948d1a78a3b8bd35858cfcb4",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Integrated non-behavioral change with independent validation",
+  "createdAt": "2026-08-18T21:12:21.215Z",
+  "stateBeforeDigest": "sha256:f860e145137c3b571e7bb1ff63e8002a1c64f5b37b78330c098b3cf5e26c9e92",
+  "stateAfterDigest": "sha256:7b29e5d15283cc2903092f95e59ff283c8f6d1d5d9ee110dda8dcaf5b19b07e4",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 9,
+    "activeFeature": "deliver-sdd-23-through-github",
+    "request": "Commit the already verified integrated changes, push the branch, open source and evidence pull requests to main, wait for every GitHub CI check, and merge them normally.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "deliver",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Integrated non-behavioral change with independent validation",
+    "implementationActor": "agent",
+    "specDigest": "sha256:ada6eedfe2316b5f5c4cc33f8e6efbccaed10f4876515086338db113b9d654f2",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": false,
+    "capabilityDeltaDigest": null,
+    "impactDigest": "sha256:4ac3fe8f667210cc088c5d4e1dbb88973cd045fe86cccea9826f7da276b134de",
+    "capabilityClaimId": null,
+    "authorizationDigest": "sha256:aad0050b496ecf2ef49b12b9e56b6e994b30e159eb939d980354edfd993e212b",
+    "evidence": [],
+    "evidenceReceiptIds": [
+      "executed-ddb24d04cec16eccada170dd"
+    ],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": true,
+      "integrated": true,
+      "delivered": false,
+      "published": false,
+      "highest": "integrated",
+      "reasons": {
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-18T21:12:21.215Z"
+  },
+  "digest": "sha256:613160a8195fd9e9cba22ab9719b76ed7a5be7d0fa4203924d5cd845834e0908"
+}

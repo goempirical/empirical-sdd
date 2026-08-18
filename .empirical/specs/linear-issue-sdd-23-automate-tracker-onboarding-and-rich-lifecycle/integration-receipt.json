@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "feature": "linear-issue-sdd-23-automate-tracker-onboarding-and-rich-lifecycle",
+  "claimId": "linear-issue-sdd-23-automate-tracker-onboarding-and-rich-lifecycle-b24af25e7b8c",
+  "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+  "baseCommit": "6175ea3170d43415155c4c4628367c513970878f",
+  "baseTree": "f878764e87a4c81f599bd9e98cd04d0ef5d1b49d",
+  "featureTree": "sha256:e5879029559ceaadd63e6fd1a122455072fd14b588a36289847f1eb2262bccc0",
+  "targetCommit": "e48869e3197b00fa78841b5303f140c5b5f6f9ed",
+  "targetTree": "f878764e87a4c81f599bd9e98cd04d0ef5d1b49d",
+  "capabilityBaseDigests": {
+    "external-ticket-tracking": "sha256:3040eec3b9e25e2e6f1978ca5d3925df05635157f5974985dbc28b8c0b8252bc"
+  },
+  "deltaDigest": "sha256:d727346bda911f8d0c413d032d04c9dbf757bd82ef2f915d395b1e9f38b72c68",
+  "resultDigests": {
+    "external-ticket-tracking": "sha256:1bfa36b4048540b572e58cc86a07dce28c71ec0f53ff60fe20015a5b294c5909"
+  },
+  "verificationReceiptDigests": [
+    "sha256:df3e311d864145a1bca5c76db9f99bfd71a8c269c261e3f0acd454a3dd75fe06"
+  ],
+  "integratedAt": "2026-08-18T20:45:38.088Z",
+  "digest": "sha256:9ae2af6b93bd3c608b838e383a94912f980264cb5e521c1dfe2a8733b8d33fbe"
+}

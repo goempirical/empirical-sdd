@@ -1,11 +1,116 @@
-# External Ticket Tracking Specification
+# External Ticket Tracking
 
 ## Purpose
 
-Mirror authoritative Empirical progress to one optional external ticket without
-allowing remote availability or state to weaken the local SDD protocol.
+Make optional ticket tracking discoverable during repository setup and project
+committed feature progress as one recoverable ticket lifecycle without copying
+opaque provider identifiers, guessing workflow semantics, overwriting human
+content, or exposing unapproved evidence.
 
-## Requirements
+## ADDED Requirements
+
+### Requirement: Tracker setup is guided, previewable, and explicit
+
+Initialization and repair SHALL present a Tracker section before feature work
+with an explicit disabled/local-only choice and one provider-aware path for
+Linear, GitHub Projects, or Jira. Configuration MUST reference credential
+environment-variable names only, use the selected adapter to discover and
+validate accessible target metadata, show the complete effective policy before
+application, and persist neither credential values nor provider responses that
+contain authorization material. Repair MUST preserve an existing tracker policy
+without provider access unless the caller explicitly chooses to change or
+disable it. Interactive Init and strict non-interactive core/MCP operations MUST
+expose equivalent discover, suggest, validate, preview, and apply semantics.
+
+#### Scenario: Interactive Linear setup succeeds without copied identifiers
+
+- **WHEN** a developer selects a runtime credential source, workspace, team,
+  optional project, and reviewed state mapping from discovered choices
+- **THEN** Init validates access and previews the exact secret-free policy
+- **AND** only the approved canonical identifiers and credential variable name
+  are persisted
+
+#### Scenario: Repair leaves tracker setup untouched
+
+- **WHEN** an initialized repository with Tracker Policy v1 or v2 is repaired
+  without an explicit tracker change
+- **THEN** the tracker policy remains byte-for-byte unchanged
+- **AND** repair makes no tracker provider request
+
+#### Scenario: Tracking is explicitly disabled
+
+- **WHEN** local-only is selected or no tracker policy exists
+- **THEN** initialization, workflow, status, and Doctor perform no provider request
+- **AND** no feature ticket is ensured or projected
+
+### Requirement: Discovery and semantic mapping share one adapter contract
+
+Every provider adapter SHALL expose bounded, paginated discovery results for
+the target hierarchy and capabilities it supports: workspaces or sites, teams or
+repositories, projects, issue types, fields, and workflow states. Results MUST
+retain canonical identifiers and parent relationships, validate target access,
+and use one provider-agnostic contract suitable for interactive and automated
+callers. Mapping suggestions MUST cover `specification`, `planned`,
+`in-progress`, `verification`, `review`, `blocked`, and `done`, MAY map several
+phases to one provider state, and MUST report ranked candidates and reasons.
+Zero candidates or an equal best rank is ambiguity and MUST require an explicit
+selection before application.
+
+Linear suggestions MUST use workflow-state type and position as primary signals
+and MAY use normalized names such as Todo, In Progress, QA, Review, Blocked, and
+Done only to refine otherwise compatible candidates. Names MUST NOT override
+incompatible provider semantics or break a primary-signal tie by themselves.
+
+#### Scenario: A conventional Linear workflow is suggested
+
+- **WHEN** discovery returns ordered Todo, In Progress, QA, Review, and Done states
+- **THEN** type and position establish the lifecycle regions and compatible
+  names refine verification and review suggestions
+- **AND** the complete editable mapping is displayed before application
+
+#### Scenario: A simple board shares provider states
+
+- **WHEN** a board exposes only Todo, In Progress, and Done without distinct QA
+  or review states
+- **THEN** Empirical permits specification/planned and in-progress/verification/
+  review phases to share compatible states
+- **AND** the effective seven-phase mapping remains explicit
+
+#### Scenario: Mapping evidence is ambiguous
+
+- **WHEN** two states have the same best provider-semantic and positional rank
+  for an Empirical phase
+- **THEN** the suggestion identifies both candidates and their reasons
+- **AND** validation refuses to save until the caller chooses one explicitly
+
+### Requirement: Approved evidence projection is bounded and capability-aware
+
+Tracker adapters SHALL declare whether they support binary artifact upload and
+durable link attachment. An artifact is eligible only when an immutable evidence
+receipt approves it, its resolved regular-file path remains inside the
+repository, and its media type, size, and path pass documented bounds. Eligible
+screenshots and evidence MUST be uploaded where the adapter supports it;
+otherwise Empirical SHALL attach safe durable links when available. Unsafe,
+missing, symlink-escaping, secret-like, or unsupported artifacts MUST NOT be
+projected and MUST produce only bounded credential-redacted diagnostics.
+Acknowledged artifact effects MUST be durable so a partial retry does not upload
+or attach the same feature, revision, receipt, and artifact digest twice.
+
+#### Scenario: A receipt contains an approved screenshot
+
+- **WHEN** the screenshot is a repository-contained regular file within bounds
+  and the provider supports uploads
+- **THEN** the milestone references one uploaded provider artifact
+- **AND** retry after acknowledgement does not upload it again
+
+#### Scenario: An approved artifact cannot safely cross the boundary
+
+- **WHEN** its resolved path escapes the repository, looks secret-bearing,
+  exceeds bounds, or lacks a supported upload or durable-link capability
+- **THEN** the adapter performs no artifact effect
+- **AND** pending health reports a safe actionable omission or failure
+
+## MODIFIED Requirements
 
 ### Requirement: Tracking is optional and one-way
 
@@ -197,128 +302,3 @@ acknowledgement data without contacting a provider or mutating files.
 - **WHEN** policy is absent or off while binding or pending files remain
 - **THEN** Doctor reports any schema, path, digest, or safety fault locally
 - **AND** files and provider state remain unchanged
-
-### Requirement: Tracker setup is guided, previewable, and explicit
-
-Initialization and repair SHALL present a Tracker section before feature work
-with an explicit disabled/local-only choice and one provider-aware path for
-Linear, GitHub Projects, or Jira. Configuration MUST reference credential
-environment-variable names only, use the selected adapter to discover and
-validate accessible target metadata, show the complete effective policy before
-application, and persist neither credential values nor provider responses that
-contain authorization material. Repair MUST preserve an existing tracker policy
-without provider access unless the caller explicitly chooses to change or
-disable it. Interactive Init and strict non-interactive core/MCP operations MUST
-expose equivalent discover, suggest, validate, preview, and apply semantics.
-
-#### Scenario: Interactive Linear setup succeeds without copied identifiers
-
-- **WHEN** a developer selects a runtime credential source, workspace, team,
-  optional project, and reviewed state mapping from discovered choices
-- **THEN** Init validates access and previews the exact secret-free policy
-- **AND** only the approved canonical identifiers and credential variable name
-  are persisted
-
-#### Scenario: Repair leaves tracker setup untouched
-
-- **WHEN** an initialized repository with Tracker Policy v1 or v2 is repaired
-  without an explicit tracker change
-- **THEN** the tracker policy remains byte-for-byte unchanged
-- **AND** repair makes no tracker provider request
-
-#### Scenario: Tracking is explicitly disabled
-
-- **WHEN** local-only is selected or no tracker policy exists
-- **THEN** initialization, workflow, status, and Doctor perform no provider request
-- **AND** no feature ticket is ensured or projected
-
-### Requirement: Discovery and semantic mapping share one adapter contract
-
-Every provider adapter SHALL expose bounded, paginated discovery results for
-the target hierarchy and capabilities it supports: workspaces or sites, teams or
-repositories, projects, issue types, fields, and workflow states. Results MUST
-retain canonical identifiers and parent relationships, validate target access,
-and use one provider-agnostic contract suitable for interactive and automated
-callers. Mapping suggestions MUST cover `specification`, `planned`,
-`in-progress`, `verification`, `review`, `blocked`, and `done`, MAY map several
-phases to one provider state, and MUST report ranked candidates and reasons.
-Zero candidates or an equal best rank is ambiguity and MUST require an explicit
-selection before application.
-
-Linear suggestions MUST use workflow-state type and position as primary signals
-and MAY use normalized names such as Todo, In Progress, QA, Review, Blocked, and
-Done only to refine otherwise compatible candidates. Names MUST NOT override
-incompatible provider semantics or break a primary-signal tie by themselves.
-
-#### Scenario: A conventional Linear workflow is suggested
-
-- **WHEN** discovery returns ordered Todo, In Progress, QA, Review, and Done states
-- **THEN** type and position establish the lifecycle regions and compatible
-  names refine verification and review suggestions
-- **AND** the complete editable mapping is displayed before application
-
-#### Scenario: A simple board shares provider states
-
-- **WHEN** a board exposes only Todo, In Progress, and Done without distinct QA
-  or review states
-- **THEN** Empirical permits specification/planned and in-progress/verification/
-  review phases to share compatible states
-- **AND** the effective seven-phase mapping remains explicit
-
-#### Scenario: Mapping evidence is ambiguous
-
-- **WHEN** two states have the same best provider-semantic and positional rank
-  for an Empirical phase
-- **THEN** the suggestion identifies both candidates and their reasons
-- **AND** validation refuses to save until the caller chooses one explicitly
-
-### Requirement: Approved evidence projection is bounded and capability-aware
-
-Tracker adapters SHALL declare whether they support binary artifact upload and
-durable link attachment. An artifact is eligible only when an immutable evidence
-receipt approves it, its resolved regular-file path remains inside the
-repository, and its media type, size, and path pass documented bounds. Eligible
-screenshots and evidence MUST be uploaded where the adapter supports it;
-otherwise Empirical SHALL attach safe durable links when available. Unsafe,
-missing, symlink-escaping, secret-like, or unsupported artifacts MUST NOT be
-projected and MUST produce only bounded credential-redacted diagnostics.
-Acknowledged artifact effects MUST be durable so a partial retry does not upload
-or attach the same feature, revision, receipt, and artifact digest twice.
-
-#### Scenario: A receipt contains an approved screenshot
-
-- **WHEN** the screenshot is a repository-contained regular file within bounds
-  and the provider supports uploads
-- **THEN** the milestone references one uploaded provider artifact
-- **AND** retry after acknowledgement does not upload it again
-
-#### Scenario: An approved artifact cannot safely cross the boundary
-
-- **WHEN** its resolved path escapes the repository, looks secret-bearing,
-  exceeds bounds, or lacks a supported upload or durable-link capability
-- **THEN** the adapter performs no artifact effect
-- **AND** pending health reports a safe actionable omission or failure
-
-### Requirement: Canonical checkout aliases preserve evidence eligibility
-
-Empirical MUST compare both an approved artifact and its resolved regular-file
-target against the same canonical repository root. A lexical checkout alias,
-including an operating-system temporary-directory alias or an explicitly
-symlinked repository root, MUST NOT by itself make a repository-contained
-artifact ineligible. Direct traversal and symbolic-link targets outside the
-canonical repository MUST continue to fail before any provider request.
-
-#### Scenario: A repository root has a lexical alias
-
-- **GIVEN** a receipt-approved regular artifact within the canonical repository
-- **WHEN** tracker projection is invoked through a repository-root path that
-  canonicalizes to a different absolute path
-- **THEN** Empirical evaluates and projects the artifact from the canonical root
-- **AND** the lexical alias is not reported as a repository escape
-
-#### Scenario: An artifact link escapes the canonical repository
-
-- **WHEN** a receipt path names a symbolic link or resolves to a target outside
-  the canonical repository
-- **THEN** Empirical rejects the artifact before provider access
-- **AND** no canonical-root alias weakens the existing fail-closed boundary
