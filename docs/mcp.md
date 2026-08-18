@@ -27,7 +27,8 @@ executable handoff support.
   `empirical_route`, `empirical_fast`, `empirical_complex`, `empirical_yolo`.
 - Exact workflow: `empirical_loop`, `empirical_next`, `empirical_status`,
   `empirical_explain`, `empirical_complete`, `empirical_retry`.
-- External ticket mirror: `empirical_tracker_configure`,
+- External ticket mirror: `empirical_tracker_discover`,
+  `empirical_tracker_suggest`, `empirical_tracker_preview`, `empirical_tracker_configure`,
   `empirical_tracker_bind`, `empirical_tracker_sync`.
 - Evidence and integration: `empirical_evidence_execute`,
   `empirical_evidence_collect`, `empirical_verify`, `empirical_integrate`,
@@ -58,8 +59,9 @@ Schema-5 integration requirement.
 7. Execute configured evidence or collect artifacts, then complete the exact
    revision with immutable receipt IDs.
 8. If tracking is configured, commit the local transition first and then call
-   `empirical_tracker_sync`. A remote failure is reported and retried from the
-   durable pending projection; it never rewinds or blocks local workflow state.
+   `empirical_tracker_sync`. In `ensure` mode this also establishes the one
+   feature ticket. A remote failure is reported and retried from the durable
+   unacknowledged effect; it never rewinds or blocks local workflow state.
 9. When Context is returned, call `empirical_context`, refine every reported
    placeholder topic from inspected evidence, remove its managed marker, call
    context again, and complete only when `refinementRequired`, `stale`, and
@@ -74,8 +76,31 @@ explicitly effectful and retain their own safety gates.
 ## External ticket mirror
 
 Tracking is opt-in. With no `.empirical/tracker.json`, status is `local-only`
-and tracker operations perform no network requests. `empirical_tracker_configure`
-accepts one strict Tracker Policy v1 document, or `null` to disable tracking.
+and tracker operations perform no network requests. Policy v2 with `ticket:
+"off"` reports `off` and also branches before credential resolution or provider
+access. `empirical_tracker_configure` accepts a strict Tracker Policy v1 or v2
+document, or `null` to disable tracking.
+
+Setup uses the same contract in every client:
+
+1. Call `empirical_tracker_discover` with a provider and credential
+   environment-variable names. Jira also needs its credential-free Cloud site
+   origin. The result contains named workspaces/sites, teams/repositories,
+   projects, issue types, fields, states, parent relationships, and adapter
+   capabilities; no catalog is persisted.
+2. Call `empirical_tracker_suggest` with the same discovery input and the
+   selected team/status-field/project parent ID. Linear state `type` and
+   lifecycle `position` are primary; familiar names only refine compatible
+   candidates. Explicitly resolve ties or incompatible-only results. Reusing a
+   state across phases is valid.
+3. Call `empirical_tracker_preview` with the complete policy. Preview repeats
+   discovery, validates permissions and every selected target/state, expands
+   display names, and returns a canonical secret-free digest without writing.
+4. Apply with `empirical_tracker_configure`, or pass the strict `tracker`
+   preserve/disabled/apply change to `empirical_init`. The private CLI has
+   equivalent `tracker-discover`, `tracker-suggest`, `tracker-preview`, `tracker-configure`, and
+   `init --tracker-input <json-file|->` surfaces.
+
 The common state map is required for every provider:
 
 ```json
@@ -90,7 +115,24 @@ The common state map is required for every provider:
 }
 ```
 
-Provider-specific policy fields are:
+Tracker Policy v2 adds behavior without changing provider target shapes:
+
+```json
+{
+  "schemaVersion": 2,
+  "provider": "linear",
+  "target": { "teamId": "discovered-team", "projectId": "discovered-project" },
+  "credentialEnv": { "apiKey": "LINEAR_API_KEY" },
+  "states": { "specification": "todo", "planned": "todo", "in-progress": "started", "verification": "qa", "review": "qa", "blocked": "started", "done": "done" },
+  "ticket": "ensure",
+  "visibility": "milestones"
+}
+```
+
+`ticket` is `off`, `manual`, or `ensure`. `visibility` is `blockers-final`,
+`milestones`, or `revisions`. Provider-specific legacy v1 examples follow; they
+remain accepted byte-for-byte and are interpreted as manual binding with the
+legacy state/description projection:
 
 ```json
 {
@@ -132,19 +174,26 @@ start with a letter, and contain at least one underscore. The host must inject
 a nonblank runtime value into the Empirical MCP/agent process. The credential
 must be authorized for the exact configured target and effects:
 
-- Linear: read, create, and update issues in the configured team and optional
-  project.
+- Linear: discover the workspace/team/project/workflow, and read, create,
+  update, and comment on issues in the selected team and optional project.
 - GitHub: read and write the configured repository's issues and comments, and
-  add/update items and the Status field in the configured Projects v2 project.
-- Jira: read, create, and update issues and issue properties, and perform the
-  configured status transitions in the configured Cloud project.
+  discover/add/update items and the Status field in the selected Projects v2
+  project.
+- Jira: discover projects, issue types, fields, and statuses; read, create,
+  update, and comment on issues; write issue properties; perform configured
+  transitions; and add attachments when evidence upload is enabled.
 
 Empirical does not discover credentials, elevate provider permissions, or
 serialize runtime values. Missing variables are reported by name only.
 
-`empirical_tracker_bind` accepts `{ "mode": "create" }` or
-`{ "mode": "attach", "ticket": "..." }`. An existing binding is immutable
-unless the caller explicitly supplies `replace: true`. Bindings and pending
+In `manual` mode, `empirical_tracker_bind` accepts `{ "mode": "create" }` or
+`{ "mode": "attach", "ticket": "..." }`. In `ensure` mode ordinary
+`empirical_tracker_sync` first validates one ticket URL referenced by the
+feature request, then performs a complete bounded lookup for the stable feature
+marker, and creates only after a complete zero-match result. Multiple references
+or marker matches persist `TRACKER_BIND_AMBIGUOUS` and stop for explicit
+reconciliation. An existing binding is immutable unless the caller explicitly
+supplies `replace: true`. Bindings and pending
 operations are checksummed, feature-local, and retain digests of the exact
 provider target and effective policy. A target change therefore fails locally
 until explicit replacement; a same-target state-map change invalidates the
@@ -162,14 +211,28 @@ reconciled, the caller can attach the possibly created ticket. Supplying
 `confirmCreateRetry: true` explicitly accepts a new create attempt and its
 duplicate-ticket risk; it is not an exactly-once guarantee.
 
-The remote marker contains feature identity, phase, workflow status, exact
-revision, completion level, blocker summary, and an idempotency marker. Status
-and action packets report `local-only`, `synced`, `pending`, or `failed` without
-making remote requests. They retain the committed, last-synchronized, and
-pending revisions plus a bounded credential-safe failure code, summary, and
-timestamp. Keep local progress; provide a named missing credential, explicitly
-rebind target drift, reconcile an ambiguous create, or call
-`empirical_tracker_sync` again for an ordinary pending update as reported.
+Policy v2 progress is append-only. Linear, GitHub, and Jira receive idempotent
+milestone comments containing phase, revision, progress, completion, concise
+summary, blocker, and reviewable receipt artifacts. The visibility policy
+selects blockers/final only, phase/status/completion milestones, or every
+committed revision. New Linear synchronization changes state and comments only;
+it never rewrites user-authored descriptions. Deterministic transition,
+comment, and artifact keys include feature, revision, and sorted receipt digest,
+and each successful effect is atomically acknowledged before the next.
+
+Only artifacts already approved by committed collected-evidence receipts are
+eligible. Empirical revalidates receipt and file digests, repository containment,
+regular-file/non-symlink identity, secret-like names, media allowlists, and size
+bounds before any remote request. Jira uses a deterministic attachment marker;
+other adapters use a commit-pinned safe repository link when available and
+otherwise record a bounded unsupported/pending note. No bytes or credential
+values enter pending JSON.
+
+Status and action packets report `local-only`, `off`, `synced`, `pending`, or
+`failed` without provider requests. Policy v2 status also shows ticket behavior,
+visibility, and remaining effects. Keep local progress; provide a named missing
+credential, explicitly rebind target drift, resolve marker ambiguity, repair an
+unsafe artifact, or retry `empirical_tracker_sync` after an outage as reported.
 
 The normalized projection is `shape/specify/design → specification`,
 `plan → planned`, `implement/context → in-progress`, `verify → verification`,

@@ -24,17 +24,28 @@ untrusted.
 - Manifest v2 inventory is bounded and excludes ignored, build, dependency,
   secret-like, binary, and oversized paths. It stores fingerprints, not a
   remote semantic index. Stale generated pages are not silently retrieved.
-- Tracker Policy v1 stores only provider target IDs, normalized status IDs, and
+- Tracker Policy v1/v2 stores only provider target IDs, normalized status IDs,
+  behavior/visibility choices, and
   credential environment-variable names matching
   `^(?=.{2,64}$)[A-Z][A-Z0-9]*_[A-Z0-9_]+$`. Runtime values are never
   serialized. The host must inject the named nonblank values into the Empirical
   process and grant only the provider permissions needed to
-  read/create/update the exact configured ticket target. Provider requests use
-  fixed HTTPS endpoints, bounded timeouts and responses, checksummed
-  target-bound feature state, and a stable idempotency marker. Diagnostics are
-  bounded and credential-redacted before return or persistence, including
-  failures raised by an injected transport. Remote input is never allowed to
-  mutate local workflow state or acceptance criteria.
+  discover/read/create/update/comment on the exact configured ticket target and,
+  for Jira evidence, add attachments. Provider requests use fixed HTTPS
+  endpoints, bounded timeouts and responses, complete bounded pagination,
+  checksummed target-bound feature state, stable create markers, and
+  deterministic per-effect keys. Discovery catalogs are ephemeral and preview
+  validates target access before persistence. Off/disabled branches occur before
+  credential resolution.
+- Tracker evidence is selected only through receipt IDs already committed in
+  local workflow state. Receipt and file digests, repository containment,
+  regular-file/non-symlink identity, secret-like names, media allowlists, count,
+  and byte ceilings are revalidated before provider access. Uploads use
+  deterministic reconciliation names; durable repository links are commit
+  pinned and emitted only when committed bytes match. No artifact bytes enter
+  pending state. Diagnostics are bounded and credential-redacted before return
+  or persistence, including failures raised by an injected transport. Remote
+  input is never allowed to mutate local workflow state or acceptance criteria.
 - Reserved migration stage/marker/backup paths are transaction state rather
   than source. Pre-marker failure removes only its owned stage; evidence,
   knowledge, and integration overlays exclude scratch, while Doctor diagnoses
@@ -65,5 +76,7 @@ untrusted.
   secret sections. Explain exposes deterministic state-machine rationale only.
 
 Do not place secrets in requests, Socratic answers, specifications, decisions,
-evidence summaries, screenshots, tracker configuration, or delivery inputs. `.empirical/` is committed
-project data; Git-common-dir claim records are local coordination metadata.
+evidence summaries, screenshots, tracker configuration, or delivery inputs.
+Tracker credential fields contain environment-variable names, never values.
+`.empirical/` is committed project data; Git-common-dir claim records are local
+coordination metadata.

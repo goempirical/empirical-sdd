@@ -129,6 +129,28 @@ describe("first-run configuration CLI", () => {
     });
   });
 
+  test("non-interactive init accepts the strict tracker setup contract", async () => {
+    const directory = await root();
+    const trackerInput = join(directory, "tracker-setup.json");
+    await writeFile(trackerInput, JSON.stringify({ mode: "disabled" }), "utf8");
+    const initialized = await run(internal([
+      "init", "--defaults", "--tracker-input", trackerInput, "--no-integrations", "--json", "--root", directory,
+    ]));
+    expect(initialized.exitCode).toBe(0);
+    expect(JSON.parse(initialized.stdout).config.setupComplete).toBe(true);
+    expect(await stat(join(directory, ".empirical", "tracker.json")).then(() => true, () => false)).toBe(false);
+
+    const invalidRoot = await root();
+    const invalidTrackerInput = join(invalidRoot, "tracker-setup.json");
+    await writeFile(invalidTrackerInput, JSON.stringify({ mode: "disabled", unexpected: true }), "utf8");
+    const invalid = await run(internal([
+      "init", "--defaults", "--tracker-input", invalidTrackerInput, "--no-integrations", "--root", invalidRoot,
+    ]));
+    expect(invalid.exitCode).toBe(1);
+    expect(invalid.stderr).toContain("INVALID_TRACKER_SETUP");
+    expect(await stat(join(invalidRoot, ".empirical")).then(() => true, () => false)).toBe(false);
+  });
+
   test("legacy workstream flags and commands are rejected", async () => {
     const directory = await root();
     await run(internal(["init", "--defaults", "--no-integrations", "--root", directory]));

@@ -1,4 +1,4 @@
-# Empirical protocol 0.23
+# Empirical protocol 0.24
 
 ## Shared contract
 
@@ -117,18 +117,39 @@ removal, and a second refresh whose report has empty `stale`, `missing`, and
 
 ## External tracker projection
 
-Tracker Policy v1 is an optional sidecar to Schema 5. Its absence preserves
+Tracker Policy is an optional sidecar to Schema 5. Its absence preserves
 existing repositories exactly and means `local-only`; it does not trigger a
-workflow schema migration. The policy chooses one GitHub, Linear, or Jira
-target, stores a complete normalized status map, and references credentials by
-environment-variable name only. Credential names use the strict uppercase
-runtime grammar; the host must inject nonblank values with access to the exact
-configured target into the Empirical process. Policy stores neither those
-values nor provider authorization.
+workflow schema migration. Both strict versions choose one GitHub, Linear, or
+Jira target, store the complete normalized `specification`, `planned`,
+`in-progress`, `verification`, `review`, `blocked`, and `done` map, and
+reference credentials by environment-variable name only. Credential names use
+the strict uppercase runtime grammar; the host injects nonblank values with
+access to the exact configured target. Policy stores neither values nor
+provider authorization.
+
+Policy v1 remains readable and byte-preserved. Its effective behavior is manual
+ticket binding plus the legacy provider projection. Policy v2 adds `ticket` as
+`off | manual | ensure` and `visibility` as `blockers-final | milestones |
+revisions`. `off` performs no provider access. `ensure` binds one valid request
+reference, one exact stable-marker match, or a newly created ticket only after
+a complete zero-match reconciliation. Ambiguity is durable failure state, never
+a selection heuristic.
+
+Discovery is ephemeral and provider-neutral: strict input names a provider and
+credential variables; output contains canonical/display identities, parent
+relationships, state semantics/positions, capabilities, completeness, and a
+digest. Mapping suggestions rank provider semantics and lifecycle position
+before name refinements, allow shared provider states, and leave tied primary
+ranks unresolved. Preview repeats discovery and validates the entire selected
+hierarchy and map before atomic policy persistence.
 
 The local journal commits first. A tracker sync then writes a checksummed
 feature-local pending operation keyed by feature and revision, converges one
-target-bound ticket, and advances the binding only after remote success. The
+target-bound ticket, and advances the binding only after remote success. Policy
+v2 pending records additionally acknowledge deterministic state-transition,
+milestone-comment, and artifact effects separately. Effect keys bind provider
+target, feature, revision, sorted receipt digest, kind, and artifact digest, so
+partial retry skips confirmed effects. The
 binding and pending operation retain digests of the exact provider target and
 effective policy. Reconfiguring the target therefore fails locally instead of
 combining an old remote identity with a new destination. Changing the status
@@ -145,18 +166,25 @@ attempt again automatically; without one unique match, explicit attachment is
 required unless the caller confirms a new attempt while accepting duplicate
 risk.
 
+Policy v2 milestone comments append phase, revision, progress, completion,
+summary, blocker, and reviewable artifacts without editing human descriptions.
+Artifacts can originate only in committed immutable collected receipts and are
+rechecked for digest, containment, symlinks, media type, secret-like path, count,
+and size before upload or a commit-pinned durable link. Artifact bytes and
+credential values are never persisted in tracker state.
+
 The remote system is never read as workflow authority. Provider failures
 therefore change only tracker health (`pending` or `failed`) and cannot alter
-the phase, revision, criteria, or completion level. Status reports committed,
-last-synchronized, and pending revisions plus bounded credential-safe failure
-context without contacting the provider.
+the phase, revision, criteria, or completion level. Status reports policy
+behavior, remaining effects, committed/last-synchronized/pending revisions, and
+bounded credential-safe failure context without contacting the provider.
 
 ## Persistence
 
 ```text
 .empirical/config.json                         # Schema 5
 .empirical/policy.json                         # Policy v2
-.empirical/tracker.json                        # optional Tracker Policy v1
+.empirical/tracker.json                        # optional Tracker Policy v1 or v2
 .empirical/context/manifest.json               # Manifest v2
 .empirical/capabilities/<capability>/spec.md
 .empirical/specs/<feature>/state.json

@@ -1,12 +1,19 @@
 import { Buffer } from "node:buffer";
+import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { rm } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { lstat, readFile, realpath, rm } from "node:fs/promises";
+import { join, relative, resolve } from "node:path";
 
 import { z } from "zod";
 
 import { EmpiricalError } from "./errors.js";
-import { digestJson, sha256 } from "./protocol.js";
+import {
+  digestJson,
+  evidenceReceiptSchema,
+  sha256,
+  verifyReceiptDigest,
+  type EvidenceReceipt,
+} from "./protocol.js";
 import {
   ProjectStore,
   isFile,
@@ -23,29 +30,64 @@ import type {
   TrackerBindIntent,
   TrackerBindResult,
   TrackerBinding,
+  TrackerArtifact,
+  TrackerDiscovery,
+  TrackerDiscoveryInput,
+  TrackerDiscoveryResource,
+  TrackerMappingCandidate,
+  TrackerMappingSuggestion,
   TrackerDependencies,
+  EffectiveTrackerPolicy,
   TrackerFailure,
   TrackerHttpRequest,
   TrackerHttpResponse,
   TrackerPendingRecord,
   TrackerPolicy,
+  TrackerPolicyPreview,
   TrackerProgressState,
+  TrackerProgressVisibility,
   TrackerProjection,
   TrackerProvider,
   TrackerStateMap,
   TrackerStatus,
+  TrackerSetupChange,
   TrackerSyncResult,
+  TrackerTicketPolicy,
   TrackerTransport,
   WorkflowState,
 } from "./types.js";
 
-export const TRACKER_SCHEMA_VERSION = 1 as const;
+export const TRACKER_SCHEMA_VERSION = 2 as const;
+export const TRACKER_LEGACY_SCHEMA_VERSION = 1 as const;
 const TRACKER_TIMEOUT_MS = 30_000;
 const TRACKER_MAX_RESPONSE_BYTES = 1_048_576;
 const TRACKER_ERROR_LIMIT = 500;
 const ENVIRONMENT_NAME = /^(?=.{2,64}$)[A-Z][A-Z0-9]*_[A-Z0-9_]+$/;
 const REMOTE_ID = /^[A-Za-z0-9][A-Za-z0-9_.:+\/=\-]{0,255}$/;
 const PROJECT_KEY = /^[A-Z][A-Z0-9_]{0,31}$/;
+const TRACKER_PROGRESS_STATES: TrackerProgressState[] = [
+  "specification",
+  "planned",
+  "in-progress",
+  "verification",
+  "review",
+  "blocked",
+  "done",
+];
+const TRACKER_DISCOVERY_LIMIT = 100;
+const TRACKER_ARTIFACT_MAX_COUNT = 10;
+const TRACKER_ARTIFACT_MAX_BYTES = 5 * 1_024 * 1_024;
+const TRACKER_ARTIFACT_TOTAL_BYTES = 10 * 1_024 * 1_024;
+const TRACKER_ARTIFACT_MEDIA = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "image/gif",
+  "application/pdf",
+  "application/json",
+  "text/plain",
+  "text/markdown",
+]);
 
 const trackerStateMapSchema = z.object({
   specification: z.string().trim().min(1).max(256),
@@ -59,9 +101,11 @@ const trackerStateMapSchema = z.object({
 
 const environmentNameSchema = z.string().regex(ENVIRONMENT_NAME);
 const remoteIdSchema = z.string().regex(REMOTE_ID);
+const trackerTicketPolicySchema = z.enum(["off", "manual", "ensure"]);
+const trackerVisibilitySchema = z.enum(["blockers-final", "milestones", "revisions"]);
 
-const githubTrackerPolicySchema = z.object({
-  schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
+const githubTrackerPolicyV1Schema = z.object({
+  schemaVersion: z.literal(TRACKER_LEGACY_SCHEMA_VERSION),
   provider: z.literal("github"),
   target: z.object({
     owner: z.string().regex(/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/),
@@ -73,8 +117,23 @@ const githubTrackerPolicySchema = z.object({
   states: trackerStateMapSchema,
 }).strict();
 
-const linearTrackerPolicySchema = z.object({
+const githubTrackerPolicyV2Schema = z.object({
   schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
+  provider: z.literal("github"),
+  target: z.object({
+    owner: z.string().regex(/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/),
+    repository: z.string().regex(/^[A-Za-z0-9_.-]{1,100}$/),
+    projectId: remoteIdSchema,
+    statusFieldId: remoteIdSchema,
+  }).strict(),
+  credentialEnv: z.object({ token: environmentNameSchema }).strict(),
+  states: trackerStateMapSchema,
+  ticket: trackerTicketPolicySchema,
+  visibility: trackerVisibilitySchema,
+}).strict();
+
+const linearTrackerPolicyV1Schema = z.object({
+  schemaVersion: z.literal(TRACKER_LEGACY_SCHEMA_VERSION),
   provider: z.literal("linear"),
   target: z.object({
     teamId: remoteIdSchema,
@@ -84,8 +143,21 @@ const linearTrackerPolicySchema = z.object({
   states: trackerStateMapSchema,
 }).strict();
 
-const jiraTrackerPolicySchema = z.object({
+const linearTrackerPolicyV2Schema = z.object({
   schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
+  provider: z.literal("linear"),
+  target: z.object({
+    teamId: remoteIdSchema,
+    projectId: remoteIdSchema.nullable(),
+  }).strict(),
+  credentialEnv: z.object({ apiKey: environmentNameSchema }).strict(),
+  states: trackerStateMapSchema,
+  ticket: trackerTicketPolicySchema,
+  visibility: trackerVisibilitySchema,
+}).strict();
+
+const jiraTrackerPolicyV1Schema = z.object({
+  schemaVersion: z.literal(TRACKER_LEGACY_SCHEMA_VERSION),
   provider: z.literal("jira"),
   target: z.object({
     siteUrl: z.string().url().max(2048),
@@ -99,14 +171,39 @@ const jiraTrackerPolicySchema = z.object({
   states: trackerStateMapSchema,
 }).strict();
 
-export const trackerPolicySchema = z.discriminatedUnion("provider", [
-  githubTrackerPolicySchema,
-  linearTrackerPolicySchema,
-  jiraTrackerPolicySchema,
+const jiraTrackerPolicyV2Schema = z.object({
+  schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
+  provider: z.literal("jira"),
+  target: z.object({
+    siteUrl: z.string().url().max(2048),
+    projectKey: z.string().regex(PROJECT_KEY),
+    issueTypeId: remoteIdSchema,
+  }).strict(),
+  credentialEnv: z.object({
+    email: environmentNameSchema,
+    apiToken: environmentNameSchema,
+  }).strict(),
+  states: trackerStateMapSchema,
+  ticket: trackerTicketPolicySchema,
+  visibility: trackerVisibilitySchema,
+}).strict();
+
+export const trackerPolicySchema = z.union([
+  githubTrackerPolicyV1Schema,
+  githubTrackerPolicyV2Schema,
+  linearTrackerPolicyV1Schema,
+  linearTrackerPolicyV2Schema,
+  jiraTrackerPolicyV1Schema,
+  jiraTrackerPolicyV2Schema,
 ]);
 
-const trackerProjectionSchema = z.object({
-  schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
+export const trackerSetupChangeSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("preserve") }).strict(),
+  z.object({ mode: z.literal("disabled") }).strict(),
+  z.object({ mode: z.literal("apply"), policy: trackerPolicySchema }).strict(),
+]);
+
+const trackerProjectionBaseSchema = {
   feature: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/),
   phase: z.enum([
     "idle", "shape", "specify", "design", "plan", "implement", "context",
@@ -119,7 +216,32 @@ const trackerProjectionSchema = z.object({
   summary: z.string().max(TRACKER_ERROR_LIMIT).nullable(),
   marker: z.string().regex(/^empirical-sdd:[a-z0-9][a-z0-9-]{0,79}:r\d+$/),
   digest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+};
+
+const trackerArtifactSchema = z.object({
+  receiptId: z.string().regex(/^(?:executed|collected)-[a-z0-9-]+$/),
+  path: z.string().min(1).max(1_024),
+  mediaType: z.string().min(1).max(128),
+  digest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  size: z.number().int().nonnegative(),
+  url: z.string().url().max(2_048).nullable(),
 }).strict();
+
+const trackerProjectionV1Schema = z.object({
+  schemaVersion: z.literal(TRACKER_LEGACY_SCHEMA_VERSION),
+  ...trackerProjectionBaseSchema,
+}).strict();
+
+const trackerProjectionV2Schema = z.object({
+  schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
+  ...trackerProjectionBaseSchema,
+  blocker: z.string().max(TRACKER_ERROR_LIMIT).nullable(),
+  receiptIds: z.array(z.string().regex(/^(?:executed|collected)-[a-z0-9-]+$/)).max(100),
+  receiptDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  artifacts: z.array(trackerArtifactSchema).max(20),
+}).strict();
+
+const trackerProjectionSchema = z.union([trackerProjectionV1Schema, trackerProjectionV2Schema]);
 
 const trackerFailureSchema = z.object({
   code: z.string().regex(/^[A-Z][A-Z0-9_]{2,63}$/),
@@ -127,8 +249,7 @@ const trackerFailureSchema = z.object({
   at: z.string().datetime({ offset: true }),
 }).strict();
 
-const trackerBindingSchema = z.object({
-  schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
+const trackerBindingBaseSchema = {
   feature: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/),
   provider: z.enum(["github", "linear", "jira"]),
   remoteId: remoteIdSchema,
@@ -142,7 +263,26 @@ const trackerBindingSchema = z.object({
   lastSyncedDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/).nullable(),
   lastSyncedPolicyDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/).nullable(),
   digest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+};
+
+const trackerBindingV1Schema = z.object({
+  schemaVersion: z.literal(TRACKER_LEGACY_SCHEMA_VERSION),
+  ...trackerBindingBaseSchema,
 }).strict();
+
+const trackerBindingV2Schema = z.object({
+  schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
+  ...trackerBindingBaseSchema,
+  lastSyncedPhase: z.enum([
+    "idle", "shape", "specify", "design", "plan", "implement", "context",
+    "verify", "review", "integrate", "deliver", "publish", "archive", "done",
+  ]).nullable(),
+  lastSyncedStatus: z.enum(["idle", "waiting", "awaiting_human", "blocked", "done"]).nullable(),
+  lastSyncedCompletionLevel: z.enum(["none", "implemented", "verified", "integrated", "delivered", "published"]).nullable(),
+  lastSyncedReceiptDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/).nullable(),
+}).strict();
+
+const trackerBindingSchema = z.union([trackerBindingV1Schema, trackerBindingV2Schema]);
 
 const trackerCreateIntentSchema = z.object({
   mode: z.literal("create"),
@@ -162,8 +302,7 @@ const trackerBindIntentSchema = z.discriminatedUnion("mode", [
   trackerAttachIntentSchema,
 ]);
 
-const trackerPendingSchema = z.object({
-  schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
+const trackerPendingBaseSchema = {
   provider: z.enum(["github", "linear", "jira"]),
   targetDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
   policyDigest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
@@ -176,7 +315,29 @@ const trackerPendingSchema = z.object({
   failure: trackerFailureSchema.nullable(),
   updatedAt: z.string().datetime({ offset: true }),
   digest: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+};
+
+const trackerEffectSchema = z.object({
+  key: z.string().regex(/^sha256:[a-f0-9]{64}$/),
+  kind: z.enum(["transition", "comment", "artifact"]),
+  remoteId: z.string().min(1).max(2_048).regex(/^[^\0\r\n]+$/).nullable(),
+  at: z.string().datetime({ offset: true }),
 }).strict();
+
+const trackerPendingV1Schema = z.object({
+  schemaVersion: z.literal(TRACKER_LEGACY_SCHEMA_VERSION),
+  ...trackerPendingBaseSchema,
+  projection: trackerProjectionV1Schema,
+}).strict();
+
+const trackerPendingV2Schema = z.object({
+  schemaVersion: z.literal(TRACKER_SCHEMA_VERSION),
+  ...trackerPendingBaseSchema,
+  projection: trackerProjectionV2Schema,
+  effects: z.array(trackerEffectSchema).max(100),
+}).strict();
+
+const trackerPendingSchema = z.union([trackerPendingV1Schema, trackerPendingV2Schema]);
 
 export const trackerCreateBindInputSchema = z.object({
   mode: z.literal("create"),
@@ -197,6 +358,57 @@ export const trackerBindInputSchema = z.discriminatedUnion("mode", [
   trackerAttachBindInputSchema,
 ]);
 
+const githubTrackerDiscoveryInputSchema = z.object({
+  provider: z.literal("github"),
+  credentialEnv: z.object({ token: environmentNameSchema }).strict(),
+}).strict();
+
+const linearTrackerDiscoveryInputSchema = z.object({
+  provider: z.literal("linear"),
+  credentialEnv: z.object({ apiKey: environmentNameSchema }).strict(),
+}).strict();
+
+const jiraTrackerDiscoveryInputSchema = z.object({
+  provider: z.literal("jira"),
+  target: z.object({ siteUrl: z.string().url().max(2_048) }).strict(),
+  credentialEnv: z.object({
+    email: environmentNameSchema,
+    apiToken: environmentNameSchema,
+  }).strict(),
+}).strict();
+
+export const trackerDiscoveryInputSchema = z.discriminatedUnion("provider", [
+  githubTrackerDiscoveryInputSchema,
+  linearTrackerDiscoveryInputSchema,
+  jiraTrackerDiscoveryInputSchema,
+]);
+
+export const trackerMappingInputSchema = z.object({
+  input: trackerDiscoveryInputSchema,
+  stateParentId: remoteIdSchema,
+}).strict();
+
+export function parseTrackerDiscoveryInput(value: unknown): TrackerDiscoveryInput {
+  let parsed: TrackerDiscoveryInput;
+  try {
+    parsed = trackerDiscoveryInputSchema.parse(value) as TrackerDiscoveryInput;
+  } catch (error) {
+    throw new EmpiricalError(
+      "INVALID_TRACKER_DISCOVERY_INPUT",
+      "Tracker discovery must select one provider and credential environment-variable names only",
+      error,
+    );
+  }
+  if (parsed.provider === "jira") validateJiraSite(parsed.target.siteUrl);
+  if (containsSecretLikeValue(parsed)) {
+    throw new EmpiricalError(
+      "INVALID_TRACKER_DISCOVERY_INPUT",
+      "Tracker discovery contains a secret-like value; pass credential environment-variable names only",
+    );
+  }
+  return parsed;
+}
+
 export function parseTrackerBindInput(value: unknown): TrackerBindInput {
   try {
     return trackerBindInputSchema.parse(value) as TrackerBindInput;
@@ -216,7 +428,7 @@ export function parseTrackerPolicy(value: unknown): TrackerPolicy {
   } catch (error) {
     throw new EmpiricalError(
       "INVALID_TRACKER_POLICY",
-      "Tracker Policy v1 must select one provider with a strict secret-free target and complete state mapping",
+      "Tracker Policy v1 or v2 must select one provider with a strict secret-free target and complete state mapping",
       error,
     );
   }
@@ -224,10 +436,40 @@ export function parseTrackerPolicy(value: unknown): TrackerPolicy {
   if (containsSecretLikeValue(parsed)) {
     throw new EmpiricalError(
       "INVALID_TRACKER_POLICY",
-      "Tracker Policy v1 contains a secret-like value; persist only provider identifiers and credential environment-variable names",
+      "Tracker policy contains a secret-like value; persist only provider identifiers and credential environment-variable names",
     );
   }
   return parsed;
+}
+
+export function parseTrackerSetupChange(value: unknown): TrackerSetupChange {
+  try {
+    return trackerSetupChangeSchema.parse(value) as TrackerSetupChange;
+  } catch (error) {
+    throw new EmpiricalError(
+      "INVALID_TRACKER_SETUP",
+      "Tracker setup must strictly preserve, disable, or apply one secret-free tracker policy",
+      error,
+    );
+  }
+}
+
+export function effectiveTrackerPolicy(policy: TrackerPolicy): EffectiveTrackerPolicy {
+  return policy.schemaVersion === TRACKER_LEGACY_SCHEMA_VERSION
+    ? {
+        policy,
+        schemaVersion: TRACKER_LEGACY_SCHEMA_VERSION,
+        ticket: "manual",
+        visibility: "legacy",
+        compatibility: "v1",
+      }
+    : {
+        policy,
+        schemaVersion: TRACKER_SCHEMA_VERSION,
+        ticket: policy.ticket,
+        visibility: policy.visibility,
+        compatibility: "v2",
+      };
 }
 
 export async function loadTrackerPolicy(root: string): Promise<TrackerPolicy | null> {
@@ -240,6 +482,7 @@ export async function loadTrackerPolicy(root: string): Promise<TrackerPolicy | n
 export async function configureTrackerPolicy(
   root: string,
   value: unknown,
+  dependencies: TrackerDependencies = {},
 ): Promise<TrackerPolicy | null> {
   const path = trackerPolicyPath(root);
   await assertPlainTrackerPath(root, path);
@@ -248,8 +491,146 @@ export async function configureTrackerPolicy(
     return null;
   }
   const policy = parseTrackerPolicy(value);
+  if (policy.schemaVersion === TRACKER_SCHEMA_VERSION) {
+    await previewTrackerPolicy(policy, dependencies);
+  }
   await writeJsonAtomic(path, policy);
   return policy;
+}
+
+export async function discoverTracker(
+  value: unknown,
+  dependencies: TrackerDependencies = {},
+): Promise<TrackerDiscovery> {
+  const input = parseTrackerDiscoveryInput(value);
+  const environment = dependencies.env ?? process.env;
+  const credentialNames = input.provider === "github"
+    ? [input.credentialEnv.token]
+    : input.provider === "linear"
+      ? [input.credentialEnv.apiKey]
+      : [input.credentialEnv.email, input.credentialEnv.apiToken];
+  const credentials = credentialNames.map((name) => {
+    const credential = environment[name]?.trim();
+    if (!credential) {
+      throw new EmpiricalError(
+        "TRACKER_CREDENTIAL_MISSING",
+        `Required tracker environment variable ${name} is not set`,
+      );
+    }
+    return credential;
+  });
+  const resources = input.provider === "linear"
+    ? await discoverLinearResources(credentials[0]!, dependencies)
+    : input.provider === "github"
+      ? await discoverGitHubResources(credentials[0]!, dependencies)
+      : await discoverJiraResources(input.target.siteUrl, credentials[0]!, credentials[1]!, dependencies);
+  const unique = new Map<string, TrackerDiscoveryResource>();
+  for (const resource of resources) {
+    validateDiscoveryResource(resource);
+    const identity = `${resource.kind}\0${resource.parentId ?? ""}\0${resource.id}`;
+    const previous = unique.get(identity);
+    if (previous && digestJson(previous) !== digestJson(resource)) {
+      throw new EmpiricalError(
+        "TRACKER_DISCOVERY_AMBIGUOUS",
+        `Provider discovery returned conflicting ${resource.kind} identity ${resource.id}`,
+      );
+    }
+    unique.set(identity, resource);
+  }
+  const discovered = [...unique.values()];
+  for (const resource of discovered) {
+    if (resource.parentId !== null && !discovered.some((candidate) => candidate.id === resource.parentId)) {
+      throw new EmpiricalError(
+        "TRACKER_DISCOVERY_INCOMPLETE",
+        `Provider discovery returned ${resource.kind} ${resource.id} without its parent`,
+      );
+    }
+  }
+  const body = {
+    schemaVersion: 1 as const,
+    provider: input.provider,
+    resources: discovered.sort(compareDiscoveryResources),
+    capabilities: trackerAdapterCapabilities(input.provider),
+    complete: true as const,
+  };
+  return { ...body, digest: digestJson(body) };
+}
+
+export function suggestTrackerStateMapping(
+  discovery: TrackerDiscovery,
+  stateParentId?: string,
+): TrackerMappingSuggestion {
+  verifyTrackerDiscovery(discovery);
+  const states = discovery.resources.filter((resource) =>
+    resource.kind === "state" && (stateParentId === undefined || resource.parentId === stateParentId));
+  if (states.length === 0) {
+    throw new EmpiricalError("TRACKER_STATES_MISSING", "Tracker discovery returned no workflow states");
+  }
+  const positioned = normalizedStatePositions(states);
+  const phases = Object.fromEntries(TRACKER_PROGRESS_STATES.map((phase) => {
+    const candidates = states.map((state) => mappingCandidate(discovery.provider, phase, state, positioned.get(state.id)!))
+      .sort((left, right) => left.primaryRank - right.primaryRank
+        || left.nameRank - right.nameRank
+        || left.name.localeCompare(right.name)
+        || left.stateId.localeCompare(right.stateId));
+    const best = candidates[0]!;
+    const noCompatibleCandidate = best.primaryRank >= 5_000_000;
+    const ambiguous = noCompatibleCandidate
+      || candidates.filter((candidate) => candidate.primaryRank === best.primaryRank).length > 1;
+    return [phase, {
+      phase,
+      selectedStateId: ambiguous ? null : best.stateId,
+      ambiguous,
+      candidates,
+    }];
+  })) as TrackerMappingSuggestion["phases"];
+  const ambiguous = TRACKER_PROGRESS_STATES.filter((phase) => phases[phase].ambiguous);
+  const statesMap = ambiguous.length === 0
+    ? Object.fromEntries(TRACKER_PROGRESS_STATES.map((phase) => [phase, phases[phase].selectedStateId!])) as TrackerStateMap
+    : null;
+  return { provider: discovery.provider, phases, states: statesMap, ambiguous };
+}
+
+export async function proposeTrackerStateMapping(
+  value: unknown,
+  dependencies: TrackerDependencies = {},
+): Promise<TrackerMappingSuggestion> {
+  let parsed: { input: TrackerDiscoveryInput; stateParentId: string };
+  try {
+    parsed = trackerMappingInputSchema.parse(value) as typeof parsed;
+  } catch (error) {
+    throw new EmpiricalError(
+      "INVALID_TRACKER_MAPPING_INPUT",
+      "Tracker mapping requires one strict discovery input and discovered state parent identifier",
+      error,
+    );
+  }
+  const discovery = await discoverTracker(parsed.input, dependencies);
+  return suggestTrackerStateMapping(discovery, parsed.stateParentId);
+}
+
+export async function previewTrackerPolicy(
+  value: unknown,
+  dependencies: TrackerDependencies = {},
+): Promise<TrackerPolicyPreview> {
+  const policy = parseTrackerPolicy(value);
+  const discovery = await discoverTracker(discoveryInputForPolicy(policy), dependencies);
+  const suggested = suggestTrackerStateMapping(discovery, policyStateParent(policy));
+  const validated = validatePolicySelection(policy, discovery, suggested);
+  const effective = effectiveTrackerPolicy(policy);
+  const body = {
+    schemaVersion: 1 as const,
+    policy,
+    effective: {
+      ticket: effective.ticket,
+      visibility: effective.visibility,
+      compatibility: effective.compatibility,
+    },
+    target: validated.target,
+    mapping: validated.mapping,
+    valid: true as const,
+  };
+  return { ...body, digest: digestJson(body) };
 }
 
 export function trackerProgress(state: WorkflowState): TrackerProgressState {
@@ -262,24 +643,215 @@ export function trackerProgress(state: WorkflowState): TrackerProgressState {
   return "review";
 }
 
-export function createTrackerProjection(state: WorkflowState): TrackerProjection {
+export function createTrackerProjection(
+  state: WorkflowState,
+  policy?: TrackerPolicy | null,
+  artifacts: TrackerArtifact[] = [],
+): TrackerProjection {
   if (!state.activeFeature) {
     throw new EmpiricalError("TRACKER_FEATURE_REQUIRED", "Tracker projection requires an active feature");
   }
+  const legacy = !policy || policy.schemaVersion === TRACKER_LEGACY_SCHEMA_VERSION;
+  const receiptIds = [...new Set(state.evidenceReceiptIds)].sort();
   const body = {
-    schemaVersion: TRACKER_SCHEMA_VERSION,
+    schemaVersion: legacy ? TRACKER_LEGACY_SCHEMA_VERSION : TRACKER_SCHEMA_VERSION,
     feature: state.activeFeature,
     phase: state.phase,
     status: state.status,
     revision: state.revision,
     completionLevel: state.completion.highest,
     progress: trackerProgress(state),
-    summary: state.status === "blocked" || state.status === "awaiting_human"
-      ? safeText(state.message ?? "Empirical is waiting at a workflow gate")
-      : null,
+    summary: legacy
+      ? state.status === "blocked" || state.status === "awaiting_human"
+        ? safeText(state.message ?? "Empirical is waiting at a workflow gate")
+        : null
+      : state.message ? safeText(state.message) : null,
+    ...(!legacy ? {
+      blocker: state.status === "blocked" || state.status === "awaiting_human"
+        ? safeText(state.message ?? "Empirical is waiting at a workflow gate")
+        : null,
+      receiptIds,
+      receiptDigest: digestJson(receiptIds),
+      artifacts,
+    } : {}),
     marker: `empirical-sdd:${state.activeFeature}:r${state.revision}`,
-  } as const;
+  };
   return trackerProjectionSchema.parse({ ...body, digest: digestJson(body) }) as TrackerProjection;
+}
+
+async function createTrackerProjectionForRoot(
+  root: string,
+  state: WorkflowState,
+  policy: TrackerPolicy,
+): Promise<TrackerProjection> {
+  const artifacts = policy.schemaVersion === TRACKER_SCHEMA_VERSION
+    ? await loadTrackerArtifacts(root, state, policy)
+    : [];
+  return createTrackerProjection(state, policy, artifacts);
+}
+
+async function loadTrackerArtifacts(
+  root: string,
+  state: WorkflowState,
+  policy: TrackerPolicy,
+): Promise<TrackerArtifact[]> {
+  if (!state.activeFeature || state.evidenceReceiptIds.length === 0) return [];
+  const canonicalRoot = await realpath(resolve(root));
+  const repositoryLink = await repositoryLinkContext(root);
+  const artifacts: TrackerArtifact[] = [];
+  let totalBytes = 0;
+  for (const receiptId of [...new Set(state.evidenceReceiptIds)].sort()) {
+    if (artifacts.length >= TRACKER_ARTIFACT_MAX_COUNT) break;
+    const path = join(
+      root,
+      ".empirical",
+      "specs",
+      state.activeFeature,
+      "evidence",
+      "receipts",
+      `${receiptId}.json`,
+    );
+    let receipt: EvidenceReceipt;
+    try {
+      receipt = evidenceReceiptSchema.parse(JSON.parse(await readFile(path, "utf8")) as unknown);
+      verifyReceiptDigest(receipt);
+    } catch (error) {
+      throw new EmpiricalError(
+        "TRACKER_ARTIFACT_RECEIPT_INVALID",
+        `Committed evidence receipt ${receiptId} cannot be validated for tracker projection`,
+        error,
+      );
+    }
+    if (receipt.id !== receiptId || receipt.provenance.feature !== state.activeFeature) {
+      throw new EmpiricalError(
+        "TRACKER_ARTIFACT_RECEIPT_INVALID",
+        `Committed evidence receipt ${receiptId} belongs to another feature`,
+      );
+    }
+    if (receipt.kind !== "collected") continue;
+    for (const artifact of receipt.artifacts) {
+      if (artifacts.length >= TRACKER_ARTIFACT_MAX_COUNT) break;
+      if (!TRACKER_ARTIFACT_MEDIA.has(artifact.mediaType)) {
+        throw new EmpiricalError(
+          "TRACKER_ARTIFACT_UNSAFE",
+          `Evidence artifact ${artifact.path} has an unsupported media type`,
+        );
+      }
+      if (isSecretLikeArtifactPath(artifact.path)) {
+        throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "A secret-like evidence artifact path cannot be projected");
+      }
+      const absolute = resolve(canonicalRoot, artifact.path);
+      const contained = relative(canonicalRoot, absolute);
+      if (contained === ".." || contained.startsWith("../") || contained.startsWith("..\\")) {
+        throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "An evidence artifact escapes the repository");
+      }
+      const metadata = await lstat(absolute).catch(() => null);
+      if (!metadata || metadata.isSymbolicLink() || !metadata.isFile()) {
+        throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "An evidence artifact is missing or is not a regular file");
+      }
+      const resolvedArtifact = await realpath(absolute);
+      const resolvedRelative = relative(canonicalRoot, resolvedArtifact);
+      if (resolvedRelative === ".." || resolvedRelative.startsWith("../") || resolvedRelative.startsWith("..\\")) {
+        throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "An evidence artifact resolves outside the repository");
+      }
+      if (metadata.size !== artifact.bytes || metadata.size > TRACKER_ARTIFACT_MAX_BYTES) {
+        throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "An evidence artifact exceeds tracker size bounds or changed size");
+      }
+      totalBytes += metadata.size;
+      if (totalBytes > TRACKER_ARTIFACT_TOTAL_BYTES) {
+        throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "Tracker evidence artifacts exceed the total size bound");
+      }
+      const bytes = await readFile(resolvedArtifact);
+      if (sha256(bytes) !== artifact.digest) {
+        throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "An evidence artifact changed after its receipt was committed");
+      }
+      const artifactPath = relative(canonicalRoot, resolvedArtifact).replaceAll("\\", "/");
+      artifacts.push({
+        receiptId,
+        path: artifactPath,
+        mediaType: artifact.mediaType,
+        digest: artifact.digest,
+        size: artifact.bytes,
+        url: await artifactDurableUrl(root, repositoryLink, artifactPath, artifact.digest),
+      });
+    }
+  }
+  return artifacts;
+}
+
+function isSecretLikeArtifactPath(path: string): boolean {
+  return /(^|\/)(?:\.env(?:\.[^\/]*)?|\.npmrc|\.netrc|id_(?:rsa|dsa|ecdsa|ed25519)|credentials?(?:\.[^\/]*)?|secrets?(?:\.[^\/]*)?|tokens?(?:\.[^\/]*)?|private[-_.]?key(?:\.[^\/]*)?)(?:\/|$)/i.test(path);
+}
+
+interface RepositoryLinkContext {
+  repositoryUrl: string;
+  commit: string;
+}
+
+async function repositoryLinkContext(root: string): Promise<RepositoryLinkContext | null> {
+  try {
+    const [remoteBytes, commitBytes] = await Promise.all([
+      gitOutput(root, ["config", "--get", "remote.origin.url"], 16_384),
+      gitOutput(root, ["rev-parse", "--verify", "HEAD"], 16_384),
+    ]);
+    const repositoryUrl = githubRepositoryUrl(remoteBytes.toString("utf8").trim());
+    const commit = commitBytes.toString("utf8").trim().toLowerCase();
+    if (!repositoryUrl || !/^[a-f0-9]{40,64}$/.test(commit)) return null;
+    return { repositoryUrl, commit };
+  } catch {
+    return null;
+  }
+}
+
+async function artifactDurableUrl(
+  root: string,
+  context: RepositoryLinkContext | null,
+  path: string,
+  digest: string,
+): Promise<string | null> {
+  if (!context || /[\0\r\n]/.test(path)) return null;
+  try {
+    const committed = await gitOutput(
+      root,
+      ["show", "--no-ext-diff", "--no-textconv", `${context.commit}:${path}`],
+      TRACKER_ARTIFACT_MAX_BYTES + 1,
+    );
+    if (sha256(committed) !== digest) return null;
+    const url = `${context.repositoryUrl}/blob/${context.commit}/${path.split("/").map(encodeURIComponent).join("/")}`;
+    return url.length <= 2_048 ? url : null;
+  } catch {
+    return null;
+  }
+}
+
+function githubRepositoryUrl(value: string): string | null {
+  const ssh = /^git@github\.com:([^/\s]+)\/([^/\s]+?)(?:\.git)?$/.exec(value);
+  if (ssh) return `https://github.com/${encodeURIComponent(ssh[1]!)}/${encodeURIComponent(ssh[2]!)}`;
+  let url: URL;
+  try { url = new URL(value); } catch { return null; }
+  if (
+    !["https:", "ssh:"].includes(url.protocol)
+    || url.hostname.toLowerCase() !== "github.com"
+    || url.port
+    || url.username && url.protocol === "https:"
+    || url.password
+    || url.search
+    || url.hash
+  ) return null;
+  const segments = url.pathname.replace(/\.git$/, "").split("/").filter(Boolean);
+  if (segments.length !== 2 || !segments.every((segment) => /^[A-Za-z0-9_.-]+$/.test(segment))) return null;
+  return `https://github.com/${encodeURIComponent(segments[0]!)}/${encodeURIComponent(segments[1]!)}`;
+}
+
+function gitOutput(root: string, args: string[], maxBuffer: number): Promise<Buffer> {
+  return new Promise((resolveOutput, rejectOutput) => {
+    execFile(
+      "git",
+      ["-C", resolve(root), ...args],
+      { encoding: null, maxBuffer, windowsHide: true },
+      (error, stdout) => error ? rejectOutput(error) : resolveOutput(Buffer.from(stdout)),
+    );
+  });
 }
 
 export async function trackerStatus(
@@ -295,11 +867,17 @@ export async function trackerStatus(
     return failedStatus(state.revision, null, null, null, failureFrom(error, dependencies));
   }
   if (!policy) return localOnlyStatus(state.revision);
+  if (effectiveTrackerPolicy(policy).ticket === "off") return offStatus(state.revision, policy);
   try {
     const [binding, pending] = await Promise.all([
       loadTrackerBinding(root, state.activeFeature),
       loadTrackerPending(root, state.activeFeature),
     ]);
+    const enrich = (
+      status: TrackerStatus,
+      statusPending: TrackerPendingRecord | null = pending,
+      statusBinding: TrackerBinding | null = binding,
+    ): TrackerStatus => trackerStatusWithPolicy(status, policy, statusPending, statusBinding);
     if (
       binding
       && pending?.replacesBindingDigest === binding.digest
@@ -308,19 +886,19 @@ export async function trackerStatus(
       try {
         assertPendingScope(policy, pending);
       } catch (error) {
-        return failedStatus(
+        return enrich(failedStatus(
           state.revision,
           policy.provider,
           null,
           null,
           failureFrom(error, dependencies),
           pending.projection.revision,
-        );
+        ));
       }
       if (pending.status === "failed") {
-        return failedStatus(state.revision, policy.provider, null, null, pending.failure, pending.projection.revision);
+        return enrich(failedStatus(state.revision, policy.provider, null, null, pending.failure, pending.projection.revision));
       }
-      return {
+      return enrich({
         health: "pending",
         provider: policy.provider,
         url: null,
@@ -328,55 +906,55 @@ export async function trackerStatus(
         lastSyncedRevision: null,
         pendingRevision: pending.projection.revision,
         failure: null,
-      };
+      });
     }
     if (binding && binding.provider !== policy.provider) {
-      return failedStatus(
+      return enrich(failedStatus(
         state.revision,
         policy.provider,
         null,
         binding.lastSyncedRevision,
         failure("TRACKER_PROVIDER_MISMATCH", "The feature binding belongs to a different configured provider", dependencies),
-      );
+      ));
     }
     if (binding && binding.targetDigest !== trackerTargetDigest(policy)) {
-      return failedStatus(
+      return enrich(failedStatus(
         state.revision,
         policy.provider,
         null,
         binding.lastSyncedRevision,
         failure("TRACKER_TARGET_MISMATCH", "The feature binding belongs to a different configured target", dependencies),
-      );
+      ));
     }
     if (binding) {
       try {
         assertBindingScope(policy, binding);
       } catch (error) {
-        return failedStatus(
+        return enrich(failedStatus(
           state.revision,
           policy.provider,
           null,
           binding.lastSyncedRevision,
           failureFrom(error, dependencies),
-        );
+        ));
       }
     }
     if (pending && pending.targetDigest !== trackerTargetDigest(policy)) {
-      return failedStatus(
+      return enrich(failedStatus(
         state.revision,
         policy.provider,
         binding?.url ?? null,
         binding?.lastSyncedRevision ?? null,
         failure("TRACKER_TARGET_MISMATCH", "Pending tracker work belongs to a different configured target", dependencies),
         pending.projection.revision,
-      );
+      ));
     }
     if (!binding) {
-      if (!pending) return localOnlyStatus(state.revision);
+      if (!pending) return enrich(localOnlyStatus(state.revision));
       if (pending?.status === "failed") {
-        return failedStatus(state.revision, policy.provider, null, null, pending.failure);
+        return enrich(failedStatus(state.revision, policy.provider, null, null, pending.failure));
       }
-      return {
+      return enrich({
         health: "pending",
         provider: policy.provider,
         url: null,
@@ -384,15 +962,15 @@ export async function trackerStatus(
         lastSyncedRevision: null,
         pendingRevision: pending?.projection.revision ?? state.revision,
         failure: null,
-      };
+      });
     }
     if (
       binding.lastSyncedRevision === state.revision
-      && binding.lastSyncedDigest === createTrackerProjection(state).digest
+      && binding.lastSyncedDigest === (await createTrackerProjectionForRoot(root, state, policy)).digest
       && binding.lastSyncedPolicyDigest === trackerProjectionPolicyDigest(policy)
       && (!pending || pending.status === "synced")
     ) {
-      return {
+      return enrich({
         health: "synced",
         provider: binding.provider,
         url: binding.url,
@@ -400,19 +978,19 @@ export async function trackerStatus(
         lastSyncedRevision: binding.lastSyncedRevision,
         pendingRevision: null,
         failure: null,
-      };
+      });
     }
     if (pending?.status === "failed" && pending.projection.revision >= (binding.lastSyncedRevision ?? -1)) {
-      return failedStatus(
+      return enrich(failedStatus(
         state.revision,
         binding.provider,
         binding.url,
         binding.lastSyncedRevision,
         pending.failure,
         pending.projection.revision,
-      );
+      ));
     }
-    return {
+    return enrich({
       health: "pending",
       provider: binding.provider,
       url: binding.url,
@@ -420,9 +998,14 @@ export async function trackerStatus(
       lastSyncedRevision: binding.lastSyncedRevision,
       pendingRevision: pending?.projection.revision ?? state.revision,
       failure: null,
-    };
+    });
   } catch (error) {
-    return failedStatus(state.revision, policy.provider, null, null, failureFrom(error, dependencies));
+    return trackerStatusWithPolicy(
+      failedStatus(state.revision, policy.provider, null, null, failureFrom(error, dependencies)),
+      policy,
+      null,
+      null,
+    );
   }
 }
 
@@ -438,7 +1021,10 @@ export async function bindTracker(
   }
   const feature = state.activeFeature;
   const policy = await requireTrackerPolicy(root);
-  return withTrackerLock(root, feature, async () => {
+  if (effectiveTrackerPolicy(policy).ticket === "off") {
+    throw new EmpiricalError("TRACKER_TICKET_POLICY_OFF", "Tracker ticket behavior is off; enable manual or ensure before binding");
+  }
+  const result = await withTrackerLock(root, feature, async () => {
     const existing = await loadTrackerBinding(root, feature);
     if (existing && input.replace !== true) assertBindingScope(policy, existing);
     if (existing && input.replace !== true) {
@@ -450,7 +1036,7 @@ export async function bindTracker(
         `Feature ${state.activeFeature} is already bound to ${existing.provider}:${existing.remoteKey}`,
       );
     }
-    const projection = createTrackerProjection(state);
+    const projection = await createTrackerProjectionForRoot(root, state, policy);
     const durablePending = await loadTrackerPending(root, feature);
     const unresolvedDispatchedCreate = Boolean(
       durablePending?.intent.mode === "create"
@@ -489,7 +1075,7 @@ export async function bindTracker(
         false,
         input.replace === true ? existing?.digest ?? null : previousPending?.replacesBindingDigest ?? null,
       );
-      const recorded = await persistFailure(root, pending, error, dependencies);
+      const recorded = await persistFailure(root, (await loadTrackerPending(root, feature)) ?? pending, error, dependencies);
       return failedBindResult(state, policy, existing, recorded);
     }
 
@@ -523,7 +1109,7 @@ export async function bindTracker(
       try {
         return await synchronizeBound(root, state, policy, recoveredBinding, pending, credentials, dependencies);
       } catch (error) {
-        const recorded = await persistFailure(root, pending, error, dependencies);
+        const recorded = await persistFailure(root, (await loadTrackerPending(root, feature)) ?? pending, error, dependencies);
         return failedBindResult(state, policy, recoveredBinding, recorded);
       }
     }
@@ -557,7 +1143,7 @@ export async function bindTracker(
         try {
           return await synchronizeBound(root, state, policy, recoveredBinding, pending, credentials, dependencies);
         } catch (error) {
-          const recorded = await persistFailure(root, pending, error, dependencies);
+          const recorded = await persistFailure(root, (await loadTrackerPending(root, feature)) ?? pending, error, dependencies);
           return failedBindResult(state, policy, recoveredBinding, recorded);
         }
       }
@@ -606,13 +1192,18 @@ export async function bindTracker(
     } catch (error) {
       const recorded = await persistFailure(
         root,
-        activePending,
+        (await loadTrackerPending(root, feature)) ?? activePending,
         error,
         dependencies,
       );
       return failedBindResult(state, policy, binding, recorded);
     }
   });
+  const pending = await loadTrackerPending(root, feature);
+  return {
+    ...result,
+    tracker: trackerStatusWithPolicy(result.tracker, policy, pending, result.binding),
+  };
 }
 
 export async function synchronizeTracker(
@@ -625,16 +1216,65 @@ export async function synchronizeTracker(
   }
   const policy = await loadTrackerPolicy(root);
   if (!policy) return { binding: null, tracker: localOnlyStatus(state.revision), projection: null };
-  return withTrackerLock(root, state.activeFeature, async () => {
+  if (effectiveTrackerPolicy(policy).ticket === "off") {
+    return { binding: null, tracker: offStatus(state.revision, policy), projection: createTrackerProjection(state, policy, []) };
+  }
+  const result = await withTrackerLock<TrackerSyncResult>(root, state.activeFeature, async () => {
     const feature = state.activeFeature!;
-    const projection = createTrackerProjection(state);
     let binding = await loadTrackerBinding(root, feature);
-    const previousPending = await loadTrackerPending(root, feature);
+    let previousPending = await loadTrackerPending(root, feature);
+    let projection: TrackerProjection;
+    try {
+      projection = await createTrackerProjectionForRoot(root, state, policy);
+    } catch (error) {
+      return {
+        binding,
+        projection: null,
+        tracker: failedStatus(
+          state.revision,
+          policy.provider,
+          binding?.url ?? null,
+          binding?.lastSyncedRevision ?? null,
+          failureFrom(error, dependencies),
+          state.revision,
+        ),
+      };
+    }
     const bindingIsSuperseded = Boolean(
       binding
       && previousPending?.replacesBindingDigest === binding.digest
       && previousPending.idempotencyKey !== binding.bindIdempotencyKey,
     );
+    if (!binding && !previousPending && effectiveTrackerPolicy(policy).ticket === "ensure") {
+      const references = trackerReferences(state.request, policy);
+      const intent = references.length === 1
+        ? trackerBindIntent(feature, { mode: "attach", ticket: references[0]! })
+        : trackerBindIntent(feature, { mode: "create" });
+      previousPending = await persistPending(
+        root,
+        policy,
+        projection,
+        intent,
+        null,
+        dependencies,
+      );
+      if (references.length > 1) {
+        const recorded = await persistFailure(
+          root,
+          previousPending,
+          new EmpiricalError(
+            "TRACKER_BIND_AMBIGUOUS",
+            "The feature request references multiple target-valid ticket candidates; choose one explicitly",
+          ),
+          dependencies,
+        );
+        return {
+          binding: null,
+          projection,
+          tracker: failedStatus(state.revision, policy.provider, null, null, recorded.failure, projection.revision),
+        };
+      }
+    }
     if (!binding || bindingIsSuperseded) {
       if (!previousPending) {
         return { binding: null, tracker: await trackerStatus(root, state, dependencies), projection };
@@ -662,16 +1302,21 @@ export async function synchronizeTracker(
         if (previousPending.intent.mode === "attach") {
           remote = await attachRemoteTicket(policy, previousPending.intent.ticket, credentials, dependencies);
         } else if (!previousPending.intent.dispatched) {
-          recoveryPending = await markCreateDispatched(root, previousPending, dependencies);
-          dispatchedCreateNow = true;
-          remote = await createRemoteTicket(
-            policy,
-            recoveryPending.projection,
-            recoveryPending.intent as Extract<TrackerBindIntent, { mode: "create" }>,
-            recoveryPending.idempotencyKey,
-            credentials,
-            dependencies,
-          );
+          remote = effectiveTrackerPolicy(policy).ticket === "ensure"
+            ? await reconcileFeatureMarker(policy, previousPending.intent.marker, credentials, dependencies)
+            : null;
+          if (!remote) {
+            recoveryPending = await markCreateDispatched(root, previousPending, dependencies);
+            dispatchedCreateNow = true;
+            remote = await createRemoteTicket(
+              policy,
+              recoveryPending.projection,
+              recoveryPending.intent as Extract<TrackerBindIntent, { mode: "create" }>,
+              recoveryPending.idempotencyKey,
+              credentials,
+              dependencies,
+            );
+          }
         } else {
           remote = await reconcileCreate(policy, previousPending, credentials, dependencies);
         }
@@ -705,7 +1350,7 @@ export async function synchronizeTracker(
       try {
         return await synchronizeBound(root, state, policy, binding, pending, credentials, dependencies);
       } catch (error) {
-        const recorded = await persistFailure(root, pending, error, dependencies);
+        const recorded = await persistFailure(root, (await loadTrackerPending(root, feature)) ?? pending, error, dependencies);
         return {
           binding,
           projection,
@@ -771,7 +1416,7 @@ export async function synchronizeTracker(
         dependencies,
       );
     } catch (error) {
-      const recorded = await persistFailure(root, pending, error, dependencies);
+      const recorded = await persistFailure(root, (await loadTrackerPending(root, feature)) ?? pending, error, dependencies);
       return {
         binding,
         projection,
@@ -786,6 +1431,11 @@ export async function synchronizeTracker(
       };
     }
   });
+  const pending = await loadTrackerPending(root, state.activeFeature);
+  return {
+    ...result,
+    tracker: trackerStatusWithPolicy(result.tracker, policy, pending, result.binding),
+  };
 }
 
 export const defaultTrackerTransport: TrackerTransport = async (
@@ -852,7 +1502,22 @@ async function synchronizeBound(
   credentials: string[],
   dependencies: TrackerDependencies,
 ): Promise<TrackerSyncResult> {
-  const updated = await projectRemoteTicket(policy, binding, pending.projection, credentials, dependencies);
+  let activePending = pending;
+  let updated: RemoteTicket;
+  if (policy.schemaVersion === TRACKER_SCHEMA_VERSION) {
+    const result = await projectRemoteTicketV2(
+      root,
+      policy,
+      binding,
+      activePending,
+      credentials,
+      dependencies,
+    );
+    updated = result.remote;
+    activePending = result.pending;
+  } else {
+    updated = await projectRemoteTicket(policy, binding, pending.projection, credentials, dependencies);
+  }
   assertRemoteIdentity(binding, updated);
   const nextBinding = createBinding(state.activeFeature!, policy, {
     remoteId: updated.remoteId,
@@ -860,13 +1525,17 @@ async function synchronizeBound(
     url: updated.url,
     projectItemId: updated.projectItemId,
     markerId: updated.markerId,
-    lastSyncedRevision: pending.projection.revision,
-    lastSyncedDigest: pending.projection.digest,
-    lastSyncedPolicyDigest: pending.policyDigest,
+    lastSyncedRevision: activePending.projection.revision,
+    lastSyncedDigest: activePending.projection.digest,
+    lastSyncedPolicyDigest: activePending.policyDigest,
+    lastSyncedPhase: activePending.projection.phase,
+    lastSyncedStatus: activePending.projection.status,
+    lastSyncedCompletionLevel: activePending.projection.completionLevel,
+    lastSyncedReceiptDigest: activePending.projection.receiptDigest ?? null,
   }, binding.bindIdempotencyKey);
   await writeTrackerBinding(root, nextBinding);
   const acknowledged = createPendingRecord({
-    ...pending,
+    ...activePending,
     replacesBindingDigest: null,
     status: "synced",
     failure: null,
@@ -875,7 +1544,7 @@ async function synchronizeBound(
   await writeTrackerPending(root, acknowledged);
   return {
     binding: nextBinding,
-    projection: pending.projection,
+    projection: activePending.projection,
     tracker: {
       health: "synced",
       provider: nextBinding.provider,
@@ -897,6 +1566,10 @@ interface RemoteTicket {
   lastSyncedRevision?: number | null;
   lastSyncedDigest?: string | null;
   lastSyncedPolicyDigest?: string | null;
+  lastSyncedPhase?: TrackerBinding["lastSyncedPhase"];
+  lastSyncedStatus?: TrackerBinding["lastSyncedStatus"];
+  lastSyncedCompletionLevel?: TrackerBinding["lastSyncedCompletionLevel"];
+  lastSyncedReceiptDigest?: string | null;
 }
 
 async function createRemoteTicket(
@@ -999,6 +1672,483 @@ async function projectRemoteTicket(
   if (policy.provider === "github") return syncGitHubTicket(policy, binding, projection, credentials[0]!, dependencies);
   if (policy.provider === "linear") return syncLinearTicket(policy, binding, projection, credentials[0]!, dependencies);
   return syncJiraTicket(policy, binding, projection, credentials[0]!, credentials[1]!, dependencies);
+}
+
+async function projectRemoteTicketV2(
+  root: string,
+  policy: TrackerPolicy,
+  binding: TrackerBinding,
+  pending: TrackerPendingRecord,
+  credentials: string[],
+  dependencies: TrackerDependencies,
+): Promise<{ remote: RemoteTicket; pending: TrackerPendingRecord }> {
+  let activePending = pending;
+  const transitionKey = trackerEffectKey(policy, pending.projection, "transition");
+  let remote: RemoteTicket;
+  if (hasTrackerEffect(activePending, transitionKey)) {
+    remote = { ...binding };
+  } else {
+    remote = await transitionRemoteTicketV2(policy, binding, pending.projection, credentials, dependencies);
+    activePending = await acknowledgeTrackerEffect(
+      root,
+      activePending,
+      { key: transitionKey, kind: "transition", remoteId: remote.remoteId, at: now(dependencies) },
+    );
+  }
+  if (shouldPublishMilestone(policy, binding, pending.projection)) {
+    const commentKey = trackerEffectKey(policy, pending.projection, "comment");
+    if (!hasTrackerEffect(activePending, commentKey)) {
+      const marker = milestoneMarker(commentKey);
+      const commentId = await publishRemoteMilestone(
+        policy,
+        binding,
+        renderMilestone(pending.projection, marker),
+        marker,
+        credentials,
+        dependencies,
+      );
+      activePending = await acknowledgeTrackerEffect(
+        root,
+        activePending,
+        { key: commentKey, kind: "comment", remoteId: commentId, at: now(dependencies) },
+      );
+    }
+    for (const artifact of pending.projection.artifacts ?? []) {
+      const artifactKey = trackerEffectKey(policy, pending.projection, "artifact", artifact.digest);
+      if (hasTrackerEffect(activePending, artifactKey)) continue;
+      const remoteId = await publishRemoteArtifact(
+        root,
+        policy,
+        binding,
+        artifact,
+        artifactKey,
+        credentials,
+        dependencies,
+      );
+      activePending = await acknowledgeTrackerEffect(
+        root,
+        activePending,
+        { key: artifactKey, kind: "artifact", remoteId, at: now(dependencies) },
+      );
+    }
+  }
+  return { remote, pending: activePending };
+}
+
+async function transitionRemoteTicketV2(
+  policy: TrackerPolicy,
+  binding: TrackerBinding,
+  projection: TrackerProjection,
+  credentials: string[],
+  dependencies: TrackerDependencies,
+): Promise<RemoteTicket> {
+  if (policy.provider === "github") {
+    const token = credentials[0]!;
+    const current = await attachGitHubTicket(policy, binding.remoteKey, token, dependencies);
+    assertRemoteIdentity(binding, current);
+    let projectItemId = await findGitHubProjectItem(policy, binding.remoteId, token, dependencies);
+    if (!projectItemId) {
+      const added = await githubGraphql(
+        `mutation Add($project: ID!, $content: ID!, $client: String!) {
+          addProjectV2ItemById(input: {projectId: $project, contentId: $content, clientMutationId: $client}) {
+            item { id }
+          }
+        }`,
+        { project: policy.target.projectId, content: binding.remoteId, client: idempotencyLabel(projection) },
+        token,
+        dependencies,
+      );
+      projectItemId = nestedString(added, ["addProjectV2ItemById", "item", "id"], "GitHub project item id");
+    }
+    await githubGraphql(
+      `mutation Move($project: ID!, $item: ID!, $field: ID!, $option: String!, $client: String!) {
+        updateProjectV2ItemFieldValue(input: {
+          projectId: $project, itemId: $item, fieldId: $field,
+          value: {singleSelectOptionId: $option}, clientMutationId: $client
+        }) { projectV2Item { id } }
+      }`,
+      {
+        project: policy.target.projectId,
+        item: projectItemId,
+        field: policy.target.statusFieldId,
+        option: policy.states[projection.progress],
+        client: idempotencyLabel(projection),
+      },
+      token,
+      dependencies,
+    );
+    return { ...binding, projectItemId };
+  }
+  if (policy.provider === "linear") {
+    const current = await linearGraphql(
+      `query Issue($id: String!) { issue(id: $id) { id identifier url team { id } project { id } } }`,
+      { id: binding.remoteId },
+      credentials[0]!,
+      dependencies,
+    );
+    const currentTicket = parseLinearIssue(policy, current.issue);
+    assertRemoteIdentity(binding, currentTicket);
+    const updated = await linearGraphql(
+      `mutation Update($id: String!, $input: IssueUpdateInput!) {
+        issueUpdate(id: $id, input: $input) { success issue { id identifier url team { id } project { id } } }
+      }`,
+      { id: binding.remoteId, input: { stateId: policy.states[projection.progress] } },
+      credentials[0]!,
+      dependencies,
+    );
+    const update = record(updated.issueUpdate, "Linear issueUpdate");
+    if (update.success !== true) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Linear did not confirm issue update");
+    return parseLinearIssue(policy, update.issue);
+  }
+  const email = credentials[0]!;
+  const apiToken = credentials[1]!;
+  const issue = await requestJson(dependencies, {
+    method: "GET",
+    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}?fields=status,project,issuetype`,
+    headers: jiraHeaders(email, apiToken),
+  }, [200], [email, apiToken]);
+  const issueRecord = record(issue, "Jira issue");
+  const currentTicket = parseJiraIssue(policy, issueRecord, true);
+  assertRemoteIdentity(binding, currentTicket);
+  await requestJson(dependencies, {
+    method: "PUT",
+    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/properties/empirical-sdd`,
+    headers: jiraHeaders(email, apiToken),
+    body: JSON.stringify({ projection }),
+  }, [200, 201, 204], [email, apiToken]);
+  const desired = policy.states[projection.progress];
+  if (nestedOptionalString(issueRecord, ["fields", "status", "id"]) !== desired) {
+    const available = record(await requestJson(dependencies, {
+      method: "GET",
+      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/transitions`,
+      headers: jiraHeaders(email, apiToken),
+    }, [200], [email, apiToken]), "Jira transitions");
+    if (!Array.isArray(available.transitions)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira transitions are missing");
+    const selected = available.transitions.map((entry) => record(entry, "Jira transition"))
+      .find((entry) => nestedOptionalString(entry, ["to", "id"]) === desired);
+    if (!selected) throw new EmpiricalError("TRACKER_STATE_UNAVAILABLE", `Jira exposes no transition to configured status ${desired}`);
+    await requestJson(dependencies, {
+      method: "POST",
+      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/transitions`,
+      headers: jiraHeaders(email, apiToken),
+      body: JSON.stringify({ transition: { id: requiredString(selected, "id", "Jira transition id") } }),
+    }, [204], [email, apiToken]);
+  }
+  return { ...binding, url: `${jiraOrigin(policy)}/browse/${encodeURIComponent(binding.remoteKey)}` };
+}
+
+async function publishRemoteMilestone(
+  policy: TrackerPolicy,
+  binding: TrackerBinding,
+  body: string,
+  marker: string,
+  credentials: string[],
+  dependencies: TrackerDependencies,
+): Promise<string> {
+  if (policy.provider === "github") {
+    const token = credentials[0]!;
+    const found: string[] = [];
+    let complete = false;
+    for (let page = 1; page <= TRACKER_DISCOVERY_LIMIT; page += 1) {
+      const comments = await requestJson(dependencies, {
+        method: "GET",
+        url: `https://api.github.com/repos/${encodeURIComponent(policy.target.owner)}/${encodeURIComponent(policy.target.repository)}/issues/${encodeURIComponent(binding.remoteKey)}/comments?per_page=100&page=${page}`,
+        headers: githubHeaders(token),
+      }, [200], [token]);
+      if (!Array.isArray(comments)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "GitHub milestone comments are malformed");
+      const matches = comments.map((entry) => record(entry, "GitHub milestone comment"))
+        .filter((comment) => typeof comment.body === "string" && comment.body.includes(marker));
+      found.push(...matches.map((comment) => String(requiredNumber(comment, "id", "GitHub milestone comment id"))));
+      if (comments.length < 100) {
+        complete = true;
+        break;
+      }
+    }
+    if (!complete) throw new EmpiricalError("TRACKER_RECONCILIATION_LIMIT", "GitHub milestone lookup exceeded 10,000 comments");
+    if (found.length > 1) throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Multiple GitHub comments contain one milestone marker");
+    if (found[0]) return found[0];
+    const created = await requestJson(dependencies, {
+      method: "POST",
+      url: `https://api.github.com/repos/${encodeURIComponent(policy.target.owner)}/${encodeURIComponent(policy.target.repository)}/issues/${encodeURIComponent(binding.remoteKey)}/comments`,
+      headers: githubHeaders(token),
+      body: JSON.stringify({ body }),
+    }, [201], [token]);
+    return String(requiredNumber(created, "id", "GitHub milestone comment id"));
+  }
+  if (policy.provider === "linear") {
+    let after: string | null = null;
+    const cursors = new Set<string>();
+    const found: string[] = [];
+    let complete = false;
+    for (let page = 0; page < TRACKER_DISCOVERY_LIMIT; page += 1) {
+      const data = await linearGraphql(
+        `query Milestones($id: String!, $after: String) {
+          issue(id: $id) { comments(first: 100, after: $after) { nodes { id body } pageInfo { hasNextPage endCursor } } }
+        }`,
+        { id: binding.remoteId, after },
+        credentials[0]!,
+        dependencies,
+      );
+      const issue = record(data.issue, "Linear milestone issue");
+      const comments = connection(issue.comments, "Linear milestone comments");
+      const matches = comments.nodes.map((entry) => record(entry, "Linear milestone comment"))
+        .filter((comment) => typeof comment.body === "string" && comment.body.includes(marker));
+      found.push(...matches.map((comment) => requiredString(comment, "id", "Linear milestone comment id")));
+      if (!comments.hasNextPage) {
+        complete = true;
+        break;
+      }
+      after = nextDiscoveryCursor(comments.endCursor, cursors, "Linear milestone comments");
+    }
+    if (!complete) throw new EmpiricalError("TRACKER_RECONCILIATION_LIMIT", "Linear milestone lookup exceeded 10,000 comments");
+    if (found.length > 1) throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Multiple Linear comments contain one milestone marker");
+    if (found[0]) return found[0];
+    const data = await linearGraphql(
+      `mutation Milestone($input: CommentCreateInput!) {
+        commentCreate(input: $input) { success comment { id body } }
+      }`,
+      { input: { issueId: binding.remoteId, body } },
+      credentials[0]!,
+      dependencies,
+    );
+    const create = record(data.commentCreate, "Linear commentCreate");
+    if (create.success !== true) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Linear did not confirm milestone comment creation");
+    return requiredString(record(create.comment, "Linear milestone comment"), "id", "Linear milestone comment id");
+  }
+  const email = credentials[0]!;
+  const apiToken = credentials[1]!;
+  let startAt = 0;
+  const found: string[] = [];
+  let complete = false;
+  for (let page = 0; page < TRACKER_DISCOVERY_LIMIT; page += 1) {
+    const response = record(await requestJson(dependencies, {
+      method: "GET",
+      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/comment?startAt=${startAt}&maxResults=100`,
+      headers: jiraHeaders(email, apiToken),
+    }, [200], [email, apiToken]), "Jira milestone comments");
+    if (!Array.isArray(response.comments)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira milestone comments are malformed");
+    const matches = response.comments.map((entry) => record(entry, "Jira milestone comment"))
+      .filter((comment) => JSON.stringify(comment.body ?? {}).includes(marker));
+    found.push(...matches.map((comment) => requiredString(comment, "id", "Jira milestone comment id")));
+    const total = optionalFiniteNumber(response.total) ?? response.comments.length;
+    if (startAt + response.comments.length >= total) {
+      complete = true;
+      break;
+    }
+    if (response.comments.length === 0) throw new EmpiricalError("TRACKER_RECONCILIATION_INCOMPLETE", "Jira milestone pagination did not advance");
+    startAt += response.comments.length;
+  }
+  if (!complete) throw new EmpiricalError("TRACKER_RECONCILIATION_LIMIT", "Jira milestone lookup exceeded 10,000 comments");
+  if (found.length > 1) throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Multiple Jira comments contain one milestone marker");
+  if (found[0]) return found[0];
+  const created = record(await requestJson(dependencies, {
+    method: "POST",
+    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/comment`,
+    headers: jiraHeaders(email, apiToken),
+    body: JSON.stringify({ body: jiraAdf(body), properties: [{ key: "empirical-sdd-effect", value: marker }] }),
+  }, [201], [email, apiToken]), "Jira milestone comment");
+  return requiredString(created, "id", "Jira milestone comment id");
+}
+
+async function publishRemoteArtifact(
+  root: string,
+  policy: TrackerPolicy,
+  binding: TrackerBinding,
+  artifact: TrackerArtifact,
+  effectKey: string,
+  credentials: string[],
+  dependencies: TrackerDependencies,
+): Promise<string | null> {
+  if (artifact.url) return artifact.url;
+  if (policy.provider !== "jira") return null;
+  const email = credentials[0]!;
+  const apiToken = credentials[1]!;
+  const filename = trackerArtifactFilename(artifact, effectKey);
+  const issue = record(await requestJson(dependencies, {
+    method: "GET",
+    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}?fields=attachment,project,issuetype`,
+    headers: jiraHeaders(email, apiToken),
+  }, [200], [email, apiToken]), "Jira artifact issue");
+  assertRemoteIdentity(binding, parseJiraIssue(policy, issue, true));
+  const fields = record(issue.fields, "Jira artifact fields");
+  if (!Array.isArray(fields.attachment)) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira attachment discovery is malformed");
+  }
+  const existing = fields.attachment.map((entry) => record(entry, "Jira attachment"))
+    .filter((entry) => entry.filename === filename);
+  if (existing.length > 1) {
+    throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Multiple Jira attachments contain one Empirical artifact marker");
+  }
+  if (existing[0]) {
+    assertJiraArtifact(existing[0], artifact, filename);
+    return requiredString(existing[0], "id", "Jira attachment id");
+  }
+  const bytes = await readTrackerArtifactBytes(root, artifact);
+  const multipart = trackerArtifactMultipart(filename, artifact.mediaType, bytes, effectKey);
+  const response = await requestJson(dependencies, {
+    method: "POST",
+    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/attachments`,
+    headers: {
+      ...jiraHeaders(email, apiToken),
+      "Content-Type": multipart.contentType,
+      "X-Atlassian-Token": "no-check",
+    },
+    body: multipart.body,
+  }, [200, 201], [email, apiToken]);
+  if (!Array.isArray(response)) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira attachment upload response is malformed");
+  }
+  const uploaded = response.map((entry) => record(entry, "Jira uploaded attachment"))
+    .filter((entry) => entry.filename === filename);
+  if (uploaded.length !== 1) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira did not return exactly one matching uploaded attachment");
+  }
+  assertJiraArtifact(uploaded[0]!, artifact, filename);
+  return requiredString(uploaded[0]!, "id", "Jira uploaded attachment id");
+}
+
+async function readTrackerArtifactBytes(root: string, artifact: TrackerArtifact): Promise<Buffer> {
+  const canonicalRoot = await realpath(resolve(root));
+  const absolute = resolve(canonicalRoot, artifact.path);
+  const contained = relative(canonicalRoot, absolute);
+  if (contained === ".." || contained.startsWith("../") || contained.startsWith("..\\")) {
+    throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "An evidence artifact escapes the repository before upload");
+  }
+  const metadata = await lstat(absolute).catch(() => null);
+  if (!metadata || metadata.isSymbolicLink() || !metadata.isFile()) {
+    throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "An evidence artifact is missing or unsafe before upload");
+  }
+  const resolvedArtifact = await realpath(absolute);
+  const resolvedRelative = relative(canonicalRoot, resolvedArtifact);
+  if (resolvedRelative === ".." || resolvedRelative.startsWith("../") || resolvedRelative.startsWith("..\\")) {
+    throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "An evidence artifact resolves outside the repository before upload");
+  }
+  const bytes = await readFile(resolvedArtifact);
+  if (bytes.byteLength !== artifact.size || sha256(bytes) !== artifact.digest) {
+    throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "An evidence artifact changed before provider upload");
+  }
+  return bytes;
+}
+
+function trackerArtifactFilename(artifact: TrackerArtifact, effectKey: string): string {
+  const original = artifact.path.split("/").at(-1) ?? "evidence";
+  const safe = original.replace(/[^A-Za-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "").slice(-80) || "evidence";
+  return `empirical-${effectKey.slice("sha256:".length, "sha256:".length + 16)}-${safe}`;
+}
+
+function trackerArtifactMultipart(
+  filename: string,
+  mediaType: string,
+  bytes: Buffer,
+  effectKey: string,
+): { body: Uint8Array; contentType: string } {
+  const boundary = `empirical-${effectKey.slice("sha256:".length, "sha256:".length + 32)}`;
+  const head = Buffer.from(
+    `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="${filename}"\r\nContent-Type: ${mediaType}\r\n\r\n`,
+    "utf8",
+  );
+  const tail = Buffer.from(`\r\n--${boundary}--\r\n`, "utf8");
+  return {
+    body: Buffer.concat([head, bytes, tail]),
+    contentType: `multipart/form-data; boundary=${boundary}`,
+  };
+}
+
+function assertJiraArtifact(
+  value: Record<string, unknown>,
+  artifact: TrackerArtifact,
+  filename: string,
+): void {
+  const size = optionalFiniteNumber(value.size);
+  const mediaType = optionalString(value, "mimeType");
+  if (
+    value.filename !== filename
+    || (size !== null && size !== artifact.size)
+    || (mediaType !== null && mediaType !== artifact.mediaType)
+  ) {
+    throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Jira attachment marker belongs to different artifact bytes");
+  }
+}
+
+function shouldPublishMilestone(
+  policy: TrackerPolicy,
+  binding: TrackerBinding,
+  projection: TrackerProjection,
+): boolean {
+  if (policy.schemaVersion !== TRACKER_SCHEMA_VERSION) return false;
+  if (policy.visibility === "revisions") return true;
+  const stopped = projection.status === "blocked" || projection.status === "awaiting_human";
+  const final = projection.phase === "done" || projection.status === "done";
+  if (policy.visibility === "blockers-final") return stopped || final;
+  return binding.lastSyncedPhase === null
+    || binding.lastSyncedPhase === undefined
+    || binding.lastSyncedPhase !== projection.phase
+    || binding.lastSyncedStatus !== projection.status
+    || binding.lastSyncedCompletionLevel !== projection.completionLevel
+    || stopped
+    || final;
+}
+
+function trackerEffectKey(
+  policy: TrackerPolicy,
+  projection: TrackerProjection,
+  kind: "transition" | "comment" | "artifact",
+  artifactDigest: string | null = null,
+): string {
+  return digestJson({
+    provider: policy.provider,
+    target: trackerTargetDigest(policy),
+    feature: projection.feature,
+    revision: projection.revision,
+    receiptDigest: projection.receiptDigest ?? digestJson([]),
+    kind,
+    artifactDigest,
+  });
+}
+
+function milestoneMarker(key: string): string {
+  return `[Empirical milestone](<${LINEAR_MARKER_ORIGIN}#empirical-milestone:${key}>)`;
+}
+
+function renderMilestone(projection: TrackerProjection, marker: string): string {
+  const clean = (value: string | null | undefined) => value
+    ?.replace(/<!--|-->/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const summary = clean(projection.summary);
+  const blocker = clean(projection.blocker);
+  const artifacts = projection.artifacts ?? [];
+  return [
+    `## Empirical milestone · ${readableTrackerToken(projection.phase)}`,
+    marker,
+    `- Feature: ${projection.feature}`,
+    `- Revision: ${projection.revision}`,
+    `- Progress: ${readableTrackerToken(projection.progress)}`,
+    `- Completion: ${readableCompletionLevel(projection.completionLevel)}`,
+    ...(summary ? [`- Summary: ${summary}`] : []),
+    ...(blocker ? [`- Blocker: ${blocker}`] : []),
+    ...(artifacts.length ? ["- Reviewable artifacts:", ...artifacts.map((artifact) =>
+      artifact.url
+        ? `  - ${artifact.path} · ${artifact.receiptId} · ${artifact.url}`
+        : `  - ${artifact.path} · ${artifact.receiptId} · provider upload/link pending or unsupported`)] : []),
+  ].join("\n");
+}
+
+function hasTrackerEffect(pending: TrackerPendingRecord, key: string): boolean {
+  return (pending.effects ?? []).some((effect) => effect.key === key);
+}
+
+async function acknowledgeTrackerEffect(
+  root: string,
+  pending: TrackerPendingRecord,
+  effect: NonNullable<TrackerPendingRecord["effects"]>[number],
+): Promise<TrackerPendingRecord> {
+  if (pending.schemaVersion !== TRACKER_SCHEMA_VERSION) return pending;
+  const effects = [...(pending.effects ?? []).filter((entry) => entry.key !== effect.key), effect]
+    .slice(-100);
+  const acknowledged = createPendingRecord({ ...pending, effects });
+  await writeTrackerPending(root, acknowledged);
+  return acknowledged;
 }
 
 async function createGitHubTicket(
@@ -1260,7 +2410,13 @@ async function createLinearTicket(
     {
       input: {
         title: intent.title,
-        description: appendLinearCreateMarker(upsertLinearMarkerBlock(intent.description, projection), intent, idempotencyKey),
+        description: appendLinearCreateMarker(
+          policy.schemaVersion === TRACKER_SCHEMA_VERSION
+            ? intent.description
+            : upsertLinearMarkerBlock(intent.description, projection),
+          intent,
+          idempotencyKey,
+        ),
         teamId: policy.target.teamId,
         ...(policy.target.projectId ? { projectId: policy.target.projectId } : {}),
         stateId: policy.states[projection.progress],
@@ -1535,6 +2691,350 @@ function parseJiraIssue(policy: JiraTrackerPolicy, value: unknown, requireTarget
   };
 }
 
+async function discoverLinearResources(
+  apiKey: string,
+  dependencies: TrackerDependencies,
+): Promise<TrackerDiscoveryResource[]> {
+  const resources: TrackerDiscoveryResource[] = [];
+  let after: string | null = null;
+  const cursors = new Set<string>();
+  for (let page = 0; page < TRACKER_DISCOVERY_LIMIT; page += 1) {
+    const data = await linearGraphql(
+      `query EmpiricalTrackerDiscovery($after: String) {
+        organization { id name urlKey }
+        teams(first: 100, after: $after) {
+          nodes {
+            id name key
+            projects(first: 100) { nodes { id name url } pageInfo { hasNextPage endCursor } }
+            states(first: 100) { nodes { id name type position } pageInfo { hasNextPage endCursor } }
+          }
+          pageInfo { hasNextPage endCursor }
+        }
+      }`,
+      { after },
+      apiKey,
+      dependencies,
+    );
+    const organizationValue = data.organization
+      ?? (typeof data.viewer === "object" && data.viewer !== null && !Array.isArray(data.viewer)
+        ? (data.viewer as Record<string, unknown>).organization
+        : undefined);
+    const organization = record(organizationValue, "Linear organization");
+    const workspaceId = requiredString(organization, "id", "Linear workspace id");
+    if (!resources.some((resource) => resource.kind === "workspace" && resource.id === workspaceId)) {
+      resources.push(discoveryResource({
+        kind: "workspace",
+        id: workspaceId,
+        name: requiredDisplayString(organization, "name", "Linear workspace name"),
+        key: optionalString(organization, "urlKey"),
+      }));
+    }
+    const teams = connection(data.teams, "Linear teams");
+    for (const rawTeam of teams.nodes) {
+      const team = record(rawTeam, "Linear team");
+      const teamId = requiredString(team, "id", "Linear team id");
+      resources.push(discoveryResource({
+        kind: "team",
+        id: teamId,
+        name: requiredDisplayString(team, "name", "Linear team name"),
+        parentId: workspaceId,
+        key: optionalString(team, "key"),
+      }));
+      const projects = connection(team.projects, "Linear team projects");
+      assertTerminalConnection(projects, "Linear project discovery");
+      projects.nodes.forEach((rawProject, index) => {
+        const project = record(rawProject, "Linear project");
+        resources.push(discoveryResource({
+          kind: "project",
+          id: requiredString(project, "id", "Linear project id"),
+          name: requiredDisplayString(project, "name", "Linear project name"),
+          parentId: teamId,
+          position: index,
+          url: optionalSafeUrl(project, "url", "linear.app"),
+        }));
+      });
+      const states = connection(team.states, "Linear workflow states");
+      assertTerminalConnection(states, "Linear workflow-state discovery");
+      states.nodes.forEach((rawState, index) => {
+        const state = record(rawState, "Linear workflow state");
+        resources.push(discoveryResource({
+          kind: "state",
+          id: requiredString(state, "id", "Linear workflow state id"),
+          name: requiredDisplayString(state, "name", "Linear workflow state name"),
+          parentId: teamId,
+          position: optionalFiniteNumber(state.position) ?? index,
+          stateType: requiredString(state, "type", "Linear workflow state type"),
+        }));
+      });
+    }
+    if (!teams.hasNextPage) return resources;
+    after = nextDiscoveryCursor(teams.endCursor, cursors, "Linear teams");
+  }
+  throw new EmpiricalError("TRACKER_DISCOVERY_LIMIT", "Linear discovery exceeded the pagination limit");
+}
+
+async function discoverGitHubResources(
+  token: string,
+  dependencies: TrackerDependencies,
+): Promise<TrackerDiscoveryResource[]> {
+  const data = await githubGraphql(
+    `query EmpiricalTrackerDiscovery {
+      viewer {
+        login url
+        repositories(first: 100, affiliations: [OWNER, COLLABORATOR, ORGANIZATION_MEMBER]) {
+          nodes { id name nameWithOwner url owner { id login } }
+          pageInfo { hasNextPage endCursor }
+        }
+        projectsV2(first: 100) {
+          nodes {
+            id title url
+            fields(first: 100) {
+              nodes {
+                ... on ProjectV2SingleSelectField { id name options { id name } }
+              }
+              pageInfo { hasNextPage endCursor }
+            }
+          }
+          pageInfo { hasNextPage endCursor }
+        }
+        organizations(first: 100) {
+          nodes {
+            id login name url
+            projectsV2(first: 100) {
+              nodes {
+                id title url
+                fields(first: 100) {
+                  nodes {
+                    ... on ProjectV2SingleSelectField { id name options { id name } }
+                  }
+                  pageInfo { hasNextPage endCursor }
+                }
+              }
+              pageInfo { hasNextPage endCursor }
+            }
+          }
+          pageInfo { hasNextPage endCursor }
+        }
+      }
+    }`,
+    {},
+    token,
+    dependencies,
+  );
+  const viewer = record(data.viewer, "GitHub viewer");
+  const resources: TrackerDiscoveryResource[] = [];
+  const viewerLogin = requiredString(viewer, "login", "GitHub viewer login");
+  const viewerId = `github-owner:${viewerLogin.toLowerCase()}`;
+  resources.push(discoveryResource({
+    kind: "workspace",
+    id: viewerId,
+    name: viewerLogin,
+    key: viewerLogin,
+    url: optionalSafeUrl(viewer, "url", "github.com"),
+  }));
+  const repositories = connection(viewer.repositories, "GitHub repositories");
+  assertTerminalConnection(repositories, "GitHub repository discovery");
+  for (const rawRepository of repositories.nodes) {
+    const repository = record(rawRepository, "GitHub repository");
+    const owner = record(repository.owner, "GitHub repository owner");
+    const ownerLogin = requiredString(owner, "login", "GitHub repository owner login");
+    const ownerId = `github-owner:${ownerLogin.toLowerCase()}`;
+    if (!resources.some((resource) => resource.kind === "workspace" && resource.id === ownerId)) {
+      resources.push(discoveryResource({ kind: "workspace", id: ownerId, name: ownerLogin, key: ownerLogin }));
+    }
+    resources.push(discoveryResource({
+      kind: "repository",
+      id: requiredString(repository, "id", "GitHub repository id"),
+      name: requiredDisplayString(repository, "name", "GitHub repository name"),
+      parentId: ownerId,
+      key: optionalString(repository, "nameWithOwner"),
+      url: optionalSafeUrl(repository, "url", "github.com"),
+    }));
+  }
+  addGitHubProjects(resources, connection(viewer.projectsV2, "GitHub viewer projects"), viewerId);
+  const organizations = connection(viewer.organizations, "GitHub organizations");
+  assertTerminalConnection(organizations, "GitHub organization discovery");
+  for (const rawOrganization of organizations.nodes) {
+    const organization = record(rawOrganization, "GitHub organization");
+    const login = requiredString(organization, "login", "GitHub organization login");
+    const ownerId = `github-owner:${login.toLowerCase()}`;
+    if (!resources.some((resource) => resource.kind === "workspace" && resource.id === ownerId)) {
+      resources.push(discoveryResource({
+        kind: "workspace",
+        id: ownerId,
+        name: optionalString(organization, "name") ?? login,
+        key: login,
+        url: optionalSafeUrl(organization, "url", "github.com"),
+      }));
+    }
+    addGitHubProjects(resources, connection(organization.projectsV2, "GitHub organization projects"), ownerId);
+  }
+  return resources;
+}
+
+function addGitHubProjects(
+  resources: TrackerDiscoveryResource[],
+  projects: TrackerConnection,
+  ownerId: string,
+): void {
+  assertTerminalConnection(projects, "GitHub project discovery");
+  for (const rawProject of projects.nodes) {
+    const project = record(rawProject, "GitHub project");
+    const projectId = requiredString(project, "id", "GitHub project id");
+    resources.push(discoveryResource({
+      kind: "project",
+      id: projectId,
+      name: requiredDisplayString(project, "title", "GitHub project title"),
+      parentId: ownerId,
+      url: optionalSafeUrl(project, "url", "github.com"),
+    }));
+    const fields = connection(project.fields, "GitHub project fields");
+    assertTerminalConnection(fields, "GitHub project field discovery");
+    for (const rawField of fields.nodes) {
+      if (rawField === null) continue;
+      const field = record(rawField, "GitHub project field");
+      if (!Array.isArray(field.options)) continue;
+      const fieldId = requiredString(field, "id", "GitHub project field id");
+      resources.push(discoveryResource({
+        kind: "field",
+        id: fieldId,
+        name: requiredDisplayString(field, "name", "GitHub project field name"),
+        parentId: projectId,
+      }));
+      field.options.forEach((rawOption, index) => {
+        const option = record(rawOption, "GitHub project field option");
+        resources.push(discoveryResource({
+          kind: "state",
+          id: requiredString(option, "id", "GitHub status option id"),
+          name: requiredDisplayString(option, "name", "GitHub status option name"),
+          parentId: fieldId,
+          position: index,
+          stateType: "option",
+        }));
+      });
+    }
+  }
+}
+
+async function discoverJiraResources(
+  siteUrl: string,
+  email: string,
+  apiToken: string,
+  dependencies: TrackerDependencies,
+): Promise<TrackerDiscoveryResource[]> {
+  const origin = new URL(siteUrl).origin;
+  const resources: TrackerDiscoveryResource[] = [discoveryResource({
+    kind: "workspace",
+    id: origin,
+    name: new URL(origin).hostname,
+    key: origin,
+    url: origin,
+  })];
+  let startAt = 0;
+  for (let page = 0; page < TRACKER_DISCOVERY_LIMIT; page += 1) {
+    const response = record(await requestJson(dependencies, {
+      method: "GET",
+      url: `${origin}/rest/api/3/project/search?startAt=${startAt}&maxResults=50&orderBy=name`,
+      headers: jiraHeaders(email, apiToken),
+    }, [200], [email, apiToken]), "Jira project discovery");
+    if (!Array.isArray(response.values)) {
+      throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira project discovery values are malformed");
+    }
+    for (const rawProject of response.values) {
+      const project = record(rawProject, "Jira project");
+      const projectId = requiredString(project, "id", "Jira project id");
+      const projectKey = requiredString(project, "key", "Jira project key");
+      resources.push(discoveryResource({
+        kind: "project",
+        id: projectKey,
+        name: requiredDisplayString(project, "name", "Jira project name"),
+        parentId: origin,
+        key: projectKey,
+        url: `${origin}/browse/${encodeURIComponent(projectKey)}`,
+      }));
+      const issueTypesValue = await requestJson(dependencies, {
+        method: "GET",
+        url: `${origin}/rest/api/3/issuetype/project?projectId=${encodeURIComponent(projectId)}`,
+        headers: jiraHeaders(email, apiToken),
+      }, [200], [email, apiToken]);
+      if (!Array.isArray(issueTypesValue)) {
+        throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira issue-type discovery is malformed");
+      }
+      issueTypesValue.forEach((rawIssueType, index) => {
+        const issueType = record(rawIssueType, "Jira issue type");
+        resources.push(discoveryResource({
+          kind: "issue-type",
+          id: requiredString(issueType, "id", "Jira issue type id"),
+          name: requiredDisplayString(issueType, "name", "Jira issue type name"),
+          parentId: projectKey,
+          position: index,
+        }));
+      });
+      const statusesValue = await requestJson(dependencies, {
+        method: "GET",
+        url: `${origin}/rest/api/3/project/${encodeURIComponent(projectKey)}/statuses`,
+        headers: jiraHeaders(email, apiToken),
+      }, [200], [email, apiToken]);
+      if (!Array.isArray(statusesValue)) {
+        throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira status discovery is malformed");
+      }
+      let statePosition = 0;
+      for (const rawIssueTypeStatuses of statusesValue) {
+        const issueTypeStatuses = record(rawIssueTypeStatuses, "Jira issue-type statuses");
+        if (!Array.isArray(issueTypeStatuses.statuses)) {
+          throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira statuses are malformed");
+        }
+        for (const rawStatus of issueTypeStatuses.statuses) {
+          const status = record(rawStatus, "Jira status");
+          const statusId = requiredString(status, "id", "Jira status id");
+          if (resources.some((resource) => resource.kind === "state" && resource.id === statusId && resource.parentId === projectKey)) continue;
+          resources.push(discoveryResource({
+            kind: "state",
+            id: statusId,
+            name: requiredDisplayString(status, "name", "Jira status name"),
+            parentId: projectKey,
+            position: statePosition++,
+            stateType: nestedOptionalString(status, ["statusCategory", "key"]) ?? "status",
+          }));
+        }
+      }
+    }
+    const isLast = typeof response.isLast === "boolean"
+      ? response.isLast
+      : startAt + response.values.length >= optionalFiniteNumber(response.total ?? response.values.length)!;
+    if (isLast) break;
+    const next = optionalFiniteNumber(response.startAt) ?? startAt;
+    const maxResults = optionalFiniteNumber(response.maxResults) ?? response.values.length;
+    if (maxResults <= 0 || next + maxResults <= startAt) {
+      throw new EmpiricalError("TRACKER_DISCOVERY_INCOMPLETE", "Jira project pagination did not advance");
+    }
+    startAt = next + maxResults;
+    if (page === TRACKER_DISCOVERY_LIMIT - 1) {
+      throw new EmpiricalError("TRACKER_DISCOVERY_LIMIT", "Jira discovery exceeded the pagination limit");
+    }
+  }
+  const fieldsValue = await requestJson(dependencies, {
+    method: "GET",
+    url: `${origin}/rest/api/3/field`,
+    headers: jiraHeaders(email, apiToken),
+  }, [200], [email, apiToken]);
+  if (!Array.isArray(fieldsValue)) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira field discovery is malformed");
+  }
+  fieldsValue.forEach((rawField, index) => {
+    const field = record(rawField, "Jira field");
+    resources.push(discoveryResource({
+      kind: "field",
+      id: requiredString(field, "id", "Jira field id"),
+      name: requiredDisplayString(field, "name", "Jira field name"),
+      parentId: origin,
+      position: index,
+      key: optionalString(field, "key"),
+    }));
+  });
+  return resources;
+}
+
 async function requestJson(
   dependencies: TrackerDependencies,
   request: Omit<TrackerHttpRequest, "timeoutMs" | "maxResponseBytes">,
@@ -1637,7 +3137,7 @@ async function persistPending(
     && digestJson(previous.intent) === digestJson(effectiveIntent)
     && previous.replacesBindingDigest === replacesBindingDigest;
   const pending = createPendingRecord({
-    schemaVersion: TRACKER_SCHEMA_VERSION,
+    schemaVersion: policy.schemaVersion,
     provider: policy.provider,
     targetDigest,
     policyDigest,
@@ -1654,6 +3154,9 @@ async function persistPending(
     attempts: same ? previous.attempts + 1 : 1,
     status: "pending",
     failure: null,
+    ...(policy.schemaVersion === TRACKER_SCHEMA_VERSION
+      ? { effects: previous?.effects ?? [] }
+      : {}),
     updatedAt: now(dependencies),
   });
   await writeTrackerPending(root, pending);
@@ -1707,7 +3210,7 @@ function createBinding(
   bindIdempotencyKey: string,
 ): TrackerBinding {
   const body = {
-    schemaVersion: TRACKER_SCHEMA_VERSION,
+    schemaVersion: policy.schemaVersion,
     feature,
     provider: policy.provider,
     remoteId: input.remoteId,
@@ -1720,6 +3223,12 @@ function createBinding(
     lastSyncedRevision: input.lastSyncedRevision ?? null,
     lastSyncedDigest: input.lastSyncedDigest ?? null,
     lastSyncedPolicyDigest: input.lastSyncedPolicyDigest ?? null,
+    ...(policy.schemaVersion === TRACKER_SCHEMA_VERSION ? {
+      lastSyncedPhase: input.lastSyncedPhase ?? null,
+      lastSyncedStatus: input.lastSyncedStatus ?? null,
+      lastSyncedCompletionLevel: input.lastSyncedCompletionLevel ?? null,
+      lastSyncedReceiptDigest: input.lastSyncedReceiptDigest ?? null,
+    } : {}),
   } as const;
   return trackerBindingSchema.parse({ ...body, digest: digestJson(body) }) as TrackerBinding;
 }
@@ -1729,7 +3238,16 @@ function trackerTargetDigest(policy: TrackerPolicy): string {
 }
 
 function trackerProjectionPolicyDigest(policy: TrackerPolicy): string {
-  return digestJson({ provider: policy.provider, target: policy.target, states: policy.states });
+  return policy.schemaVersion === TRACKER_LEGACY_SCHEMA_VERSION
+    ? digestJson({ provider: policy.provider, target: policy.target, states: policy.states })
+    : digestJson({
+        schemaVersion: policy.schemaVersion,
+        provider: policy.provider,
+        target: policy.target,
+        states: policy.states,
+        ticket: policy.ticket,
+        visibility: policy.visibility,
+      });
 }
 
 function assertBindingScope(policy: TrackerPolicy, binding: TrackerBinding): void {
@@ -1915,6 +3433,61 @@ function localOnlyStatus(revision: number): TrackerStatus {
   };
 }
 
+function offStatus(revision: number, policy: TrackerPolicy): TrackerStatus {
+  const effective = effectiveTrackerPolicy(policy);
+  return {
+    health: "off",
+    provider: policy.provider,
+    url: null,
+    committedRevision: revision,
+    lastSyncedRevision: null,
+    pendingRevision: null,
+    failure: null,
+    schemaVersion: policy.schemaVersion,
+    ticket: effective.ticket,
+    visibility: effective.visibility,
+    pendingEffects: 0,
+  };
+}
+
+function trackerStatusWithPolicy(
+  status: TrackerStatus,
+  policy: TrackerPolicy,
+  pending: TrackerPendingRecord | null,
+  binding: TrackerBinding | null,
+): TrackerStatus {
+  if (policy.schemaVersion !== TRACKER_SCHEMA_VERSION) return status;
+  return {
+    ...status,
+    provider: status.provider ?? policy.provider,
+    schemaVersion: policy.schemaVersion,
+    ticket: policy.ticket,
+    visibility: policy.visibility,
+    pendingEffects: remainingTrackerEffects(policy, pending, binding),
+  };
+}
+
+function remainingTrackerEffects(
+  policy: TrackerPolicy,
+  pending: TrackerPendingRecord | null,
+  binding: TrackerBinding | null,
+): number {
+  if (
+    policy.schemaVersion !== TRACKER_SCHEMA_VERSION
+    || !pending
+    || pending.status === "synced"
+  ) return 0;
+  if (!binding) return 1;
+  const keys = [trackerEffectKey(policy, pending.projection, "transition")];
+  if (shouldPublishMilestone(policy, binding, pending.projection)) {
+    keys.push(trackerEffectKey(policy, pending.projection, "comment"));
+    for (const artifact of pending.projection.artifacts ?? []) {
+      keys.push(trackerEffectKey(policy, pending.projection, "artifact", artifact.digest));
+    }
+  }
+  return keys.filter((key) => !hasTrackerEffect(pending, key)).length;
+}
+
 function failedStatus(
   revision: number,
   provider: TrackerProvider | null,
@@ -2039,6 +3612,36 @@ function trackerBindIntent(feature: string, input: TrackerBindInput): TrackerBin
   }) as TrackerBindIntent;
 }
 
+function trackerReferences(request: string | null, policy: TrackerPolicy): string[] {
+  if (!request) return [];
+  const matches: string[] = [];
+  const urls = request.match(/https:\/\/[^\s<>()]+/g) ?? [];
+  for (const raw of urls) {
+    let url: URL;
+    try { url = new URL(raw.replace(/[.,;:!?]+$/, "")); } catch { continue; }
+    if (policy.provider === "linear" && url.hostname.toLowerCase() === "linear.app") {
+      const segments = url.pathname.split("/").filter(Boolean);
+      const issue = segments.indexOf("issue");
+      const key = issue >= 0 ? segments[issue + 1] : undefined;
+      if (key && REMOTE_ID.test(key)) matches.push(key);
+    } else if (policy.provider === "github" && url.hostname.toLowerCase() === "github.com") {
+      const segments = url.pathname.split("/").filter(Boolean);
+      if (
+        segments[0]?.toLowerCase() === policy.target.owner.toLowerCase()
+        && segments[1]?.toLowerCase() === policy.target.repository.toLowerCase()
+        && segments[2] === "issues"
+        && /^\d+$/.test(segments[3] ?? "")
+      ) matches.push(segments[3]!);
+    } else if (policy.provider === "jira" && url.origin === jiraOrigin(policy)) {
+      const segments = url.pathname.split("/").filter(Boolean);
+      const browse = segments.indexOf("browse");
+      const key = browse >= 0 ? segments[browse + 1] : undefined;
+      if (key?.startsWith(`${policy.target.projectKey}-`) && REMOTE_ID.test(key)) matches.push(key);
+    }
+  }
+  return [...new Set(matches)].sort();
+}
+
 function failedBindResult(
   state: WorkflowState,
   policy: TrackerPolicy,
@@ -2124,6 +3727,150 @@ async function reconcileCreate(
     throw new EmpiricalError("TRACKER_CREATE_COLLISION", "Multiple provider tickets contain the exact Empirical create marker");
   }
   return matches[0] ?? null;
+}
+
+async function reconcileFeatureMarker(
+  policy: TrackerPolicy,
+  marker: string,
+  credentials: string[],
+  dependencies: TrackerDependencies,
+): Promise<RemoteTicket | null> {
+  const matches = policy.provider === "github"
+    ? await findGitHubFeatureMarkers(policy, marker, credentials[0]!, dependencies)
+    : policy.provider === "linear"
+      ? await findLinearFeatureMarkers(policy, marker, credentials[0]!, dependencies)
+      : await findJiraFeatureMarkers(policy, marker, credentials[0]!, credentials[1]!, dependencies);
+  if (matches.length > 1) {
+    throw new EmpiricalError(
+      "TRACKER_BIND_AMBIGUOUS",
+      "Multiple target-valid tickets contain the stable Empirical feature marker",
+    );
+  }
+  return matches[0] ?? null;
+}
+
+async function findGitHubFeatureMarkers(
+  policy: GitHubTrackerPolicy,
+  marker: string,
+  token: string,
+  dependencies: TrackerDependencies,
+): Promise<RemoteTicket[]> {
+  const matches: RemoteTicket[] = [];
+  for (let page = 1; page <= TRACKER_DISCOVERY_LIMIT; page += 1) {
+    const response = await requestJson(dependencies, {
+      method: "GET",
+      url: `https://api.github.com/repos/${encodeURIComponent(policy.target.owner)}/${encodeURIComponent(policy.target.repository)}/issues?state=all&per_page=100&page=${page}`,
+      headers: githubHeaders(token),
+    }, [200], [token]);
+    if (!Array.isArray(response)) {
+      throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "GitHub feature-marker lookup is malformed");
+    }
+    for (const raw of response) {
+      const issue = record(raw, "GitHub feature-marker issue");
+      if (issue.pull_request !== undefined) continue;
+      if (hasStableGitHubCreateMarker(issue.body, marker)) matches.push(parseGitHubIssue(policy, issue));
+    }
+    if (response.length < 100) return matches;
+  }
+  throw new EmpiricalError("TRACKER_RECONCILIATION_LIMIT", "GitHub feature-marker lookup exceeded 10,000 issues");
+}
+
+async function findLinearFeatureMarkers(
+  policy: LinearTrackerPolicy,
+  marker: string,
+  apiKey: string,
+  dependencies: TrackerDependencies,
+): Promise<RemoteTicket[]> {
+  const matches: RemoteTicket[] = [];
+  let after: string | null = null;
+  const cursors = new Set<string>();
+  for (let page = 0; page < TRACKER_DISCOVERY_LIMIT; page += 1) {
+    const data = await linearGraphql(
+      `query ReconcileFeature($team: ID!, $marker: String!, $after: String) {
+        issues(first: 100, after: $after, includeArchived: true,
+          filter: {team: {id: {eq: $team}}, description: {contains: $marker}}) {
+          nodes { id identifier url description team { id } project { id } }
+          pageInfo { hasNextPage endCursor }
+        }
+      }`,
+      { team: policy.target.teamId, marker, after },
+      apiKey,
+      dependencies,
+    );
+    const issues = connection(data.issues, "Linear feature-marker issues");
+    for (const raw of issues.nodes) {
+      const issue = record(raw, "Linear feature-marker issue");
+      const markerResult = linearCreateMarkerMatches(typeof issue.description === "string" ? issue.description : "", marker);
+      if (markerResult.malformed) {
+        throw new EmpiricalError("TRACKER_MARKER_AMBIGUOUS", "Linear feature marker is malformed or mixed");
+      }
+      if (markerResult.matches.length === 1) matches.push(parseLinearIssue(policy, issue));
+      else if (markerResult.matches.length > 1) {
+        throw new EmpiricalError("TRACKER_BIND_AMBIGUOUS", "A Linear ticket contains duplicate stable feature markers");
+      }
+    }
+    if (!issues.hasNextPage) return matches;
+    after = nextDiscoveryCursor(issues.endCursor, cursors, "Linear feature-marker lookup");
+  }
+  throw new EmpiricalError("TRACKER_RECONCILIATION_LIMIT", "Linear feature-marker lookup exceeded 10,000 issues");
+}
+
+async function findJiraFeatureMarkers(
+  policy: JiraTrackerPolicy,
+  marker: string,
+  email: string,
+  apiToken: string,
+  dependencies: TrackerDependencies,
+): Promise<RemoteTicket[]> {
+  const matches: RemoteTicket[] = [];
+  let nextPageToken: string | null = null;
+  const cursors = new Set<string>();
+  for (let page = 0; page < TRACKER_DISCOVERY_LIMIT; page += 1) {
+    const response = record(await requestJson(dependencies, {
+      method: "POST",
+      url: `${jiraOrigin(policy)}/rest/api/3/search/jql`,
+      headers: jiraHeaders(email, apiToken),
+      body: JSON.stringify({
+        jql: `project = ${policy.target.projectKey} ORDER BY created DESC`,
+        maxResults: 100,
+        ...(nextPageToken ? { nextPageToken } : {}),
+        fields: ["status", "project", "issuetype"],
+        properties: ["empirical-sdd"],
+      }),
+    }, [200], [email, apiToken]), "Jira feature-marker lookup");
+    if (Array.isArray(response.warnings) && response.warnings.length > 0) {
+      throw new EmpiricalError("TRACKER_RECONCILIATION_INCOMPLETE", "Jira reported incomplete feature-marker results");
+    }
+    if (!Array.isArray(response.issues) || typeof response.isLast !== "boolean") {
+      throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira feature-marker pagination is malformed");
+    }
+    for (const raw of response.issues) {
+      const issue = record(raw, "Jira feature-marker issue");
+      const properties = record(issue.properties ?? {}, "Jira feature-marker properties");
+      const empirical = properties["empirical-sdd"];
+      if (typeof empirical !== "object" || empirical === null || Array.isArray(empirical)) continue;
+      const create = record((empirical as Record<string, unknown>).create ?? {}, "Jira feature marker");
+      if (create.marker === marker) matches.push(parseJiraIssue(policy, issue, true));
+    }
+    if (response.isLast) return matches;
+    nextPageToken = nextDiscoveryCursor(optionalString(response, "nextPageToken"), cursors, "Jira feature-marker lookup");
+  }
+  throw new EmpiricalError("TRACKER_RECONCILIATION_LIMIT", "Jira feature-marker lookup exceeded 10,000 issues");
+}
+
+function hasStableGitHubCreateMarker(value: unknown, marker: string): boolean {
+  if (typeof value !== "string") return false;
+  const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const matches = [...value.matchAll(new RegExp(`<!-- ${escaped}:([a-f0-9]{64}):start -->`, "g"))];
+  if (matches.length !== 1) return false;
+  const key = `sha256:${matches[0]![1]}`;
+  return hasExactCreateMarker(value, {
+    mode: "create",
+    title: "marker",
+    description: "marker",
+    marker,
+    dispatched: true,
+  }, key);
 }
 
 async function reconcileGitHubCreate(
@@ -2490,6 +4237,321 @@ function titleFromFeature(feature: string): string {
   return feature.split("-").filter(Boolean).map((word) => `${word[0]?.toUpperCase() ?? ""}${word.slice(1)}`).join(" ");
 }
 
+interface TrackerConnection {
+  nodes: unknown[];
+  hasNextPage: boolean;
+  endCursor: string | null;
+}
+
+function connection(value: unknown, label: string): TrackerConnection {
+  const result = record(value, label);
+  if (!Array.isArray(result.nodes)) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `${label} nodes are missing or malformed`);
+  }
+  if (result.pageInfo === undefined || result.pageInfo === null) {
+    return { nodes: result.nodes, hasNextPage: false, endCursor: null };
+  }
+  const pageInfo = record(result.pageInfo, `${label} page info`);
+  if (typeof pageInfo.hasNextPage !== "boolean") {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `${label} pagination is malformed`);
+  }
+  const endCursor = pageInfo.endCursor === null || pageInfo.endCursor === undefined
+    ? null
+    : requiredString(pageInfo, "endCursor", `${label} cursor`);
+  if (pageInfo.hasNextPage && endCursor === null) {
+    throw new EmpiricalError("TRACKER_DISCOVERY_INCOMPLETE", `${label} has another page without a cursor`);
+  }
+  return { nodes: result.nodes, hasNextPage: pageInfo.hasNextPage, endCursor };
+}
+
+function assertTerminalConnection(value: TrackerConnection, label: string): void {
+  if (value.hasNextPage) {
+    throw new EmpiricalError(
+      "TRACKER_DISCOVERY_INCOMPLETE",
+      `${label} requires additional nested pagination and cannot be applied from partial metadata`,
+    );
+  }
+}
+
+function nextDiscoveryCursor(value: string | null, seen: Set<string>, label: string): string {
+  if (!value || seen.has(value)) {
+    throw new EmpiricalError("TRACKER_DISCOVERY_INCOMPLETE", `${label} pagination cursor did not advance`);
+  }
+  seen.add(value);
+  return value;
+}
+
+function discoveryResource(
+  input: Pick<TrackerDiscoveryResource, "kind" | "id" | "name">
+  & Partial<Omit<TrackerDiscoveryResource, "kind" | "id" | "name">>,
+): TrackerDiscoveryResource {
+  return {
+    kind: input.kind,
+    id: input.id,
+    name: input.name,
+    parentId: input.parentId ?? null,
+    position: input.position ?? null,
+    stateType: input.stateType ?? null,
+    key: input.key ?? null,
+    url: input.url ?? null,
+  };
+}
+
+function validateDiscoveryResource(resource: TrackerDiscoveryResource): void {
+  if (!REMOTE_ID.test(resource.id) && !/^https:\/\/[A-Za-z0-9.-]+(?::\d+)?$/.test(resource.id)) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `Tracker discovery returned an invalid ${resource.kind} id`);
+  }
+  if (!resource.name.trim() || resource.name.length > 256 || /[\0\r\n]/.test(resource.name)) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `Tracker discovery returned an invalid ${resource.kind} name`);
+  }
+  if (resource.parentId !== null && !REMOTE_ID.test(resource.parentId) && !/^https:\/\//.test(resource.parentId)) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `Tracker discovery returned an invalid ${resource.kind} parent`);
+  }
+  if (resource.position !== null && (!Number.isFinite(resource.position) || resource.position < 0)) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `Tracker discovery returned an invalid ${resource.kind} position`);
+  }
+  if (resource.url !== null) {
+    const url = new URL(resource.url);
+    if (url.protocol !== "https:" || url.username || url.password || url.hash) {
+      throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `Tracker discovery returned an unsafe ${resource.kind} URL`);
+    }
+  }
+}
+
+function compareDiscoveryResources(left: TrackerDiscoveryResource, right: TrackerDiscoveryResource): number {
+  const kinds = ["workspace", "team", "repository", "project", "issue-type", "field", "state"];
+  return kinds.indexOf(left.kind) - kinds.indexOf(right.kind)
+    || (left.parentId ?? "").localeCompare(right.parentId ?? "")
+    || (left.position ?? Number.MAX_SAFE_INTEGER) - (right.position ?? Number.MAX_SAFE_INTEGER)
+    || left.name.localeCompare(right.name)
+    || left.id.localeCompare(right.id);
+}
+
+function trackerAdapterCapabilities(provider: TrackerProvider): TrackerDiscovery["capabilities"] {
+  return {
+    comments: true,
+    uploads: provider === "jira",
+    durableLinks: true,
+  };
+}
+
+function verifyTrackerDiscovery(discovery: TrackerDiscovery): void {
+  if (discovery.schemaVersion !== 1 || discovery.complete !== true) {
+    throw new EmpiricalError("INVALID_TRACKER_DISCOVERY", "Tracker discovery is incomplete or has an unsupported schema");
+  }
+  const { digest, ...body } = discovery;
+  if (digestJson(body) !== digest) {
+    throw new EmpiricalError("INVALID_TRACKER_DISCOVERY", "Tracker discovery digest does not match its contents");
+  }
+  for (const resource of discovery.resources) validateDiscoveryResource(resource);
+}
+
+function normalizedStatePositions(states: TrackerDiscoveryResource[]): Map<string, number> {
+  const ordered = [...states].sort((left, right) =>
+    (left.position ?? Number.MAX_SAFE_INTEGER) - (right.position ?? Number.MAX_SAFE_INTEGER)
+    || left.name.localeCompare(right.name)
+    || left.id.localeCompare(right.id));
+  const numeric = ordered.map((state, index) => state.position ?? index);
+  const min = Math.min(...numeric);
+  const max = Math.max(...numeric);
+  return new Map(ordered.map((state, index) => [
+    state.id,
+    max === min ? 0.5 : (numeric[index]! - min) / (max - min),
+  ]));
+}
+
+function mappingCandidate(
+  provider: TrackerProvider,
+  phase: TrackerProgressState,
+  state: TrackerDiscoveryResource,
+  position: number,
+): TrackerMappingCandidate {
+  const semantic = normalizedStateType(state.stateType, state.name);
+  const semanticRank = stateSemanticRank(provider, phase, semantic);
+  const targetPosition: Record<TrackerProgressState, number> = {
+    specification: 0,
+    planned: 0.2,
+    "in-progress": 0.42,
+    verification: 0.68,
+    review: 0.82,
+    blocked: 0.42,
+    done: 1,
+  };
+  const positionRank = Math.round(Math.abs(position - targetPosition[phase]) * 10_000);
+  const nameRank = stateNameRank(phase, state.name);
+  return {
+    stateId: state.id,
+    name: state.name,
+    primaryRank: semanticRank * 1_000_000 + positionRank,
+    nameRank,
+    reasons: [
+      `provider semantic ${semantic}`,
+      `lifecycle position ${position.toFixed(3)}`,
+      nameRank === 0 ? "compatible name refinement" : "no name refinement",
+    ],
+  };
+}
+
+function normalizedStateType(value: string | null, name: string): string {
+  const normalized = (value ?? "").trim().toLowerCase().replace(/[ _-]+/g, "-");
+  if (["backlog", "triage"].includes(normalized)) return normalized;
+  if (["unstarted", "todo", "to-do", "open", "new"].includes(normalized)) return "unstarted";
+  if (["started", "in-progress", "indeterminate", "current"].includes(normalized)) return "started";
+  if (["completed", "done", "closed", "success"].includes(normalized)) return "completed";
+  if (["canceled", "cancelled", "removed"].includes(normalized)) return "canceled";
+  if (["option", "status", ""].includes(normalized)) return "generic";
+  const nameValue = name.toLowerCase();
+  if (/\b(done|complete|closed)\b/.test(nameValue)) return "completed";
+  if (/\b(todo|backlog|planned|ready|open)\b/.test(nameValue)) return "unstarted";
+  if (/\b(progress|doing|qa|test|review|blocked)\b/.test(nameValue)) return "started";
+  return normalized;
+}
+
+function stateSemanticRank(
+  provider: TrackerProvider,
+  phase: TrackerProgressState,
+  semantic: string,
+): number {
+  if (provider !== "linear" && semantic === "generic") return 0;
+  const preferred: Record<TrackerProgressState, string[]> = {
+    specification: ["backlog", "triage", "unstarted"],
+    planned: ["unstarted", "backlog", "triage"],
+    "in-progress": ["started"],
+    verification: ["started"],
+    review: ["started"],
+    blocked: ["started", "unstarted"],
+    done: ["completed"],
+  };
+  const index = preferred[phase].indexOf(semantic);
+  if (index >= 0) return index;
+  return semantic === "canceled" ? 9 : 5;
+}
+
+function stateNameRank(phase: TrackerProgressState, value: string): number {
+  const name = value.toLowerCase().replace(/[_-]+/g, " ");
+  const patterns: Record<TrackerProgressState, RegExp> = {
+    specification: /\b(spec|backlog|triage|todo)\b/,
+    planned: /\b(todo|plan|ready|backlog)\b/,
+    "in-progress": /\b(in progress|progress|doing|started)\b/,
+    verification: /\b(qa|test|verify|verification|validation)\b/,
+    review: /\b(review|approval)\b/,
+    blocked: /\b(blocked|stalled|waiting)\b/,
+    done: /\b(done|complete|completed|closed)\b/,
+  };
+  return patterns[phase].test(name) ? 0 : 1;
+}
+
+function discoveryInputForPolicy(policy: TrackerPolicy): TrackerDiscoveryInput {
+  if (policy.provider === "github") {
+    return { provider: "github", credentialEnv: { ...policy.credentialEnv } };
+  }
+  if (policy.provider === "linear") {
+    return { provider: "linear", credentialEnv: { ...policy.credentialEnv } };
+  }
+  return {
+    provider: "jira",
+    target: { siteUrl: policy.target.siteUrl },
+    credentialEnv: { ...policy.credentialEnv },
+  };
+}
+
+function policyStateParent(policy: TrackerPolicy): string {
+  return policy.provider === "linear"
+    ? policy.target.teamId
+    : policy.provider === "github"
+      ? policy.target.statusFieldId
+      : policy.target.projectKey;
+}
+
+function validatePolicySelection(
+  policy: TrackerPolicy,
+  discovery: TrackerDiscovery,
+  suggestion: TrackerMappingSuggestion,
+): { target: TrackerPolicyPreview["target"]; mapping: TrackerMappingSuggestion } {
+  if (policy.provider !== discovery.provider) {
+    throw new EmpiricalError("TRACKER_PROVIDER_MISMATCH", "Tracker discovery belongs to a different provider");
+  }
+  const find = (kind: TrackerDiscoveryResource["kind"], predicate: (resource: TrackerDiscoveryResource) => boolean, label: string) => {
+    const matches = discovery.resources.filter((resource) => resource.kind === kind && predicate(resource));
+    if (matches.length !== 1) {
+      throw new EmpiricalError("TRACKER_TARGET_UNAVAILABLE", `Configured ${label} was not uniquely accessible during discovery`);
+    }
+    return matches[0]!;
+  };
+  const target: TrackerPolicyPreview["target"] = [];
+  let stateParent: string;
+  if (policy.provider === "linear") {
+    const team = find("team", (resource) => resource.id === policy.target.teamId, "Linear team");
+    target.push({ kind: team.kind, id: team.id, name: team.name });
+    if (policy.target.projectId !== null) {
+      const project = find("project", (resource) => resource.id === policy.target.projectId && resource.parentId === team.id, "Linear project");
+      target.push({ kind: project.kind, id: project.id, name: project.name });
+    }
+    stateParent = team.id;
+  } else if (policy.provider === "github") {
+    const owner = find("workspace", (resource) => resource.key?.toLowerCase() === policy.target.owner.toLowerCase(), "GitHub owner");
+    const repository = find("repository", (resource) =>
+      resource.parentId === owner.id
+      && (resource.key?.toLowerCase() === `${policy.target.owner}/${policy.target.repository}`.toLowerCase()
+        || resource.name.toLowerCase() === policy.target.repository.toLowerCase()), "GitHub repository");
+    const project = find("project", (resource) => resource.id === policy.target.projectId && resource.parentId === owner.id, "GitHub project");
+    const field = find("field", (resource) => resource.id === policy.target.statusFieldId && resource.parentId === project.id, "GitHub status field");
+    target.push(
+      { kind: owner.kind, id: owner.id, name: owner.name },
+      { kind: repository.kind, id: repository.id, name: repository.name },
+      { kind: project.kind, id: project.id, name: project.name },
+      { kind: field.kind, id: field.id, name: field.name },
+    );
+    stateParent = field.id;
+  } else {
+    const origin = new URL(policy.target.siteUrl).origin;
+    const workspace = find("workspace", (resource) => resource.id === origin, "Jira site");
+    const project = find("project", (resource) => resource.id === policy.target.projectKey && resource.parentId === workspace.id, "Jira project");
+    const issueType = find("issue-type", (resource) => resource.id === policy.target.issueTypeId && resource.parentId === project.id, "Jira issue type");
+    target.push(
+      { kind: workspace.kind, id: workspace.id, name: workspace.name },
+      { kind: project.kind, id: project.id, name: project.name },
+      { kind: issueType.kind, id: issueType.id, name: issueType.name },
+    );
+    stateParent = project.id;
+  }
+  const phases = { ...suggestion.phases };
+  for (const phase of TRACKER_PROGRESS_STATES) {
+    const selected = find("state", (resource) => resource.id === policy.states[phase] && resource.parentId === stateParent, `${phase} state`);
+    phases[phase] = {
+      ...phases[phase],
+      selectedStateId: selected.id,
+      ambiguous: false,
+    };
+  }
+  return {
+    target,
+    mapping: { provider: policy.provider, phases, states: { ...policy.states }, ambiguous: [] },
+  };
+}
+
+function optionalString(value: Record<string, unknown>, key: string): string | null {
+  const entry = value[key];
+  if (entry === undefined || entry === null || entry === "") return null;
+  if (typeof entry !== "string" || entry.length > 2_048 || /[\0\r\n]/.test(entry)) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `Tracker field ${key} is malformed`);
+  }
+  return entry;
+}
+
+function optionalFiniteNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function optionalSafeUrl(
+  value: Record<string, unknown>,
+  key: string,
+  expectedHost: string,
+): string | null {
+  const entry = optionalString(value, key);
+  return entry === null ? null : validateProviderUrl(entry, expectedHost);
+}
+
 function record(value: unknown, label: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) {
     throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `${label} is missing or malformed`);
@@ -2500,6 +4562,19 @@ function record(value: unknown, label: string): Record<string, unknown> {
 function requiredString(value: Record<string, unknown>, key: string, label: string): string {
   const result = value[key];
   if (typeof result !== "string" || !result.trim() || !REMOTE_ID.test(result.trim())) {
+    throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `${label} is missing or malformed`);
+  }
+  return result.trim();
+}
+
+function requiredDisplayString(value: Record<string, unknown>, key: string, label: string): string {
+  const result = value[key];
+  if (
+    typeof result !== "string"
+    || !result.trim()
+    || result.trim().length > 256
+    || /[\0\r\n]/.test(result)
+  ) {
     throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", `${label} is missing or malformed`);
   }
   return result.trim();

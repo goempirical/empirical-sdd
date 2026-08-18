@@ -1,6 +1,6 @@
 # Architecture
 
-Empirical 0.23 is a TypeScript library, Node.js CLI, stdio MCP server, one
+Empirical 0.24 is a TypeScript library, Node.js CLI, stdio MCP server, one
 explicit global Init skill, and a repository-local automatic workflow over one
 Schema 5 model.
 
@@ -24,9 +24,10 @@ Schema 5 model.
   candidate validation, projection rollback, and integration receipts.
 - `delivery.ts` owns protected GitHub source/evidence PR convergence and
   explicit publication planning.
-- `tracking.ts` owns the optional provider-neutral ticket policy, target-bound
-  feature bindings, durable pending operations, and GitHub, Linear, and Jira
-  adapters.
+- `tracking.ts` owns provider discovery/preview and semantic mapping, optional
+  Tracker Policy v1/v2, ensure/manual/off binding, target-bound feature
+  bindings, per-effect durable pending operations, safe receipt artifacts, and
+  GitHub, Linear, and Jira adapters.
 - `knowledge.ts` owns Manifest v2 fingerprints and fresh-by-default retrieval.
 - `doctor.ts` performs read-only cross-subsystem diagnostics, including whether
   all required repository activation integrations are present and current.
@@ -49,12 +50,12 @@ Git common directory
 repository checkout
 ├── Schema-5 config + Policy v2 + Manifest v2
 ├── marker-owned automatic workflow dispatchers and local skills
-├── optional secret-free Tracker Policy v1
+├── optional secret-free Tracker Policy v1 or v2
 ├── living capability projections
 ├── discovery records
 └── selected feature
     ├── spec + design + decisions + plan + impact + deltas
-    ├── optional tracker binding + durable pending projection
+    ├── optional tracker binding + durable transition/comment/artifact ledger
     ├── immutable evidence/integration/delivery receipts
     └── state projection + hash journal + terminal snapshot
 ```
@@ -89,12 +90,14 @@ both succeed.
 External tracking is a separate one-way projection boundary. Every workflow
 transition commits its local journal and state projection first. A later
 tracker sync resumes durable pending work or snapshots that committed revision
-into a checksummed pending record, converges the target-bound remote ticket with
-a stable idempotency marker, and only then advances the binding's
-last-synchronized revision. Binding target drift fails before a provider
-request; a same-target status-map change invalidates the synchronized fast path
-and reprojects the committed revision. Provider failure cannot roll back,
-demote, or block the local state machine.
+into a checksummed pending record. In ensure mode it validates a request
+reference, performs complete stable-marker reconciliation, and creates only on
+one proven zero-match path. It then converges provider state, append-only
+milestone comments, and receipt-approved evidence through individually
+acknowledged deterministic effects before advancing the binding. Policy v2
+Linear updates never include description content. Binding target drift,
+incomplete pagination, marker ambiguity, or unsafe evidence fails closed;
+provider failure cannot roll back, demote, or block the local state machine.
 
 ## Delivery and publication
 

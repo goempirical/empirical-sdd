@@ -6,7 +6,7 @@ export const SCHEMA_VERSION = 5 as const;
 export const POLICY_SCHEMA_VERSION = 2 as const;
 export const MANIFEST_SCHEMA_VERSION = 2 as const;
 export const RECEIPT_SCHEMA_VERSION = 1 as const;
-export const PRODUCT_VERSION = "0.23.1";
+export const PRODUCT_VERSION = "0.24.0";
 
 export const workflowSchema = z.enum(["fast", "complex"]);
 export const executionModeSchema = z.enum(["normal", "yolo"]);
