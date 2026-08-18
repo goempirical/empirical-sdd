@@ -28,7 +28,8 @@ Schema 5 model.
   feature bindings, durable pending operations, and GitHub, Linear, and Jira
   adapters.
 - `knowledge.ts` owns Manifest v2 fingerprints and fresh-by-default retrieval.
-- `doctor.ts` performs read-only cross-subsystem diagnostics.
+- `doctor.ts` performs read-only cross-subsystem diagnostics, including whether
+  all required repository activation integrations are present and current.
 - `cli.ts`, `mcp.ts`, and `integrations.ts` are registry-backed adapters, not
   alternate workflow implementations. Integrations install a setup-only global
   `empirical-init`, marker-owned repository dispatchers and local workflow
@@ -119,7 +120,10 @@ legacy placeholder topics in a nonempty repository are reported through
 Implement work, the state machine conditionally inserts Context: the host agent
 refreshes inventory, refines topics from inspected evidence, removes managed
 markers, and refreshes again before Verify or Done. Doctor reports stale,
-missing, invalid, and refinement-required knowledge without mutation.
+missing, invalid, and refinement-required knowledge without mutation. For a
+completed Schema 5 setup it also reports missing, drifted, or unsafe project
+integrations; explicit Init performs the ownership-aware repair and Doctor then
+verifies readiness.
 
 ## Package surface
 

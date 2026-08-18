@@ -22,6 +22,11 @@ Codex uses `$empirical-init`, Claude Code uses `/empirical-init`, and Windsurf
 uses `@empirical-init`. Existing 0.22 repositories should invoke it once after
 upgrading; configuration, history, and evidence are preserved.
 
+Doctor verifies that completed repositories still have every required local
+instruction, skill, and MCP bridge. If it reports missing or drifted project
+integrations, invoke `empirical-init` explicitly to reconcile Empirical-owned
+artifacts; unmanaged or unsafe conflicts are preserved and remain visible.
+
 ## What it provides
 
 - Deterministic Fast or Complex routing based on the request's risk.

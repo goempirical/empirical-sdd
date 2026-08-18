@@ -1,4 +1,4 @@
-# Empirical 0.23 demo
+# Empirical 0.23.1 demo
 
 ## Install once
 
@@ -23,6 +23,29 @@ activation without creating feature state. In Claude Code use
 Existing `0.22.x` repositories need the same explicit Init once after upgrade.
 That repair preserves stored configuration, context, selected work, history,
 and evidence unless you explicitly change a setup value.
+
+## Integration drift repair mock
+
+The packaged demo creates an isolated temporary Git repository, marks setup as
+complete without installing project integrations, runs Doctor, performs the
+same reconciliation used by `empirical-init`, and runs Doctor again:
+
+```bash
+bun run build
+bun run demo:integration-repair
+```
+
+Its JSON output first reports `PROJECT_INTEGRATIONS_MISSING` with automatic
+activation `blocked`. Repair then creates the nine required instruction, local
+skill, and MCP artifacts. The final report contains
+`PROJECT_INTEGRATIONS_READY`, activation is `ready`, and both configuration and
+workflow-state preservation are `true`.
+
+Doctor never repairs while inspecting. If an artifact contains stale
+Empirical-owned content, explicit Init updates it. If a path is unsafe or an
+Empirical MCP entry is unmanaged and conflicting, Init preserves it and Doctor
+continues reporting `PROJECT_INTEGRATIONS_DRIFTED` until the developer resolves
+the collision.
 
 ## Normal mode
 

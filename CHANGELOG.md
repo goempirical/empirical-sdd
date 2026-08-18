@@ -8,6 +8,14 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ## [Unreleased]
 
+## [0.23.1] - 2026-08-18
+
+### Added
+
+- Added a packaged, runnable integration-repair demo that reproduces a
+  completed repository with missing activation artifacts and proves the
+  before, repair, and verified-after states without touching user data.
+
 ### Changed
 
 - Simplified the README around installation, everyday use, safety, and links to
@@ -15,6 +23,13 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ### Fixed
 
+- Made Doctor report missing, drifted, or unsafe required project integrations
+  whenever Schema 5 setup is complete, instead of incorrectly reporting the
+  repository as activation-ready.
+- Kept Doctor read-only and made its remediation point to explicit
+  `empirical-init`; repair recreates missing artifacts and updates
+  Empirical-owned content while preserving unmanaged conflicts for manual
+  resolution.
 - Completed the lower stem of the terminal brand mark so its outline renders as
   a closed cross.
 
@@ -75,7 +90,8 @@ Published through GitHub Actions trusted publishing with npm provenance.
 
 - Prepared and released package version `0.20.2`.
 
-[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.23.0...HEAD
+[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.23.1...HEAD
+[0.23.1]: https://github.com/goempirical/empirical-sdd/compare/v0.23.0...v0.23.1
 [0.23.0]: https://github.com/goempirical/empirical-sdd/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/goempirical/empirical-sdd/compare/v0.20.4...v0.22.0
 [0.20.4]: https://github.com/goempirical/empirical-sdd/compare/v0.20.3...v0.20.4
