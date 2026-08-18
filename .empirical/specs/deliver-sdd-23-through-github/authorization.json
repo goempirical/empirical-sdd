@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "mode": "yolo",
+  "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+  "feature": "deliver-sdd-23-through-github",
+  "requestDigest": "sha256:102325e5ba0046f45d5d3961659b5f86510ff7c678c14b87c96038bf6eb547e2",
+  "ceiling": "delivered",
+  "targetBranch": "main",
+  "allowExternalAgent": false,
+  "createdAt": "2026-08-18T21:08:32.285Z",
+  "expiresAt": null,
+  "digest": "sha256:aad0050b496ecf2ef49b12b9e56b6e994b30e159eb939d980354edfd993e212b"
+}

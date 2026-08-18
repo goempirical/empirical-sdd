@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "sequence": 3,
+  "previousDigest": "sha256:acd76dd6dd702fc5e72d015cc05e147842deee8d72284e33bc7eddd3f2fba9b4",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Specified non-behavioral protected delivery with explicit source/evidence scopes, five-job CI waits before each ordinary merge, stable PR markers, remote drift checks, and an Empirical delivery receipt; publication and host rollout are excluded.",
+  "createdAt": "2026-08-18T21:09:12.298Z",
+  "stateBeforeDigest": "sha256:e9b5002699b5189a0cff3fc2c915541db9335e9547d855c9a6c034c633f049a7",
+  "stateAfterDigest": "sha256:ff71a5468697ce489766f1bc72d2e02f55cb2274228c5854854f45ae7e50a711",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 3,
+    "activeFeature": "deliver-sdd-23-through-github",
+    "request": "Commit the already verified integrated changes, push the branch, open source and evidence pull requests to main, wait for every GitHub CI check, and merge them normally.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "design",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Specified non-behavioral protected delivery with explicit source/evidence scopes, five-job CI waits before each ordinary merge, stable PR markers, remote drift checks, and an Empirical delivery receipt; publication and host rollout are excluded.",
+    "implementationActor": null,
+    "specDigest": "sha256:ada6eedfe2316b5f5c4cc33f8e6efbccaed10f4876515086338db113b9d654f2",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": false,
+    "capabilityDeltaDigest": null,
+    "impactDigest": "sha256:4ac3fe8f667210cc088c5d4e1dbb88973cd045fe86cccea9826f7da276b134de",
+    "capabilityClaimId": null,
+    "authorizationDigest": "sha256:aad0050b496ecf2ef49b12b9e56b6e994b30e159eb939d980354edfd993e212b",
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": false,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "none",
+      "reasons": {
+        "implemented": "implemented has not been proven by a durable receipt.",
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-18T21:09:12.298Z"
+  },
+  "digest": "sha256:4c05526ef397db8640aa28abbd0297904135d248fc7d7849f3903a7d9e1a7f1e"
+}

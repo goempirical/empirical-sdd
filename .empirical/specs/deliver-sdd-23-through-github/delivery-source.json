@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "feature": "deliver-sdd-23-through-github",
+  "sourceMergeCommit": "5808fbc1d63df0d2797bb8f6d9d46731556eb738",
+  "integrationReceiptDigest": "sha256:220078bffb10ae0558069cb85f69338385bc5c5f595969f98a8c65b6e9bd6b77",
+  "digest": "sha256:b37252500f390dd0624ada6e90f9e3a270c119b87b407910c1bf17f60355fd18"
+}

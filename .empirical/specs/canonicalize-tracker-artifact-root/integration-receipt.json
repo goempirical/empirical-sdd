@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "feature": "canonicalize-tracker-artifact-root",
+  "claimId": "canonicalize-tracker-artifact-root-bca928c5aab7",
+  "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+  "baseCommit": "c70d8c06aabd30d62c96d96b731d8dc443d4c414",
+  "baseTree": "d2cf07fdf0bd5185f08d9728421507a67130eeff",
+  "featureTree": "sha256:7f1bb6003d04b719b427c09464feca8701e703696eb76ae45f46dfea935a8705",
+  "targetCommit": "c70d8c06aabd30d62c96d96b731d8dc443d4c414",
+  "targetTree": "d2cf07fdf0bd5185f08d9728421507a67130eeff",
+  "capabilityBaseDigests": {
+    "external-ticket-tracking": "sha256:3040eec3b9e25e2e6f1978ca5d3925df05635157f5974985dbc28b8c0b8252bc"
+  },
+  "deltaDigest": "sha256:cd3962213375fa5035057702e3c7a5350a7b81f359f28dae546a1725fd7816c8",
+  "resultDigests": {
+    "external-ticket-tracking": "sha256:ed6312cae9d736d8fc2b0366602aea47529eeffcb1db11356b021356b2a63ed3"
+  },
+  "verificationReceiptDigests": [
+    "sha256:d8313d17156f92642b1276544ced186a4812e3eab19d4296c6e52ba0f40ecd0e"
+  ],
+  "integratedAt": "2026-08-18T21:35:19.841Z",
+  "digest": "sha256:918a12143048f88248507c3e1c0aa9d2e2866ca43fabd4b38f51b060a1f23ce9"
+}

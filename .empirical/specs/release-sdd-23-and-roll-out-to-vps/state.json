@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 5,
+  "revision": 9,
+  "activeFeature": "release-sdd-23-and-roll-out-to-vps",
+  "request": "Merge the completed SDD-23 tracker onboarding and lifecycle synchronization work through the protected GitHub workflow, create and validate the next appropriate package release, then update every user-owned VPS that is discoverable from the existing deployment inventory to that exact released version. Use a staged rollout: verify the published artifact in a clean consumer, inventory hosts and current versions without exposing credentials, update hosts one at a time, run a smoke/version check after each update, stop on the first failed host without continuing, and report any hosts that cannot be safely identified or accessed. Do not force-push, bypass branch protection, overwrite unrelated remote changes, or publish an unverified artifact.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "normal",
+  "phase": "done",
+  "status": "done",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: package-distribution",
+  "implementationActor": "agent",
+  "specDigest": "sha256:3b2706992c4ed733ddf1ec4a00d4ab0f25d7b9b5b39b4b08b88fee557817cbca",
+  "approvedSpecRevision": 2,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:6668605ef6ce6b9c7bccaf4fa316cade32b1edc55b7ff5280efe4db32bebbba4",
+  "impactDigest": "sha256:28155019597bb0a28e2e6ac5379c3fff40a6fea4007ace6bf33a71716d3d584a",
+  "capabilityClaimId": "release-sdd-23-and-roll-out-to-vps-b24af25e7b8c",
+  "authorizationDigest": null,
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-aa1c9911d9da460f69a40243"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-18T21:04:02.674Z"
+}

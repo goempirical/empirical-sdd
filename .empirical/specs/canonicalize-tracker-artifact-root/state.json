@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 5,
+  "revision": 9,
+  "activeFeature": "canonicalize-tracker-artifact-root",
+  "request": "Fix the macOS tracker artifact containment false positive by resolving receipt artifact paths from the canonical repository root, add a deterministic symlinked-root regression test, rerun focused and full CI, then fast-forward the existing source PR branch and update its Empirical marker without force.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "normal",
+  "phase": "done",
+  "status": "done",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: external-ticket-tracking",
+  "implementationActor": "agent",
+  "specDigest": "sha256:282f72bb76159601a52b189b58af9ba4eed229c3c14b39a65466db76f64974c0",
+  "approvedSpecRevision": 2,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:ac502df5376479fe49e7b5becf184cc87d113dd1c982c6a180b27ce5956a8737",
+  "impactDigest": "sha256:df45bd06635a015c149817a6947b4b2b5124999fef4a81592452d0a8517299ac",
+  "capabilityClaimId": "canonicalize-tracker-artifact-root-bca928c5aab7",
+  "authorizationDigest": null,
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-2e381fa88752793006e0f502"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-18T21:35:19.856Z"
+}

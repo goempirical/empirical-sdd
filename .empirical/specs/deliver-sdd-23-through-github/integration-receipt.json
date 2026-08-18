@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "classification": "non-behavioral",
+  "feature": "deliver-sdd-23-through-github",
+  "claimId": null,
+  "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+  "featureTree": "sha256:c22980ca569ed875876e1043be9cbb8c7352e1b5222b5b11bf993e53c09adbb6",
+  "targetCommit": "e48869e3197b00fa78841b5303f140c5b5f6f9ed",
+  "targetTree": "f878764e87a4c81f599bd9e98cd04d0ef5d1b49d",
+  "verificationReceiptDigests": [
+    "sha256:d324f799f6f6ee8dfa9ed06437ca64fe4f2e77b925ded65c92e059445d6a00b1"
+  ],
+  "integratedAt": "2026-08-18T21:12:21.207Z",
+  "digest": "sha256:220078bffb10ae0558069cb85f69338385bc5c5f595969f98a8c65b6e9bd6b77"
+}

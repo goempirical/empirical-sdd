@@ -1,0 +1,59 @@
+{
+  "schemaVersion": 1,
+  "id": "executed-aa1c9911d9da460f69a40243",
+  "criteria": [
+    "AC-1",
+    "AC-10",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7",
+    "AC-8",
+    "AC-9"
+  ],
+  "evidenceKinds": [
+    "review",
+    "test"
+  ],
+  "summary": "Formal 0.24.0 release-candidate CI covering SDD-23 behavior, version/changelog consistency, coverage, built CLI and MCP, package contents, clean packed consumer, delivery safety fixtures, and rollout reporting contract.",
+  "passed": true,
+  "startedAt": "2026-08-18T21:01:12.950Z",
+  "completedAt": "2026-08-18T21:01:56.826Z",
+  "provenance": {
+    "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+    "feature": "release-sdd-23-and-roll-out-to-vps",
+    "specRevision": 2,
+    "specDigest": "sha256:3b2706992c4ed733ddf1ec4a00d4ab0f25d7b9b5b39b4b08b88fee557817cbca",
+    "treeDigest": "sha256:c22980ca569ed875876e1043be9cbb8c7352e1b5222b5b11bf993e53c09adbb6",
+    "policyDigest": "sha256:888d86d00b83ec4a957413efb0701df5278d06de2077ba6b76f58dd2ba6eeeaf"
+  },
+  "digest": "sha256:a13ef5d750f7bcce06981df28d9f076de67b098e455da5d3b52ef05080e4aa48",
+  "kind": "executed",
+  "command": {
+    "argv": [
+      "bun",
+      "run",
+      "ci"
+    ],
+    "cwd": ".",
+    "timeoutMs": 900000,
+    "maxOutputBytes": 4194304,
+    "environmentKeys": [
+      "NO_COLOR",
+      "PATH"
+    ]
+  },
+  "result": {
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "stdoutDigest": "sha256:f9839c73fd9a2514aa0bd33cf3740c8e655b84783171b9abebca75b4644add99",
+    "stderrDigest": "sha256:35f807643aeb2d57822c6df603e36ec46b167bcab05405358f9b08d3f53a8389",
+    "stdoutTail": "bun test v1.3.14 (0d9b296a)\nbun test v1.3.14 (0d9b296a)\nCoverage gate: 90.02% lines, 92.64% functions across 31 modules.\nBundled 0.24 Init-skill, tracker, uninstall, receipt, routing, YOLO, worktree, CLI, and MCP smoke passed.\n\nadded 94 packages in 3s\nClean package consumer passed for empirical-sdd 0.24.0.\nConsistency gate: Empirical 0.24.0, Schema 5, 1 skill, 37 operations.\n",
+    "stderrTail": "Hub create response reconciles its exact marker without a second create [26.58ms]\n(pass) external ticket tracking > zero, duplicate, and malformed-pagination reconciliation results fail closed [47.83ms]\n(pass) external ticket tracking > a prepared create safely dispatches once after credentials become available [15.47ms]\n(pass) external ticket tracking > explicit replace can supersede a provably undispatched pending create on a new target [16.07ms]\n(pass) external ticket tracking > manual attach resolves an ambiguous create only with its exact marker and preserves evidence on mismatch [15.97ms]\n(pass) external ticket tracking > same-ticket replacement is associated with its new attempt and stays stable across revisions [30.26ms]\n(pass) external ticket tracking > an ambiguous create is not repeated without explicit confirmation [15.10ms]\n\ntests/trust-foundations.test.ts:\n(pass) Schema-5 protocol > exports one coherent alpha protocol version [0.11ms]\n(pass) Schema-5 protocol > canonical JSON is key-order independent and rejects unsafe values [0.21ms]\n(pass) Schema-5 protocol > criteria require stable unique identifiers [0.26ms]\n(pass) Schema-5 protocol > impact manifests enforce behavioral and non-behavioral contracts [0.23ms]\n(pass) Schema-5 protocol > standing authorization is digest-bound, bounded, and expires [0.23ms]\n(pass) Schema-5 protocol > completion cannot skip a durable level [0.10ms]\n(pass) operation and skill registry > has unique operations and exactly one registry-backed skill [0.18ms]\n(pass) deterministic routing > keeps explicit neutral edits Fast and promotes every material floor [0.10ms]\n(pass) deterministic routing > normal retains material gates and YOLO retains external safety gates [0.07ms]\n(pass) deterministic routing > YOLO questions only when material outcomes cannot be resolved [0.08ms]\n(pass) Policy v2 > strict defaults grant no delivery or publication authority [0.31ms]\n(pass) Policy v2 > accepts exact command vectors and rejects shell/path/timeout hazards [1.96ms]\n(pass) Policy v2 > migrates v1 guidance without inventing authority [0.10ms]\n(pass) shell-free runtime > passes exact argv/cwd and stores no environment values [0.39ms]\n(pass) shell-free runtime > rejects path escapes, bounds, null argv, and secret-like environment keys [0.44ms]\n(pass) immutable evidence receipts > repository tree digests exclude reserved migration scratch only [4.93ms]\n(pass) immutable evidence receipts > derives executed pass/fail from runtime and validates provenance [1.31ms]\n(pass) immutable evidence receipts > hashes collected artifacts and rejects modification or escape [1.12ms]\n(pass) immutable evidence receipts > exclusive append preserves an immutable receipt file [0.67ms]\n\ntests/worktree-isolation.test.ts:\n(pass) Git worktree isolation > unrelated work returns a complete read-only proposal [40.75ms]\n(pass) Git worktree isolation > approved creation blocks a dirty source checkout [40.81ms]\n(pass) Git worktree isolation > approved clean creation runs exact -b behavior and starts the request in the new checkout [68.37ms]\n(pass) Git worktree isolation > a linked worktree does not inherit a committed blocked feature owned by its source checkout [68.49ms]\n(pass) Git worktree isolation > branch and path collisions are rejected without force or workflow mutation [64.84ms]\n(pass) Git worktree isolation > editable type, base, branch, and path survive proposal and approval [28.43ms]\n(pass) Git worktree isolation > approval becomes stale when the base or active feature changes [97.71ms]\n(pass) Git worktree isolation > isolation can be explicitly disabled [29.56ms]\n----------------------------|---------|---------|-------------------\nFile                        | % Funcs | % Lines | Uncovered Line #s\n----------------------------|---------|---------|-------------------\nAll files                   |   91.79 |   92.33 |\n src/agent-catalog.ts       |   90.48 |   96.65 | 242,252,283-288\n src/agents.ts              |   81.82 |   96.83 | 99-101\n src/branding.ts            |  100.00 |  100.00 | \n src/checkouts.ts           |   95.00 |   93.20 | 51,70,99,103,116,127-128\n src/coordination.ts        |   90.79 |   88.40 | 93,123-124,136,145-146,150-151,162,169,183,186,191,195,200,269,292,295,308-309,315-316,325-326,332-333,337,362,367,420,437-438,473-495,503,510,542-543,556,586,600-601,629,708-709,715,740\n src/core.ts                |   88.41 |   89.23 | 333-336,345-365,560-563,882-891,1453-1599,1780-1832,1897-1942,2783-2785,2898-2905,3068-3069,3120-3124,3205-3207\n src/decisions.ts           |   94.74 |   90.91 | 47,72-73,109-113,116-119\n src/delivery.ts            |   93.65 |   92.35 | 73,79,108,112-122,141-143,159,173-174,187-188,215,219,262,339,354,407-408,416-417,420,425,471,474,497-498,504,520,524,612-613,695,706,758-760,771,823-824,845,866,880,884,898,910,914,918,942-943\n src/discovery.ts           |   96.77 |   88.79 | 159,165,168,174-175,181-182,210-213,223,238,258-261,264-267,301-303,338-342,350-353,397,426,429,433\n src/doctor.ts              |   97.96 |   84.70 | 66,101-102,234-242,339-346,369,390-420,437-445,490-498,607-616,637-645,704-712,719-725,731-737\n src/errors.ts              |   50.00 |   88.89 | \n src/evidence.ts            |   90.00 |   93.47 | 35,114,130,138,183-187,191-195,230\n src/integrations.ts        |   98.94 |   94.89 | 391,574,578,583,596,657,675-676,761-764,779-780,785-786,814-815,818-829,846,874,891,913-914\n src/journal.ts             |   97.30 |   91.27 | 64,70,76,92,97,123,146,162,165,168,171,178,182,199,208-209,213-214,247-248,280,287,296,346-347,351,362-363,401,405,413,418,426,454\n src/knowledge-templates.ts |  100.00 |  100.00 | \n src/knowledge.ts           |   92.19 |   96.90 | 217,227-228,322,388,414-415,483-486,492-495\n src/lifecycle.ts           |   80.00 |   94.29 | 46-47\n src/migration-scratch.ts   |  100.00 |  100.00 | \n src/migration.ts           |   95.89 |   91.02 | 71,79-80,89,126-128,137-138,142-143,153,171,209,223,233,245-246,257-258,272-273,312-315,458,489-502,525,585-586,612,671,679,689-690,715,722,744,800,803-804,810,822-826,885-886,897-900,919-920,925-927\n src/operations.ts          |   83.33 |   94.53 | 119,128,137,141-143\n src/policy.ts              |  100.00 |   93.33 | 32,45-47,60,64\n src/protocol.ts            |   93.33 |   96.36 | 83,109,189-193,252,256,259,448,451,454\n src/routing.ts             |  100.00 |   96.18 | 76,105-107\n src/runtime.ts             |   93.75 |   95.63 | 84,136-139,180,209\n src/selector.ts            |   96.15 |   80.08 | 89,93,200-245\n src/setup.ts               |   66.67 |   83.33 | 24-28,43,46,59,102-103,110-111,115,119-123\n src/specifications.ts      |   95.12 |   86.93 | 51,85,93,103,121-124,148-151,162-163,169-170,174-175,192-194,200,241-247,266,270,294-305,355-356\n src/storage.ts             |   90.13 |   91.64 | 91,446-457,490,522,696-697,768-818,830-834,839,895-896\n src/tracking.ts            |   92.95 |   87.89 | 395-399,404-407,448-452,515-518,533-536,543-546,567,601-605,718-722,726-729,735-738,746,750,755,758,762,766,813-823,827-842,1020,1025,1065-1066,1111-1113,1127-1128,1130-1131,1135-1147,1155,1215,1280,1284-1288,1294-1295,1441-1463,1468-1492,1588-1589,1612,1615-1626,1644-1662,1821-1835,1865,1900-1901,1937-1939,1975,1980,1999-2007,2015,2019,2024,2028,2068-2069,2293,2299,2305-2306,2334,2341,2348-2350,2386,2393,2447,2516,2532-2562,2585,2641,2675,2720-2723,2771-2773,2862-2868,2941,2961,2979,2985,3006-3014,3022,3063-3064,3255,3267,3273,3299,3304,3313,3327-3328,3408,3591-3592,3604,3627-3639,3719,3766,3774-3775,3805,3808-3809,3813-3815,3818-3857,3899-3900,3938-3940,3943-3991,4010-4026,4249,4252,4256,4262,4276-4280,4302,4305,4308,4311,4316,4340,4344,4403-4407,4472,4477,4537,4557,4565,4577-4578,4590,4599\n src/types.ts               |  100.00 |  100.00 | \n src/worktrees.ts           |  100.00 |   84.48 | 83,95-98,107,115-118,127-133,140,147,150,156,164,167,170,180,188\n----------------------------|---------|---------|-------------------\n\n 232 pass\n 0 fail\n 1913 expect() calls\nRan 232 tests across 21 files. [18.81s]\n$ bun run build && bun run scripts/smoke-mcp.ts\n$ bun run scripts/build.ts\n$ bun run scripts/test-package.ts\n$ bun run scripts/check-consistency.ts\n",
+    "stdoutTruncated": false,
+    "stderrTruncated": false
+  }
+}

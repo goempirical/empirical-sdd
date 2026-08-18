@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "sequence": 2,
+  "previousDigest": "sha256:2d868bd64d85b167e63565752a7f7ed914bdb39f58c221db1cabc9d60bad539e",
+  "actor": "empirical-yolo",
+  "type": "transition",
+  "summary": "Recorded standing authorization through delivered",
+  "createdAt": "2026-08-18T21:08:32.294Z",
+  "stateBeforeDigest": "sha256:dad3803701130e60d60d7f47b34017f3a6866bec4c78062802cfbdcb94ce83ab",
+  "stateAfterDigest": "sha256:e9b5002699b5189a0cff3fc2c915541db9335e9547d855c9a6c034c633f049a7",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 2,
+    "activeFeature": "deliver-sdd-23-through-github",
+    "request": "Commit the already verified integrated changes, push the branch, open source and evidence pull requests to main, wait for every GitHub CI check, and merge them normally.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "specify",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": null,
+    "implementationActor": null,
+    "specDigest": "sha256:d45cc31a6664473963866c71c674bede0c0a0f096e1982d4f747c505474f0a38",
+    "approvedSpecRevision": null,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": null,
+    "impactDigest": null,
+    "capabilityClaimId": null,
+    "authorizationDigest": "sha256:aad0050b496ecf2ef49b12b9e56b6e994b30e159eb939d980354edfd993e212b",
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": false,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "none",
+      "reasons": {
+        "implemented": "implemented has not been proven by a durable receipt.",
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-18T21:08:32.294Z"
+  },
+  "digest": "sha256:acd76dd6dd702fc5e72d015cc05e147842deee8d72284e33bc7eddd3f2fba9b4"
+}

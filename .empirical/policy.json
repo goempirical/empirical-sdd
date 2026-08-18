@@ -48,6 +48,10 @@
       }
     ]
   },
-  "delivery": null,
+  "delivery": {
+    "provider": "github",
+    "targetBranch": "main",
+    "requiredChecks": []
+  },
   "preferredAgent": null
 }

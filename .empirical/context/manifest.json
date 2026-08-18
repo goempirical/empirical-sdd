@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "generator": "empirical-0.23.1",
-  "sourceDigest": "sha256:de49c26fd1e7e6e2bdf003b9b542d84187b4ec9f559c8bc429e21c40492fd3fe",
+  "generator": "empirical-0.24.0",
+  "sourceDigest": "sha256:5ce1b3117de6d7a4751500c71ab9f57a01db909b72f304e16a7ee8ca8e1629ee",
   "files": [
     {
       "path": ".agents/skills/empirical/SKILL.md",
@@ -55,8 +55,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 3425,
-      "digest": "sha256:75acdddcebdb03fa481f1cabdab6c63514810dbfdcb70b08b86deaf977a43725"
+      "size": 4185,
+      "digest": "sha256:b12ab1cb5fd062dd591f01627a7a412eaf0a1979d4a9600f8930f02f0841a7cc"
     },
     {
       "path": "CLAUDE.md",
@@ -80,8 +80,8 @@
     },
     {
       "path": "README.md",
-      "size": 3047,
-      "digest": "sha256:1abfc074749e785e03d661e3b572261a6c676496d79a6bbbf374dbfbc9a57eec"
+      "size": 4400,
+      "digest": "sha256:b60cfa8dba263a9c2a9e6e9d1f8c848ac0d953c7a1b815c36165c9d373d7f20a"
     },
     {
       "path": "SECURITY.md",
@@ -95,38 +95,38 @@
     },
     {
       "path": "docs/architecture.md",
-      "size": 7787,
-      "digest": "sha256:ed67a4edb078b968b93d83a23f24ea0de824c259ab83ca8da25760254fcecbfb"
+      "size": 8087,
+      "digest": "sha256:a9100fb7d7a6132336ebd5e1d00976f8aa7cb6a033815a30dfac85a7cebd97e9"
     },
     {
       "path": "docs/demo.md",
-      "size": 6364,
-      "digest": "sha256:c2e4f6226d7577a3dda3cac8c20856af544f056383db37cc1c3280d7e6e6cc80"
+      "size": 6567,
+      "digest": "sha256:e3bad5ab10e57615fd302f75452cc280e43a982110e80586a6eb3f640b9a437b"
     },
     {
       "path": "docs/mcp.md",
-      "size": 9302,
-      "digest": "sha256:95deeb19b19b588b4db2f2563a17f5da3275ad4d0ea171e19c3f7a5015a3a016"
+      "size": 12963,
+      "digest": "sha256:ba5497eab13e4c7977542bba5c2cc2c5191d4a80c4680ae1b8a35ce9c3d8b738"
     },
     {
       "path": "docs/migration-v1.md",
-      "size": 2830,
-      "digest": "sha256:e0b30dacd8e37e7102d0fd256253b028323b1b1476a204ca91b493007de1b912"
+      "size": 4874,
+      "digest": "sha256:dc813a727572197ceb4fe0715f606fb7747a523c89c02fda3804cf948cc52a65"
     },
     {
       "path": "docs/openspec-comparison.md",
       "size": 1679,
-      "digest": "sha256:2f43ab7746602bc0b05d2f63573fd989ba31b0a75ffd314c90bd93128591d5df"
+      "digest": "sha256:dd177a83c808199ea245be5ca170e4f495de08284ebe6a0f8e8015f07546a5fb"
     },
     {
       "path": "docs/protocol.md",
-      "size": 7897,
-      "digest": "sha256:fc7cc353c956d5f306fb145dc38ca888d99c464ccb2b9deb111672a4a3db11f6"
+      "size": 9724,
+      "digest": "sha256:7b9e34858088ede43bfb007e419b6433a2f3c4786e5935c3096181ceff964a9c"
     },
     {
       "path": "docs/security.md",
-      "size": 4486,
-      "digest": "sha256:e24cfd9dbd85f0a4ea993ca545fb408f9356114c954bf12a1c761302ddd0bc6e"
+      "size": 5336,
+      "digest": "sha256:05c35c8c3d819e5880d3a8eff3c48e335eeeaa75c8c10b20856b491815ac812c"
     },
     {
       "path": "docs/versioning.md",
@@ -141,7 +141,7 @@
     {
       "path": "package.json",
       "size": 2165,
-      "digest": "sha256:8ce3b9812e5898901d05173530a2f9426e29577e3a708cc9f39498d7f0c8cffd"
+      "digest": "sha256:3ec0bb5f08821964e68d915a3d1fe1342f703eaa2bfee4ba4bcd6adb96e4c31d"
     },
     {
       "path": "scripts/build.ts",
@@ -171,12 +171,12 @@
     {
       "path": "scripts/smoke-mcp.ts",
       "size": 10054,
-      "digest": "sha256:12fba1cc6acc26fd509ead502e06a236f363e245ed3ffdd3d01164f4a54ee14f"
+      "digest": "sha256:525a073944fcd302cb33944d0fd9a591ed72113ffc6730d7a5a4ff5e1ab31691"
     },
     {
       "path": "scripts/test-package.ts",
       "size": 6622,
-      "digest": "sha256:874da8f6e3ac6bb29fc5f73ef31974b621e6e54093b571e4c50f916d2d2ba532"
+      "digest": "sha256:1f1cab6b34c6f5ec1198fcac1a3da3c6b39d90221393db313b7345f8b1cf9539"
     },
     {
       "path": "src/agent-catalog.ts",
@@ -200,8 +200,8 @@
     },
     {
       "path": "src/cli.ts",
-      "size": 74486,
-      "digest": "sha256:ad7fe7d70698b9d678873ee0815b294cba1a2f72b67e70915a05a7b5a7194517"
+      "size": 91412,
+      "digest": "sha256:d823cd70af66ae9df130668f56f3b955b63bf3715ecc407c454784a6c28549c2"
     },
     {
       "path": "src/coordination.ts",
@@ -210,8 +210,8 @@
     },
     {
       "path": "src/core.ts",
-      "size": 122715,
-      "digest": "sha256:6c58db4ba175c682a2393dafe2c498dc1e05860c625e86a54e9f5634be52303d"
+      "size": 124367,
+      "digest": "sha256:3903c91ba5a0205e8d7fcbc958c41966782cc9db64f8c4e063295c069ac7160d"
     },
     {
       "path": "src/decisions.ts",
@@ -250,13 +250,13 @@
     },
     {
       "path": "src/index.ts",
-      "size": 1688,
-      "digest": "sha256:04d84ffaf259ce6071a92222765731764110b674884605efcd98f80cfe795343"
+      "size": 2609,
+      "digest": "sha256:379dc6ba1a81baba8b68a0727a15ea83c737c9920e6169ca94a91eefde0f3d05"
     },
     {
       "path": "src/integrations.ts",
-      "size": 36550,
-      "digest": "sha256:97f9928e018fba3e5c9759dd307c715a085e0feefc675227d7bd07e6c5ef6ecf"
+      "size": 37813,
+      "digest": "sha256:a4f88cba46f1b433e6006977f6afbf12c86f095b5bdcecf2b4f41b519a50b759"
     },
     {
       "path": "src/journal.ts",
@@ -280,8 +280,8 @@
     },
     {
       "path": "src/mcp.ts",
-      "size": 26434,
-      "digest": "sha256:a2d8b8bcb35a5c9f9acd169a77f2b3fda1edbfb184de6659b29d7abdc9792906"
+      "size": 28605,
+      "digest": "sha256:d17c196dd3f461e716feb166267f9a8bda9b5e7a0d6eb34c77dce3edab51c07b"
     },
     {
       "path": "src/migration-scratch.ts",
@@ -295,8 +295,8 @@
     },
     {
       "path": "src/operations.ts",
-      "size": 8105,
-      "digest": "sha256:4057f28a7f02cbc9d96a279602f502599f28405ac5cab3531f25591f21b08b04"
+      "size": 8648,
+      "digest": "sha256:81d3e5ca99c19ef725ab4e2f17c1bb77faf8b31ef3e482cf1b2599c36dd6c05b"
     },
     {
       "path": "src/policy.ts",
@@ -306,7 +306,7 @@
     {
       "path": "src/protocol.ts",
       "size": 14489,
-      "digest": "sha256:51c2954359daaa5ef1f6a5e9bf8df42dd36a899e1bbf218f3d62a03e041495ef"
+      "digest": "sha256:7e140b6be177bba40da6ba603b180320c4df85edbc4ef9d4a5b9641926cda9e9"
     },
     {
       "path": "src/routing.ts",
@@ -325,8 +325,8 @@
     },
     {
       "path": "src/setup.ts",
-      "size": 4787,
-      "digest": "sha256:90b8ccf90168f95033e2227c194d51c09657999cd6faac5004b6e5c34bb50b86"
+      "size": 5905,
+      "digest": "sha256:aedbe77cdfdab4d891ee6f64357400b1df43dca6c793b6ffcfed4126c0bc5ffd"
     },
     {
       "path": "src/specifications.ts",
@@ -336,17 +336,17 @@
     {
       "path": "src/storage.ts",
       "size": 38869,
-      "digest": "sha256:ebe23396019628ebb24431958556a96cecae464a7591478f6739fecf749c483d"
+      "digest": "sha256:ac08ea89333304d78999ef639ab4df32de5a1b012cf97345f7d7dba77d39e1bf"
     },
     {
       "path": "src/tracking.ts",
-      "size": 97914,
-      "digest": "sha256:4c67b4a994c4bf8f5b3caa2f1a6bc78d780737e8cc1b58a4fc940e1e84dddb1c"
+      "size": 184713,
+      "digest": "sha256:8dac240a717b4d559ca80e5c41419850d6de9508cde95e3b25b355e57128a946"
     },
     {
       "path": "src/types.ts",
-      "size": 16757,
-      "digest": "sha256:26c304c46599e416c25c70c318aaf89a4cf8941bbf0dfabf647fc7c861bf67da"
+      "size": 21082,
+      "digest": "sha256:12f197e9e1f7d349e075acc6f587d5167ebcc3affc09e87b120af1a6bfbde3c6"
     },
     {
       "path": "src/worktrees.ts",
@@ -370,8 +370,8 @@
     },
     {
       "path": "tests/cli-config.test.ts",
-      "size": 13327,
-      "digest": "sha256:3ba6717d420fd11c9ff7ac8619ca01be25aea2d9d5e6878498114b8b5b7fa34e"
+      "size": 14580,
+      "digest": "sha256:5e3b33ab0573e4a461beff7a5e73c047c2bb2081c3f80ee4f143ec28ea7c1726"
     },
     {
       "path": "tests/coordination.test.ts",
@@ -381,7 +381,7 @@
     {
       "path": "tests/core.test.ts",
       "size": 31818,
-      "digest": "sha256:7871e21bcca32f306e9eeac7b12f57e5b104f7405d61c6b434a48057a4ecb193"
+      "digest": "sha256:1a06219c39bd85f94c93c99c4c04cdf8ab2009a65baeff86815c9a93ac5270cb"
     },
     {
       "path": "tests/delivery.test.ts",
@@ -401,7 +401,7 @@
     {
       "path": "tests/integrations.test.ts",
       "size": 37118,
-      "digest": "sha256:ac5a102fbaef360bc5f1333a1377223567843d974cd33f3611980d79a56e212c"
+      "digest": "sha256:27472841fa816833b0e00f5f4dce66c78279b90ebc14e03e87502312ec957284"
     },
     {
       "path": "tests/journal.test.ts",
@@ -425,13 +425,13 @@
     },
     {
       "path": "tests/mcp.test.ts",
-      "size": 15414,
-      "digest": "sha256:4cf55c7a877b7832296b162f56a90c2acda0035430622cf90dcbc6d18943c00e"
+      "size": 16593,
+      "digest": "sha256:698dd39d57fd7f97ee5a9b1d0bfa7bd46383463e04c7617703bf61dda07ac171"
     },
     {
       "path": "tests/migration.test.ts",
       "size": 14310,
-      "digest": "sha256:0661dbe1dc4e6330ed8c178f010b4033c2b10b4581bb7110eff53b42621e0c44"
+      "digest": "sha256:686b70028272e28e756798acc12f0a83b373e545c6a097749807473e0bdf6791"
     },
     {
       "path": "tests/selector.test.ts",
@@ -445,13 +445,13 @@
     },
     {
       "path": "tests/tracking.test.ts",
-      "size": 59263,
-      "digest": "sha256:5fe9218f945ef084aae2dec403fc742ce0e792927bd8319e4024acf377177301"
+      "size": 93055,
+      "digest": "sha256:a18c1c3c0d7b009c4bd00f646acb3f575bbd33e6e36060dbcf883dc0a7f1b960"
     },
     {
       "path": "tests/trust-foundations.test.ts",
       "size": 21032,
-      "digest": "sha256:59da2ec804cf3a96e5aaa233eedcd24370156752d5da743ed1b7455a77c7b078"
+      "digest": "sha256:950f97d5d759b592e549d6dc0c4525e3bdd56a9cc3a6ac5f99064f325735cea4"
     },
     {
       "path": "tests/worktree-isolation.test.ts",
@@ -467,7 +467,7 @@
   "pages": [
     {
       "path": ".empirical/context/index.md",
-      "generator": "empirical-0.23.1",
+      "generator": "empirical-0.24.0",
       "managed": false,
       "dependencies": [
         ".agents/skills/empirical/SKILL.md",
@@ -563,25 +563,25 @@
         "tests/worktree-isolation.test.ts",
         "tsconfig.json"
       ],
-      "sourceDigest": "sha256:de49c26fd1e7e6e2bdf003b9b542d84187b4ec9f559c8bc429e21c40492fd3fe",
+      "sourceDigest": "sha256:5ce1b3117de6d7a4751500c71ab9f57a01db909b72f304e16a7ee8ca8e1629ee",
       "digest": "sha256:62c1e429f938bf5a727c9e089eb965df0b29d2db55837334cad4cb68a75a8ab9",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/overview.md",
-      "generator": "empirical-0.23.1",
+      "generator": "empirical-0.24.0",
       "managed": false,
       "dependencies": [
         "README.md",
         "package.json"
       ],
-      "sourceDigest": "sha256:1c52542d3089e6a66bc5ff626fbc83c63e566168867bd785043678b33502ad9c",
+      "sourceDigest": "sha256:805cdba06f76fd8db5ba08e2777bb58cac08f6fdca03abb924d2a34a78604a38",
       "digest": "sha256:30bc451fac5fa8e21662312c12f4ea57798c9fdaa6c3582bb9a069527e77e4c8",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/architecture.md",
-      "generator": "empirical-0.23.1",
+      "generator": "empirical-0.24.0",
       "managed": false,
       "dependencies": [
         "docs/architecture.md",
@@ -622,13 +622,13 @@
         "src/types.ts",
         "src/worktrees.ts"
       ],
-      "sourceDigest": "sha256:cac0eeaf65d4f0171f62420c44a6726facc8960fec64cc69ac3cb023646977bc",
+      "sourceDigest": "sha256:31844c89a2df98e87807cb0e8c84e7a6cb6b356782e8eda52f174860ee09ea36",
       "digest": "sha256:8a3ce40862fa2601df89006351d195308b09680274472f9e2d1d8130c4db7b8b",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/commands.md",
-      "generator": "empirical-0.23.1",
+      "generator": "empirical-0.24.0",
       "managed": false,
       "dependencies": [
         ".github/workflows/ci.yml",
@@ -642,13 +642,13 @@
         "scripts/smoke-mcp.ts",
         "scripts/test-package.ts"
       ],
-      "sourceDigest": "sha256:d811a2f5461d62e2370db92d786a0b1d197ad5413694693f65f4ea40e477e74a",
+      "sourceDigest": "sha256:4f77ea3af2690f74ed19fa39f58438d954d0f18b03e8e6ca6c16c712febfcf48",
       "digest": "sha256:6582b97fdadb423928980f6a90300c1ab6bf17637880e37f1cffb3092a4d2638",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/conventions.md",
-      "generator": "empirical-0.23.1",
+      "generator": "empirical-0.24.0",
       "managed": false,
       "dependencies": [
         "AGENTS.md",
@@ -658,10 +658,10 @@
         "tsconfig.json"
       ],
       "sourceDigest": "sha256:b346dc0f0771407318a9c16840ae092915b110894ea752f9a371180769d638c8",
-      "digest": "sha256:0d52698a96335da7bd590428bc2b6fd677efbabe085f7332b72af310e36b3a3f",
+      "digest": "sha256:a34ebe605229299793ae9b451d146135b0d8455d049fcacbb879c62605094962",
       "freshness": "fresh"
     }
   ],
   "truncated": false,
-  "digest": "sha256:a4627c7dc054b4326e9d281245d4adf26d9e37125e3cb55e52b7c19bf681412d"
+  "digest": "sha256:692a4f903bf2c6586951397e0a549f78615ba6318a8e1b6e8492fb1fae5998b4"
 }
