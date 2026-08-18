@@ -113,10 +113,12 @@ export type TrackerProgressState =
   | "review"
   | "blocked"
   | "done";
-export type TrackerHealth = "local-only" | "pending" | "synced" | "failed";
+export type TrackerHealth = "local-only" | "off" | "pending" | "synced" | "failed";
 export type TrackerStateMap = Record<TrackerProgressState, string>;
+export type TrackerTicketPolicy = "off" | "manual" | "ensure";
+export type TrackerProgressVisibility = "blockers-final" | "milestones" | "revisions";
 
-export interface GitHubTrackerPolicy {
+export interface GitHubTrackerPolicyV1 {
   schemaVersion: 1;
   provider: "github";
   target: {
@@ -129,7 +131,15 @@ export interface GitHubTrackerPolicy {
   states: TrackerStateMap;
 }
 
-export interface LinearTrackerPolicy {
+export interface GitHubTrackerPolicyV2 extends Omit<GitHubTrackerPolicyV1, "schemaVersion"> {
+  schemaVersion: 2;
+  ticket: TrackerTicketPolicy;
+  visibility: TrackerProgressVisibility;
+}
+
+export type GitHubTrackerPolicy = GitHubTrackerPolicyV1 | GitHubTrackerPolicyV2;
+
+export interface LinearTrackerPolicyV1 {
   schemaVersion: 1;
   provider: "linear";
   target: {
@@ -140,7 +150,15 @@ export interface LinearTrackerPolicy {
   states: TrackerStateMap;
 }
 
-export interface JiraTrackerPolicy {
+export interface LinearTrackerPolicyV2 extends Omit<LinearTrackerPolicyV1, "schemaVersion"> {
+  schemaVersion: 2;
+  ticket: TrackerTicketPolicy;
+  visibility: TrackerProgressVisibility;
+}
+
+export type LinearTrackerPolicy = LinearTrackerPolicyV1 | LinearTrackerPolicyV2;
+
+export interface JiraTrackerPolicyV1 {
   schemaVersion: 1;
   provider: "jira";
   target: {
@@ -152,10 +170,139 @@ export interface JiraTrackerPolicy {
   states: TrackerStateMap;
 }
 
+export interface JiraTrackerPolicyV2 extends Omit<JiraTrackerPolicyV1, "schemaVersion"> {
+  schemaVersion: 2;
+  ticket: TrackerTicketPolicy;
+  visibility: TrackerProgressVisibility;
+}
+
+export type JiraTrackerPolicy = JiraTrackerPolicyV1 | JiraTrackerPolicyV2;
+
 export type TrackerPolicy = GitHubTrackerPolicy | LinearTrackerPolicy | JiraTrackerPolicy;
 
-export interface TrackerProjection {
+export interface EffectiveTrackerPolicy {
+  policy: TrackerPolicy;
+  schemaVersion: 1 | 2;
+  ticket: TrackerTicketPolicy;
+  visibility: TrackerProgressVisibility | "legacy";
+  compatibility: "v1" | "v2";
+}
+
+export type TrackerDiscoveryResourceKind =
+  | "workspace"
+  | "team"
+  | "repository"
+  | "project"
+  | "issue-type"
+  | "field"
+  | "state";
+
+export interface TrackerDiscoveryResource {
+  kind: TrackerDiscoveryResourceKind;
+  id: string;
+  name: string;
+  parentId: string | null;
+  position: number | null;
+  stateType: string | null;
+  key: string | null;
+  url: string | null;
+}
+
+export interface GitHubTrackerDiscoveryInput {
+  provider: "github";
+  credentialEnv: { token: string };
+}
+
+export interface LinearTrackerDiscoveryInput {
+  provider: "linear";
+  credentialEnv: { apiKey: string };
+}
+
+export interface JiraTrackerDiscoveryInput {
+  provider: "jira";
+  target: { siteUrl: string };
+  credentialEnv: { email: string; apiToken: string };
+}
+
+export type TrackerDiscoveryInput =
+  | GitHubTrackerDiscoveryInput
+  | LinearTrackerDiscoveryInput
+  | JiraTrackerDiscoveryInput;
+
+export interface TrackerAdapterCapabilities {
+  comments: boolean;
+  uploads: boolean;
+  durableLinks: boolean;
+}
+
+export interface TrackerDiscovery {
   schemaVersion: 1;
+  provider: TrackerProvider;
+  resources: TrackerDiscoveryResource[];
+  capabilities: TrackerAdapterCapabilities;
+  complete: true;
+  digest: string;
+}
+
+export interface TrackerMappingCandidate {
+  stateId: string;
+  name: string;
+  primaryRank: number;
+  nameRank: number;
+  reasons: string[];
+}
+
+export interface TrackerPhaseMappingSuggestion {
+  phase: TrackerProgressState;
+  selectedStateId: string | null;
+  ambiguous: boolean;
+  candidates: TrackerMappingCandidate[];
+}
+
+export interface TrackerMappingSuggestion {
+  provider: TrackerProvider;
+  phases: Record<TrackerProgressState, TrackerPhaseMappingSuggestion>;
+  states: TrackerStateMap | null;
+  ambiguous: TrackerProgressState[];
+}
+
+export interface TrackerPolicyPreview {
+  schemaVersion: 1;
+  policy: TrackerPolicy;
+  effective: {
+    ticket: TrackerTicketPolicy;
+    visibility: TrackerProgressVisibility | "legacy";
+    compatibility: "v1" | "v2";
+  };
+  target: Array<{ kind: TrackerDiscoveryResourceKind; id: string; name: string }>;
+  mapping: TrackerMappingSuggestion;
+  valid: true;
+  digest: string;
+}
+
+export type TrackerSetupChange =
+  | { mode: "preserve" }
+  | { mode: "disabled" }
+  | { mode: "apply"; policy: TrackerPolicy };
+
+export interface TrackerArtifact {
+  receiptId: string;
+  path: string;
+  mediaType: string;
+  digest: string;
+  size: number;
+  url: string | null;
+}
+
+export interface TrackerEffectAcknowledgement {
+  key: string;
+  kind: "transition" | "comment" | "artifact";
+  remoteId: string | null;
+  at: string;
+}
+
+export interface TrackerProjection {
+  schemaVersion: 1 | 2;
   feature: string;
   phase: Phase;
   status: WorkflowStatus;
@@ -163,6 +310,10 @@ export interface TrackerProjection {
   completionLevel: CompletionReport["highest"];
   progress: TrackerProgressState;
   summary: string | null;
+  blocker?: string | null;
+  receiptIds?: string[];
+  receiptDigest?: string;
+  artifacts?: TrackerArtifact[];
   marker: string;
   digest: string;
 }
@@ -174,7 +325,7 @@ export interface TrackerFailure {
 }
 
 export interface TrackerBinding {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   feature: string;
   provider: TrackerProvider;
   remoteId: string;
@@ -190,6 +341,10 @@ export interface TrackerBinding {
   lastSyncedDigest: string | null;
   /** Digest of the target and state mapping used by the last acknowledged projection. */
   lastSyncedPolicyDigest: string | null;
+  lastSyncedPhase?: Phase | null;
+  lastSyncedStatus?: WorkflowStatus | null;
+  lastSyncedCompletionLevel?: CompletionReport["highest"] | null;
+  lastSyncedReceiptDigest?: string | null;
   digest: string;
 }
 
@@ -211,7 +366,7 @@ export interface TrackerAttachIntent {
 export type TrackerBindIntent = TrackerCreateIntent | TrackerAttachIntent;
 
 export interface TrackerPendingRecord {
-  schemaVersion: 1;
+  schemaVersion: 1 | 2;
   provider: TrackerProvider;
   targetDigest: string;
   policyDigest: string;
@@ -223,6 +378,7 @@ export interface TrackerPendingRecord {
   attempts: number;
   status: "pending" | "failed" | "synced";
   failure: TrackerFailure | null;
+  effects?: TrackerEffectAcknowledgement[];
   updatedAt: string;
   digest: string;
 }
@@ -235,6 +391,10 @@ export interface TrackerStatus {
   lastSyncedRevision: number | null;
   pendingRevision: number | null;
   failure: TrackerFailure | null;
+  schemaVersion?: 1 | 2;
+  ticket?: TrackerTicketPolicy;
+  visibility?: TrackerProgressVisibility | "legacy";
+  pendingEffects?: number;
 }
 
 export interface ProjectStatus extends WorkflowState {
@@ -261,7 +421,7 @@ export interface TrackerHttpRequest {
   method: "GET" | "POST" | "PATCH" | "PUT";
   url: string;
   headers: Record<string, string>;
-  body?: string;
+  body?: string | Uint8Array;
   timeoutMs: number;
   maxResponseBytes: number;
 }
@@ -693,6 +853,8 @@ export interface RepositoryKnowledgeReport {
 export interface InitOptions extends ProjectConfigurationInput {
   profile?: Workflow;
   integrations?: boolean;
+  tracker?: TrackerSetupChange;
+  trackerDependencies?: TrackerDependencies;
 }
 
 export interface StartOptions {

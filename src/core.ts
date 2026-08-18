@@ -71,7 +71,11 @@ import { isMigrationScratchPath } from "./migration-scratch.js";
 import {
   bindTracker,
   configureTrackerPolicy,
+  discoverTracker,
   loadTrackerPolicy,
+  parseTrackerSetupChange,
+  previewTrackerPolicy,
+  proposeTrackerStateMapping,
   synchronizeTracker,
   trackerStatus,
 } from "./tracking.js";
@@ -120,7 +124,11 @@ import {
   type TrackerBindInput,
   type TrackerBindResult,
   type TrackerDependencies,
+  type TrackerDiscovery,
+  type TrackerDiscoveryInput,
   type TrackerPolicy,
+  type TrackerPolicyPreview,
+  type TrackerMappingSuggestion,
   type TrackerStatus,
   type TrackerSyncResult,
   type ValidationReport,
@@ -191,6 +199,10 @@ export class EmpiricalProject {
     root = process.cwd(),
     options: InitOptions = {},
   ): Promise<{ project: EmpiricalProject; state: WorkflowState; integrations: IntegrationReport }> {
+    const trackerChange = options.tracker ? parseTrackerSetupChange(options.tracker) : undefined;
+    if (trackerChange?.mode === "apply") {
+      await previewTrackerPolicy(trackerChange.policy, options.trackerDependencies);
+    }
     const absoluteRoot = resolve(root);
     await mkdir(absoluteRoot, { recursive: true });
     const store = new ProjectStore(absoluteRoot);
@@ -209,6 +221,7 @@ export class EmpiricalProject {
           setupComplete: explicitConfiguration.setupComplete ?? current.setupComplete,
         });
       }
+      await applyTrackerSetup(project, options);
       await refreshRepositoryKnowledge(absoluteRoot);
       return { project, state: await project.store.loadState(), integrations };
     }
@@ -231,11 +244,13 @@ export class EmpiricalProject {
         evidence: { ...config.evidence },
       },
     });
+    const project = new EmpiricalProject(store);
+    await applyTrackerSetup(project, options);
     const integrations = options.integrations === false
       ? emptyIntegrationReport()
       : await installProjectIntegrations(absoluteRoot);
     await refreshRepositoryKnowledge(absoluteRoot);
-    return { project: new EmpiricalProject(store), state, integrations };
+    return { project, state, integrations };
   }
 
   static async adopt(
@@ -322,9 +337,33 @@ export class EmpiricalProject {
     return loadTrackerPolicy(this.store.root);
   }
 
-  async configureTracker(value: unknown): Promise<TrackerPolicy | null> {
+  async configureTracker(
+    value: unknown,
+    dependencies: TrackerDependencies = {},
+  ): Promise<TrackerPolicy | null> {
     if (this.readOnly) throw new EmpiricalError("READ_ONLY", "Tracker configuration requires a writable project");
-    return configureTrackerPolicy(this.store.root, value);
+    return configureTrackerPolicy(this.store.root, value, dependencies);
+  }
+
+  async discoverTracker(
+    input: TrackerDiscoveryInput,
+    dependencies: TrackerDependencies = {},
+  ): Promise<TrackerDiscovery> {
+    return discoverTracker(input, dependencies);
+  }
+
+  async previewTracker(
+    value: unknown,
+    dependencies: TrackerDependencies = {},
+  ): Promise<TrackerPolicyPreview> {
+    return previewTrackerPolicy(value, dependencies);
+  }
+
+  async proposeTrackerMapping(
+    value: unknown,
+    dependencies: TrackerDependencies = {},
+  ): Promise<TrackerMappingSuggestion> {
+    return proposeTrackerStateMapping(value, dependencies);
   }
 
   async bindTracker(
@@ -2324,6 +2363,16 @@ function initializationConfiguration(options: InitOptions): ProjectConfiguration
     ...(decisions ? { decisions } : {}),
     ...(options.setupComplete !== undefined ? { setupComplete: options.setupComplete } : {}),
   };
+}
+
+async function applyTrackerSetup(project: EmpiricalProject, options: InitOptions): Promise<void> {
+  const change = options.tracker ? parseTrackerSetupChange(options.tracker) : undefined;
+  if (!change || change.mode === "preserve") return;
+  if (change.mode === "disabled") {
+    await project.configureTracker(null, options.trackerDependencies);
+    return;
+  }
+  await project.configureTracker(change.policy, options.trackerDependencies);
 }
 
 function touchDiscoveryRecord(

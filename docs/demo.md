@@ -1,4 +1,4 @@
-# Empirical 0.23.1 demo
+# Empirical 0.24.0 demo
 
 ## Install once
 
@@ -85,11 +85,14 @@ other hard safety floor. It cannot authorize publication.
 
 > Mirror this feature to our Linear board and create its ticket.
 
-The agent collects the board identifiers, normalized status mapping, and the
-name of the host-provided credential variable. It stores no credential value.
-After each local journal commit it projects the feature phase, status, exact
-revision, completion level, and blocker summary to that one ticket. The same
-flow supports attaching an existing Linear, GitHub, or Jira ticket.
+Init asks only for the credential environment-variable name, discovers
+accessible teams/projects/states by display name, proposes an editable semantic
+mapping, and previews the secret-free result. In ensure mode the first sync
+attaches a referenced or marker-matched ticket, or creates one only after a
+complete zero-match lookup. After each eligible local journal commit it appends
+an idempotent milestone comment with phase, revision, completion, blockers, and
+safe receipt evidence. The same flow supports Linear, GitHub, and Jira without
+rewriting user-authored descriptions.
 
 If the provider is unavailable, local SDD work continues and reports tracker
 health as `pending` or `failed`. A later ordinary continuation request resumes

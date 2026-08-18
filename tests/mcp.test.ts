@@ -58,17 +58,23 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
     const initTool = listed.tools.find((tool) => tool.name === "empirical_init");
     expect(Object.keys(initTool?.inputSchema.properties ?? {})).toEqual(expect.arrayContaining([
       "evidenceRequired", "browserForUi", "screenshotForUi", "codeReview",
-      "isolation", "base", "worktreePath", "branchPattern", "decisions",
+      "isolation", "base", "worktreePath", "branchPattern", "decisions", "tracker",
     ]));
     const completeTool = listed.tools.find((tool) => tool.name === "empirical_complete");
     expect(Object.keys(completeTool?.inputSchema.properties ?? {})).toContain("receiptIds");
     expect(Object.keys(completeTool?.inputSchema.properties ?? {})).not.toContain("evidence");
     expect(listed.tools.map((tool) => tool.name)).toEqual(expect.arrayContaining([
       "empirical_tracker_configure",
+      "empirical_tracker_discover",
+      "empirical_tracker_suggest",
+      "empirical_tracker_preview",
       "empirical_tracker_bind",
       "empirical_tracker_sync",
     ]));
     const trackerConfigureTool = listed.tools.find((tool) => tool.name === "empirical_tracker_configure");
+    const trackerDiscoverTool = listed.tools.find((tool) => tool.name === "empirical_tracker_discover");
+    const trackerSuggestTool = listed.tools.find((tool) => tool.name === "empirical_tracker_suggest");
+    const trackerPreviewTool = listed.tools.find((tool) => tool.name === "empirical_tracker_preview");
     const trackerBindTool = listed.tools.find((tool) => tool.name === "empirical_tracker_bind");
     const trackerSyncTool = listed.tools.find((tool) => tool.name === "empirical_tracker_sync");
     for (const [tool, operation] of [
@@ -79,15 +85,30 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
       expect(tool?.annotations).toEqual(operationAnnotations(operation));
       expect(tool?.annotations?.destructiveHint).toBe(true);
     }
+    for (const [tool, operation] of [
+      [trackerDiscoverTool, "tracker-discover"],
+      [trackerSuggestTool, "tracker-suggest"],
+      [trackerPreviewTool, "tracker-preview"],
+    ] as const) {
+      expect(tool?.annotations).toEqual(operationAnnotations(operation));
+      expect(tool?.annotations?.readOnlyHint).toBe(true);
+      expect(tool?.annotations?.destructiveHint).toBe(false);
+    }
 
     const configureSchema = trackerConfigureTool?.inputSchema as {
       additionalProperties?: boolean;
-      properties?: { policy?: { anyOf?: Array<{ oneOf?: unknown[]; type?: string }> } };
+      properties?: { policy?: { anyOf?: Array<{
+        anyOf?: unknown[];
+        oneOf?: unknown[];
+        type?: string;
+        properties?: Record<string, unknown>;
+      }> } };
     };
     expect(configureSchema.additionalProperties).toBe(false);
     const policyChoices = configureSchema.properties?.policy?.anyOf ?? [];
-    const providerChoices = policyChoices.find((choice) => choice.oneOf)?.oneOf ?? [];
-    expect(providerChoices).toHaveLength(3);
+    const providerChoices = policyChoices.flatMap((choice) =>
+      choice.oneOf ?? choice.anyOf ?? (choice.type === "object" ? [choice] : []));
+    expect(providerChoices).toHaveLength(6);
     expect(JSON.stringify(providerChoices)).toContain('"const":"github"');
     expect(JSON.stringify(providerChoices)).toContain('"const":"linear"');
     expect(JSON.stringify(providerChoices)).toContain('"const":"jira"');
@@ -97,6 +118,7 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
       properties?: Record<string, {
         additionalProperties?: boolean;
         required?: string[];
+        const?: number;
       }>;
       required?: string[];
     }>) {
@@ -104,6 +126,9 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
       expect(providerChoice.required).toEqual(expect.arrayContaining([
         "schemaVersion", "provider", "target", "credentialEnv", "states",
       ]));
+      if (providerChoice.properties?.schemaVersion?.const === 2) {
+        expect(providerChoice.required).toEqual(expect.arrayContaining(["ticket", "visibility"]));
+      }
       for (const property of ["target", "credentialEnv", "states"]) {
         expect(providerChoice.properties?.[property]?.additionalProperties).toBe(false);
       }

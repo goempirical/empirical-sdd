@@ -4,7 +4,7 @@ Agent-neutral, resumable spec-driven development for coding agents. Empirical
 turns an ordinary change request into a deterministic workflow with durable
 state, reviewable evidence, and safe Git integration.
 
-> Empirical 0.23 is alpha software. It requires Node.js 22 or newer.
+> Empirical 0.24 is alpha software. It requires Node.js 22 or newer.
 
 ## Install
 
@@ -33,11 +33,33 @@ artifacts; unmanaged or unsafe conflicts are preserved and remain visible.
 - Resumable Specify, Design, Plan, Implement, Verify, Review, and Integrate phases.
 - Immutable evidence tied to criteria, source state, and provenance.
 - Isolated parallel work through linked Git worktrees.
-- Optional Linear, GitHub Issues + Projects, or Jira ticket mirrors.
+- Guided Linear, GitHub Issues + Projects, or Jira ticket mirrors with automatic
+  binding, milestone comments, and safe evidence projection.
 - Explicit, guarded delivery and npm publication boundaries.
 
 Completion is reported only at the highest proven level: implemented,
 verified, integrated, delivered, or published.
+
+## Tracker setup
+
+`empirical-init` always shows a Tracker section. Keep Local-only to make no
+provider requests, or select Linear, GitHub Projects, or Jira. Empirical reads
+credential values only from the environment-variable names you provide,
+discovers accessible targets and workflow states, proposes all seven semantic
+mappings, and shows the complete secret-free policy before saving. Ambiguous
+state suggestions require an explicit choice; simple boards may intentionally
+reuse one provider state for several phases. Repair preserves an existing
+tracker policy unless you explicitly change or disable it.
+
+Tracker Policy v2 supports `off`, `manual`, and `ensure` ticket behavior plus
+blockers/final, phase-milestone, or every-revision progress comments. `ensure`
+validates a referenced ticket, reconciles the feature marker, and creates only
+when neither identifies one unique ticket. Local workflow state commits first;
+provider outages leave exact retry state and never rewind local work. Comments
+preserve user-authored descriptions, and receipt-approved evidence is uploaded
+or linked only after repository containment, media, size, and digest checks.
+Existing Tracker Policy v1 files remain valid with manual binding and legacy
+projection until deliberately upgraded.
 
 ## CLI
 

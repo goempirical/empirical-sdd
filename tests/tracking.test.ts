@@ -6,11 +6,22 @@ import { join } from "node:path";
 import { EmpiricalProject } from "../src/core.js";
 import { EmpiricalError } from "../src/errors.js";
 import { digestJson } from "../src/protocol.js";
-import { createTrackerProjection, parseTrackerPolicy, trackerProgress } from "../src/tracking.js";
+import {
+  createTrackerProjection,
+  discoverTracker,
+  parseTrackerPolicy,
+  previewTrackerPolicy,
+  proposeTrackerStateMapping,
+  suggestTrackerStateMapping,
+  trackerProgress,
+} from "../src/tracking.js";
 import type {
   JiraTrackerPolicy,
+  JiraTrackerPolicyV2,
   GitHubTrackerPolicy,
+  GitHubTrackerPolicyV2,
   LinearTrackerPolicy,
+  LinearTrackerPolicyV2,
   TrackerBindInput,
   TrackerHttpRequest,
   TrackerHttpResponse,
@@ -45,6 +56,57 @@ function linearPolicy(): LinearTrackerPolicy {
   };
 }
 
+function linearPolicyV2(
+  overrides: Partial<Pick<LinearTrackerPolicyV2, "ticket" | "visibility">> = {},
+): LinearTrackerPolicyV2 {
+  return {
+    schemaVersion: 2,
+    provider: "linear",
+    target: { teamId: "team-1", projectId: "project-1" },
+    credentialEnv: { apiKey: "LINEAR_API_KEY" },
+    states: {
+      specification: "state-todo",
+      planned: "state-todo",
+      "in-progress": "state-progress",
+      verification: "state-qa",
+      review: "state-qa",
+      blocked: "state-progress",
+      done: "state-done",
+    },
+    ticket: overrides.ticket ?? "ensure",
+    visibility: overrides.visibility ?? "milestones",
+  };
+}
+
+function linearDiscoveryResponse(statesOverride?: unknown[]) {
+  return json(200, {
+    data: {
+      organization: { id: "workspace-1", name: "Empirical", urlKey: "empirical" },
+      teams: {
+        nodes: [{
+          id: "team-1",
+          name: "Engineering",
+          key: "ENG",
+          projects: {
+            nodes: [{ id: "project-1", name: "Empirical", url: "https://linear.app/empirical/project/empirical" }],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+          states: {
+            nodes: statesOverride ?? [
+              { id: "state-todo", name: "Todo", type: "unstarted", position: 0 },
+              { id: "state-progress", name: "In Progress", type: "started", position: 1 },
+              { id: "state-qa", name: "QA", type: "started", position: 2 },
+              { id: "state-done", name: "Done", type: "completed", position: 3 },
+            ],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        }],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
+    },
+  });
+}
+
 function githubPolicy(): GitHubTrackerPolicy {
   return {
     schemaVersion: 1,
@@ -58,6 +120,76 @@ function githubPolicy(): GitHubTrackerPolicy {
     credentialEnv: { token: "GITHUB_TOKEN" },
     states,
   };
+}
+
+function githubPolicyV2(
+  overrides: Partial<Pick<GitHubTrackerPolicyV2, "ticket" | "visibility">> = {},
+): GitHubTrackerPolicyV2 {
+  return {
+    ...githubPolicy(),
+    schemaVersion: 2,
+    states: {
+      specification: "todo",
+      planned: "todo",
+      "in-progress": "doing",
+      verification: "qa",
+      review: "review",
+      blocked: "blocked",
+      done: "done",
+    },
+    ticket: overrides.ticket ?? "ensure",
+    visibility: overrides.visibility ?? "milestones",
+  };
+}
+
+function githubDiscoveryResponse(): TrackerHttpResponse {
+  return json(200, { data: { viewer: {
+    login: "octocat",
+    url: "https://github.com/octocat",
+    repositories: {
+      nodes: [{
+        id: "repo-1",
+        name: "empirical-sdd",
+        nameWithOwner: "goempirical/empirical-sdd",
+        url: "https://github.com/goempirical/empirical-sdd",
+        owner: { id: "owner-1", login: "goempirical" },
+      }],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    },
+    projectsV2: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+    organizations: {
+      nodes: [{
+        id: "owner-1",
+        login: "goempirical",
+        name: "Empirical",
+        url: "https://github.com/goempirical",
+        projectsV2: {
+          nodes: [{
+            id: "PVT_project",
+            title: "Roadmap",
+            url: "https://github.com/orgs/goempirical/projects/1",
+            fields: {
+              nodes: [{
+                id: "PVTSSF_status",
+                name: "Status",
+                options: [
+                  { id: "todo", name: "Todo" },
+                  { id: "doing", name: "In Progress" },
+                  { id: "qa", name: "QA" },
+                  { id: "review", name: "Review" },
+                  { id: "blocked", name: "Blocked" },
+                  { id: "done", name: "Done" },
+                ],
+              }],
+              pageInfo: { hasNextPage: false, endCursor: null },
+            },
+          }],
+          pageInfo: { hasNextPage: false, endCursor: null },
+        },
+      }],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    },
+  } } });
 }
 
 function jiraPolicy(): JiraTrackerPolicy {
@@ -74,7 +206,45 @@ function jiraPolicy(): JiraTrackerPolicy {
   };
 }
 
-async function projectWithFastFeature() {
+function jiraPolicyV2(
+  overrides: Partial<Pick<JiraTrackerPolicyV2, "ticket" | "visibility">> = {},
+): JiraTrackerPolicyV2 {
+  return {
+    ...jiraPolicy(),
+    schemaVersion: 2,
+    ticket: overrides.ticket ?? "manual",
+    visibility: overrides.visibility ?? "milestones",
+  };
+}
+
+function jiraDiscoveryResponses(): TrackerHttpResponse[] {
+  return [
+    json(200, {
+      values: [{ id: "10000", key: "ENG", name: "Engineering" }],
+      startAt: 0,
+      maxResults: 50,
+      total: 1,
+      isLast: true,
+    }),
+    json(200, [{ id: "10001", name: "Task" }]),
+    json(200, [{
+      id: "10001",
+      name: "Task",
+      statuses: [
+        { id: "state-spec", name: "Backlog", statusCategory: { key: "new" } },
+        { id: "state-plan", name: "Todo", statusCategory: { key: "new" } },
+        { id: "state-work", name: "In Progress", statusCategory: { key: "indeterminate" } },
+        { id: "state-verify", name: "QA", statusCategory: { key: "indeterminate" } },
+        { id: "state-review", name: "Review", statusCategory: { key: "indeterminate" } },
+        { id: "state-blocked", name: "Blocked", statusCategory: { key: "indeterminate" } },
+        { id: "state-done", name: "Done", statusCategory: { key: "done" } },
+      ],
+    }]),
+    json(200, [{ id: "summary", key: "summary", name: "Summary" }]),
+  ];
+}
+
+async function projectWithFastFeature(request = "Add a local tracker fixture") {
   const root = await mkdtemp(join(tmpdir(), "empirical-tracker-"));
   directories.push(root);
   const { project } = await EmpiricalProject.initialize(root, {
@@ -87,7 +257,7 @@ async function projectWithFastFeature() {
     },
     setupComplete: true,
   });
-  const action = await project.fast("Add a local tracker fixture");
+  const action = await project.fast(request);
   if (action.kind !== "action") throw new Error("Expected action");
   return { root, project, action };
 }
@@ -134,11 +304,612 @@ function jiraIssue(overrides: Record<string, unknown> = {}) {
 }
 
 function requestBody(request: TrackerHttpRequest | undefined): Record<string, any> {
-  if (!request?.body) throw new Error("Expected a request body");
+  if (!request?.body || typeof request.body !== "string") throw new Error("Expected a JSON request body");
   return JSON.parse(request.body) as Record<string, any>;
 }
 
 describe("external ticket tracking", () => {
+  test("Linear discovery proposes a complete semantic map and exposes primary-signal ambiguity", async () => {
+    const ordinary = sequence([linearDiscoveryResponse()]);
+    const discovery = await discoverTracker(
+      { provider: "linear", credentialEnv: { apiKey: "LINEAR_API_KEY" } },
+      { transport: ordinary.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(discovery.resources.map((resource) => resource.kind)).toEqual([
+      "workspace", "team", "project", "state", "state", "state", "state",
+    ]);
+    const mapping = suggestTrackerStateMapping(discovery);
+    expect(mapping.ambiguous).toEqual([]);
+    expect(mapping.states).toEqual(linearPolicyV2().states);
+    const proposed = await proposeTrackerStateMapping({
+      input: { provider: "linear", credentialEnv: { apiKey: "LINEAR_API_KEY" } },
+      stateParentId: "team-1",
+    }, {
+      transport: sequence([linearDiscoveryResponse()]).transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    expect(proposed.states).toEqual(linearPolicyV2().states);
+
+    const tied = sequence([linearDiscoveryResponse([
+      { id: "state-a", name: "QA", type: "started", position: 1 },
+      { id: "state-b", name: "Review", type: "started", position: 1 },
+      { id: "state-todo", name: "Todo", type: "unstarted", position: 0 },
+      { id: "state-done", name: "Done", type: "completed", position: 2 },
+    ])]);
+    const tiedDiscovery = await discoverTracker(
+      { provider: "linear", credentialEnv: { apiKey: "LINEAR_API_KEY" } },
+      { transport: tied.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    const ambiguous = suggestTrackerStateMapping(tiedDiscovery);
+    expect(ambiguous.ambiguous).toContain("verification");
+    expect(ambiguous.phases.verification.selectedStateId).toBeNull();
+    expect(ambiguous.phases.verification.candidates.slice(0, 2).map((candidate) => candidate.stateId).sort())
+      .toEqual(["state-a", "state-b"]);
+
+    const incompatibleTransport = sequence([linearDiscoveryResponse([
+      { id: "state-canceled", name: "Canceled", type: "canceled", position: 0 },
+    ])]);
+    const incompatibleDiscovery = await discoverTracker(
+      { provider: "linear", credentialEnv: { apiKey: "LINEAR_API_KEY" } },
+      { transport: incompatibleTransport.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    const incompatible = suggestTrackerStateMapping(incompatibleDiscovery);
+    expect(incompatible.states).toBeNull();
+    expect(incompatible.ambiguous).toEqual([
+      "specification", "planned", "in-progress", "verification", "review", "blocked", "done",
+    ]);
+  });
+
+  test("GitHub Projects and Jira expose the same discovered target hierarchy and capabilities", async () => {
+    const github = sequence([json(200, { data: { viewer: {
+      login: "octocat",
+      url: "https://github.com/octocat",
+      repositories: {
+        nodes: [{
+          id: "repo-1",
+          name: "empirical-sdd",
+          nameWithOwner: "goempirical/empirical-sdd",
+          url: "https://github.com/goempirical/empirical-sdd",
+          owner: { id: "owner-1", login: "goempirical" },
+        }],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
+      projectsV2: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+      organizations: {
+        nodes: [{
+          id: "owner-1",
+          login: "goempirical",
+          name: "Empirical",
+          url: "https://github.com/goempirical",
+          projectsV2: {
+            nodes: [{
+              id: "project-1",
+              title: "Roadmap",
+              url: "https://github.com/orgs/goempirical/projects/1",
+              fields: {
+                nodes: [{ id: "status-1", name: "Status", options: [
+                  { id: "todo", name: "Todo" },
+                  { id: "doing", name: "In Progress" },
+                  { id: "done", name: "Done" },
+                ] }],
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            }],
+            pageInfo: { hasNextPage: false, endCursor: null },
+          },
+        }],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      },
+    } } })]);
+    const githubDiscovery = await discoverTracker(
+      { provider: "github", credentialEnv: { token: "GITHUB_TOKEN" } },
+      { transport: github.transport, env: { GITHUB_TOKEN: "github-secret" } },
+    );
+    expect(githubDiscovery.resources.map((resource) => resource.kind)).toEqual([
+      "workspace", "workspace", "repository", "project", "field", "state", "state", "state",
+    ]);
+    expect(githubDiscovery.capabilities).toEqual({ comments: true, uploads: false, durableLinks: true });
+
+    const jira = sequence(jiraDiscoveryResponses());
+    const jiraDiscovery = await discoverTracker({
+      provider: "jira",
+      target: { siteUrl: "https://empirical.atlassian.net" },
+      credentialEnv: { email: "JIRA_EMAIL", apiToken: "JIRA_API_TOKEN" },
+    }, {
+      transport: jira.transport,
+      env: { JIRA_EMAIL: "person@example.com", JIRA_API_TOKEN: "jira-secret" },
+    });
+    expect(jiraDiscovery.resources.map((resource) => resource.kind)).toEqual([
+      "workspace", "project", "issue-type", "field",
+      "state", "state", "state", "state", "state", "state", "state",
+    ]);
+    expect(jiraDiscovery.capabilities).toEqual({ comments: true, uploads: true, durableLinks: true });
+    expect((await previewTrackerPolicy(jiraPolicyV2(), {
+      transport: sequence(jiraDiscoveryResponses()).transport,
+      env: { JIRA_EMAIL: "person@example.com", JIRA_API_TOKEN: "jira-secret" },
+    })).valid).toBe(true);
+  });
+
+  test("discovery fails closed on permissions, provider errors, and incomplete nested pagination", async () => {
+    let permissionError: unknown;
+    try {
+      await discoverTracker(
+        { provider: "linear", credentialEnv: { apiKey: "LINEAR_API_KEY" } },
+        { transport: sequence([json(403, { error: "linear-secret denied" })]).transport, env: { LINEAR_API_KEY: "linear-secret" } },
+      );
+    } catch (error) {
+      permissionError = error;
+    }
+    expect(permissionError).toMatchObject({ code: "TRACKER_HTTP_FAILED" });
+    expect(String((permissionError as Error).message)).not.toContain("linear-secret");
+
+    await expect(discoverTracker(
+      { provider: "linear", credentialEnv: { apiKey: "LINEAR_API_KEY" } },
+      {
+        transport: sequence([json(200, { errors: [{ message: "forbidden" }] })]).transport,
+        env: { LINEAR_API_KEY: "linear-secret" },
+      },
+    )).rejects.toMatchObject({ code: "TRACKER_GRAPHQL_FAILED" });
+
+    const incomplete = linearDiscoveryResponse();
+    const body = JSON.parse(incomplete.body) as Record<string, any>;
+    body.data.teams.nodes[0].projects.pageInfo = { hasNextPage: true, endCursor: "project-next" };
+    await expect(discoverTracker(
+      { provider: "linear", credentialEnv: { apiKey: "LINEAR_API_KEY" } },
+      {
+        transport: sequence([json(200, body)]).transport,
+        env: { LINEAR_API_KEY: "linear-secret" },
+      },
+    )).rejects.toMatchObject({ code: "TRACKER_DISCOVERY_INCOMPLETE" });
+  });
+
+  test("Policy v2 ensure creates exactly one Linear ticket and appends one milestone without rewriting descriptions", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    const fake = sequence([
+      linearDiscoveryResponse(),
+      json(200, { data: { issues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } }),
+      json(200, { data: { issueCreate: { success: true, issue: linearIssue() } } }),
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+      json(200, { data: { issue: { comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
+      json(200, { data: { commentCreate: { success: true, comment: { id: "comment-1", body: "created" } } } }),
+    ]);
+    await project.configureTracker(linearPolicyV2(), {
+      transport: fake.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    const synced = await project.syncTracker({
+      transport: fake.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    expect(synced.tracker).toMatchObject({
+      health: "synced",
+      schemaVersion: 2,
+      ticket: "ensure",
+      visibility: "milestones",
+      pendingEffects: 0,
+    });
+    expect(fake.remaining).toHaveLength(0);
+    expect(requestBody(fake.calls[2]).variables.input.description).not.toContain("Delivery status");
+    expect(requestBody(fake.calls[4]).variables.input).toEqual({ stateId: "state-progress" });
+    const milestone = requestBody(fake.calls[6]).variables.input.body as string;
+    expect(milestone).toContain(`- Feature: ${action.feature}`);
+    expect(milestone).toContain(`- Revision: ${action.revision}`);
+    expect(milestone).toContain("- Completion:");
+    const binding = JSON.parse(await readFile(
+      join(root, ".empirical", "specs", action.feature!, "tracker", "binding.json"),
+      "utf8",
+    )) as Record<string, any>;
+    const pending = JSON.parse(await readFile(
+      join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json"),
+      "utf8",
+    )) as Record<string, any>;
+    expect(binding.schemaVersion).toBe(2);
+    expect(pending.effects.map((effect: Record<string, string>) => effect.kind)).toEqual(["transition", "comment"]);
+
+    let repeatedRequests = 0;
+    expect((await project.syncTracker({
+      env: { LINEAR_API_KEY: "linear-secret" },
+      transport: async () => {
+        repeatedRequests += 1;
+        return json(500, {});
+      },
+    })).tracker.health).toBe("synced");
+    expect(repeatedRequests).toBe(0);
+  });
+
+  test("Policy v2 GitHub ensure reuses one stable marker and projects each effect once", async () => {
+    const { project, action } = await projectWithFastFeature();
+    const setup = sequence([githubDiscoveryResponse()]);
+    await project.configureTracker(githubPolicyV2(), {
+      transport: setup.transport,
+      env: { GITHUB_TOKEN: "github-secret" },
+    });
+
+    const marker = `empirical-sdd-bind:${action.feature}`;
+    const attempt = "a".repeat(64);
+    const issue = {
+      node_id: "I_kwDO_existing",
+      number: 43,
+      html_url: "https://github.com/goempirical/empirical-sdd/issues/43",
+      body: [
+        `<!-- ${marker}:${attempt}:start -->`,
+        `Empirical SDD create attempt sha256:${attempt}`,
+        `<!-- ${marker}:${attempt}:end -->`,
+      ].join("\n"),
+    };
+    const fake = sequence([
+      json(200, [issue]),
+      json(200, issue),
+      json(200, { data: { node: { projectItems: {
+        nodes: [],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      } } } }),
+      json(200, { data: { addProjectV2ItemById: { item: { id: "PVTI_existing" } } } }),
+      json(200, { data: { updateProjectV2ItemFieldValue: { projectV2Item: { id: "PVTI_existing" } } } }),
+      json(200, []),
+      json(201, { id: 991 }),
+    ]);
+    const result = await project.syncTracker({
+      transport: fake.transport,
+      env: { GITHUB_TOKEN: "github-secret" },
+    });
+
+    expect(result.tracker).toMatchObject({ health: "synced", pendingEffects: 0 });
+    expect(result.binding).toMatchObject({ remoteKey: "43", projectItemId: "PVTI_existing" });
+    expect(fake.remaining).toHaveLength(0);
+    expect(fake.calls[0]?.url).toContain("/issues?state=all");
+    expect(fake.calls.some((request) => request.method === "POST" && request.url.endsWith("/issues"))).toBe(false);
+    expect(requestBody(fake.calls[4]).variables.option).toBe("doing");
+    expect(requestBody(fake.calls[6]).body).toContain("## Empirical milestone");
+
+    let repeatedRequests = 0;
+    expect((await project.syncTracker({
+      transport: async () => {
+        repeatedRequests += 1;
+        return json(500, {});
+      },
+      env: { GITHUB_TOKEN: "github-secret" },
+    })).tracker.health).toBe("synced");
+    expect(repeatedRequests).toBe(0);
+  });
+
+  test("ensure attaches one referenced ticket and stops before provider access on competing references", async () => {
+    const referenced = await projectWithFastFeature(
+      "Continue https://linear.app/empirical/issue/EMP-42 without creating another ticket",
+    );
+    const attach = sequence([
+      linearDiscoveryResponse(),
+      json(200, { data: { issue: linearIssue({ identifier: "EMP-42", url: "https://linear.app/empirical/issue/EMP-42" }) } }),
+      json(200, { data: { issue: linearIssue({ identifier: "EMP-42", url: "https://linear.app/empirical/issue/EMP-42" }) } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue({ identifier: "EMP-42", url: "https://linear.app/empirical/issue/EMP-42" }) } } }),
+      json(200, { data: { issue: { comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
+      json(200, { data: { commentCreate: { success: true, comment: { id: "comment-42", body: "created" } } } }),
+    ]);
+    await referenced.project.configureTracker(linearPolicyV2(), {
+      transport: attach.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    const attached = await referenced.project.syncTracker({
+      transport: attach.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    expect(attached.binding?.remoteKey).toBe("EMP-42");
+    expect(attach.calls.some((request) => request.body && typeof request.body === "string"
+      && request.body.includes("issueCreate"))).toBe(false);
+
+    const ambiguous = await projectWithFastFeature(
+      "Reconcile https://linear.app/empirical/issue/EMP-1 and https://linear.app/empirical/issue/EMP-2",
+    );
+    const setup = sequence([linearDiscoveryResponse()]);
+    await ambiguous.project.configureTracker(linearPolicyV2(), {
+      transport: setup.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    let providerRequests = 0;
+    const stopped = await ambiguous.project.syncTracker({
+      transport: async () => {
+        providerRequests += 1;
+        return json(500, {});
+      },
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    expect(stopped.tracker).toMatchObject({
+      health: "failed",
+      failure: { code: "TRACKER_BIND_AMBIGUOUS" },
+    });
+    expect(providerRequests).toBe(0);
+  });
+
+  test("ensure reconciles one stable feature marker and fails closed on duplicate matches", async () => {
+    const existing = await projectWithFastFeature();
+    const marker = `empirical-sdd-bind:${existing.action.feature}`;
+    const description = [
+      `<!-- ${marker}:${"a".repeat(64)}:start -->`,
+      `Empirical SDD create attempt sha256:${"a".repeat(64)}`,
+      `<!-- ${marker}:${"a".repeat(64)}:end -->`,
+    ].join("\n");
+    const one = sequence([
+      linearDiscoveryResponse(),
+      json(200, { data: { issues: {
+        nodes: [linearIssue({ description })],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      } } }),
+      json(200, { data: { issue: linearIssue({ description }) } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue({ description }) } } }),
+      json(200, { data: { issue: { comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
+      json(200, { data: { commentCreate: { success: true, comment: { id: "comment-existing", body: "created" } } } }),
+    ]);
+    await existing.project.configureTracker(linearPolicyV2(), {
+      transport: one.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    expect((await existing.project.syncTracker({
+      transport: one.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    })).binding?.remoteKey).toBe("EMP-1");
+    expect(one.calls.some((request) => typeof request.body === "string" && request.body.includes("issueCreate"))).toBe(false);
+
+    const duplicate = await projectWithFastFeature();
+    const duplicateMarker = `empirical-sdd-bind:${duplicate.action.feature}`;
+    const duplicateDescription = [
+      `<!-- ${duplicateMarker}:${"b".repeat(64)}:start -->`,
+      `Empirical SDD create attempt sha256:${"b".repeat(64)}`,
+      `<!-- ${duplicateMarker}:${"b".repeat(64)}:end -->`,
+    ].join("\n");
+    const two = sequence([
+      linearDiscoveryResponse(),
+      json(200, { data: { issues: {
+        nodes: [
+          linearIssue({ description: duplicateDescription }),
+          linearIssue({
+            id: "linear-uuid-2",
+            identifier: "EMP-2",
+            url: "https://linear.app/empirical/issue/EMP-2",
+            description: duplicateDescription,
+          }),
+        ],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      } } }),
+    ]);
+    await duplicate.project.configureTracker(linearPolicyV2(), {
+      transport: two.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    expect((await duplicate.project.syncTracker({
+      transport: two.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    })).tracker).toMatchObject({
+      health: "failed",
+      failure: { code: "TRACKER_BIND_AMBIGUOUS" },
+    });
+    expect(two.remaining).toHaveLength(0);
+  });
+
+  test("a lost milestone response is reconciled by marker without repeating acknowledged effects", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    const first = sequence([
+      linearDiscoveryResponse(),
+      json(200, { data: { issues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } }),
+      json(200, { data: { issueCreate: { success: true, issue: linearIssue() } } }),
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+      json(200, { data: { issue: { comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
+      new Error("connection closed after Linear accepted the comment"),
+    ]);
+    await project.configureTracker(linearPolicyV2(), {
+      transport: first.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    expect((await project.syncTracker({
+      transport: first.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    })).tracker.health).toBe("failed");
+    const pendingPath = join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json");
+    const interrupted = JSON.parse(await readFile(pendingPath, "utf8")) as Record<string, any>;
+    expect(interrupted.effects.map((effect: Record<string, string>) => effect.kind)).toEqual(["transition"]);
+    const postedMilestone = requestBody(first.calls.at(-1)).variables.input.body as string;
+
+    const retry = sequence([json(200, { data: { issue: { comments: {
+      nodes: [{ id: "comment-recovered", body: postedMilestone }],
+      pageInfo: { hasNextPage: false, endCursor: null },
+    } } } })]);
+    const recovered = await project.syncTracker({
+      transport: retry.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    expect(recovered.tracker).toMatchObject({ health: "synced", pendingEffects: 0 });
+    expect(retry.calls).toHaveLength(1);
+    expect(requestBody(retry.calls[0]).query).toContain("Milestones");
+    const acknowledged = JSON.parse(await readFile(pendingPath, "utf8")) as Record<string, any>;
+    expect(acknowledged.effects.map((effect: Record<string, string>) => effect.kind)).toEqual(["transition", "comment"]);
+  });
+
+  test("receipt-approved Jira evidence uploads once and recovers a lost upload response", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    const artifactBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    await writeFile(join(root, "review.png"), artifactBytes);
+    const receipt = await project.collectEvidence({
+      criteria: [action.acceptanceCriteria[0]!.id],
+      evidenceKinds: ["screenshot"],
+      summary: "Review screenshot",
+      collector: "tracking-test",
+      artifacts: [{ path: "review.png", mediaType: "image/png" }],
+    });
+    await project.complete({
+      revision: action.revision,
+      outcome: "passed",
+      summary: "Implementation committed with review evidence",
+      receiptIds: [receipt.id],
+    });
+    const committedState = await project.statusReport();
+    const desiredState = jiraPolicyV2().states[trackerProgress(committedState)];
+
+    const discovery = sequence(jiraDiscoveryResponses());
+    await project.configureTracker(jiraPolicyV2(), {
+      transport: discovery.transport,
+      env: { JIRA_EMAIL: "person@example.com", JIRA_API_TOKEN: "jira-secret" },
+    });
+    const issueWithStatus = jiraIssue({ fields: {
+      status: { id: desiredState },
+      project: { key: "ENG" },
+      issuetype: { id: "10001" },
+    } });
+    const first = sequence([
+      json(200, issueWithStatus),
+      json(200, issueWithStatus),
+      json(204, {}),
+      json(200, { comments: [], total: 0 }),
+      json(201, { id: "jira-comment-1" }),
+      json(200, jiraIssue({ fields: {
+        status: { id: desiredState },
+        project: { key: "ENG" },
+        issuetype: { id: "10001" },
+        attachment: [],
+      } })),
+      new Error("connection closed after Jira accepted the attachment"),
+    ]);
+    const interrupted = await project.bindTracker(
+      { mode: "attach", ticket: "ENG-7" },
+      {
+        transport: first.transport,
+        env: { JIRA_EMAIL: "person@example.com", JIRA_API_TOKEN: "jira-secret" },
+      },
+    );
+    expect(interrupted.tracker).toMatchObject({ health: "failed", pendingEffects: 1 });
+    const uploadRequest = first.calls.at(-1)!;
+    expect(uploadRequest.url).toEndWith("/attachments");
+    expect(uploadRequest.body).toBeInstanceOf(Uint8Array);
+    const multipart = Buffer.from(uploadRequest.body as Uint8Array).toString("latin1");
+    const filename = /filename="([^"]+)"/.exec(multipart)?.[1];
+    expect(filename).toStartWith("empirical-");
+    expect(Buffer.from(uploadRequest.body as Uint8Array).includes(artifactBytes)).toBe(true);
+    const pendingPath = join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json");
+    const partial = JSON.parse(await readFile(pendingPath, "utf8")) as Record<string, any>;
+    expect(partial.effects.map((effect: Record<string, string>) => effect.kind)).toEqual(["transition", "comment"]);
+
+    const retry = sequence([json(200, jiraIssue({ fields: {
+      status: { id: desiredState },
+      project: { key: "ENG" },
+      issuetype: { id: "10001" },
+      attachment: [{ id: "attachment-1", filename, size: artifactBytes.length, mimeType: "image/png" }],
+    } }))]);
+    const recovered = await project.syncTracker({
+      transport: retry.transport,
+      env: { JIRA_EMAIL: "person@example.com", JIRA_API_TOKEN: "jira-secret" },
+    });
+    expect(recovered.tracker).toMatchObject({ health: "synced", pendingEffects: 0 });
+    expect(retry.calls).toHaveLength(1);
+    const complete = JSON.parse(await readFile(pendingPath, "utf8")) as Record<string, any>;
+    expect(complete.effects.map((effect: Record<string, string>) => effect.kind)).toEqual([
+      "transition", "comment", "artifact",
+    ]);
+    expect(complete.effects.at(-1).remoteId).toBe("attachment-1");
+  });
+
+  test("unsafe receipt artifacts fail before any synchronization request", async () => {
+    const { root, project, action } = await projectWithFastFeature();
+    await writeFile(join(root, ".env.capture.png"), Buffer.from("not a secret, but a secret-like path"));
+    const receipt = await project.collectEvidence({
+      criteria: [action.acceptanceCriteria[0]!.id],
+      evidenceKinds: ["screenshot"],
+      summary: "Unsafe path fixture",
+      collector: "tracking-test",
+      artifacts: [{ path: ".env.capture.png", mediaType: "image/png" }],
+    });
+    await project.complete({
+      revision: action.revision,
+      outcome: "passed",
+      summary: "Local state remains authoritative",
+      receiptIds: [receipt.id],
+    });
+    const discovery = sequence([linearDiscoveryResponse()]);
+    await project.configureTracker(linearPolicyV2({ ticket: "manual" }), {
+      transport: discovery.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    let requests = 0;
+    const failed = await project.syncTracker({
+      transport: async () => {
+        requests += 1;
+        return json(500, {});
+      },
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    expect(failed.tracker).toMatchObject({
+      health: "failed",
+      failure: { code: "TRACKER_ARTIFACT_UNSAFE" },
+    });
+    expect(requests).toBe(0);
+  });
+
+  test("disabled and off tracking branch before credentials and provider access", async () => {
+    const { project } = await projectWithFastFeature();
+    let requests = 0;
+    await project.configureTracker(null, {
+      transport: async () => {
+        requests += 1;
+        return json(500, {});
+      },
+    });
+    expect((await project.syncTracker({
+      transport: async () => {
+        requests += 1;
+        return json(500, {});
+      },
+    })).tracker.health).toBe("local-only");
+    expect(requests).toBe(0);
+
+    const setup = sequence([linearDiscoveryResponse()]);
+    await project.configureTracker(linearPolicyV2({ ticket: "off" }), {
+      transport: setup.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    let offRequests = 0;
+    expect((await project.syncTracker({
+      transport: async () => {
+        offRequests += 1;
+        return json(500, {});
+      },
+    })).tracker).toMatchObject({ health: "off", ticket: "off", schemaVersion: 2 });
+    expect(offRequests).toBe(0);
+  });
+
+  test("repair preserves tracker bytes by default and explicit disable performs no provider request", async () => {
+    const { root, project } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const policyPath = join(root, ".empirical", "tracker.json");
+    const before = await readFile(policyPath, "utf8");
+    let requests = 0;
+    await EmpiricalProject.initialize(root, {
+      integrations: false,
+      setupComplete: true,
+      tracker: { mode: "preserve" },
+      trackerDependencies: {
+        transport: async () => {
+          requests += 1;
+          return json(500, {});
+        },
+      },
+    });
+    expect(await readFile(policyPath, "utf8")).toBe(before);
+    expect(requests).toBe(0);
+
+    await EmpiricalProject.initialize(root, {
+      integrations: false,
+      setupComplete: true,
+      tracker: { mode: "disabled" },
+      trackerDependencies: {
+        transport: async () => {
+          requests += 1;
+          return json(500, {});
+        },
+      },
+    });
+    expect(await Bun.file(policyPath).exists()).toBe(false);
+    expect(requests).toBe(0);
+  });
+
   test("missing policy is local-only and status never contacts a provider", async () => {
     const { project, action } = await projectWithFastFeature();
     let requests = 0;
@@ -186,6 +957,33 @@ describe("external ticket tracking", () => {
       ...jiraPolicy(),
       target: { ...jiraPolicy().target, siteUrl: "https://localhost" },
     })).toThrow("Atlassian Cloud HTTPS origin");
+  });
+
+  test("v2 access validation happens before replacing an existing policy", async () => {
+    const { root, project } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const path = join(root, ".empirical", "tracker.json");
+    const before = await readFile(path, "utf8");
+    await expect(project.configureTracker(linearPolicyV2(), {
+      transport: sequence([json(403, { error: "denied" })]).transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    })).rejects.toMatchObject({ code: "TRACKER_HTTP_FAILED" });
+    expect(await readFile(path, "utf8")).toBe(before);
+  });
+
+  test("initialization validates an applied tracker before creating project state", async () => {
+    const root = await mkdtemp(join(tmpdir(), "empirical-tracker-preflight-"));
+    directories.push(root);
+    await expect(EmpiricalProject.initialize(root, {
+      integrations: false,
+      setupComplete: true,
+      tracker: { mode: "apply", policy: linearPolicyV2() },
+      trackerDependencies: {
+        transport: sequence([json(403, { error: "denied" })]).transport,
+        env: { LINEAR_API_KEY: "linear-secret" },
+      },
+    })).rejects.toMatchObject({ code: "TRACKER_HTTP_FAILED" });
+    expect(await Bun.file(join(root, ".empirical", "config.json")).exists()).toBe(false);
   });
 
   test("phase and stop conditions map to the normalized progress model", () => {

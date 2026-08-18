@@ -37,7 +37,7 @@ function operation(
 }
 
 export const OPERATIONS = Object.freeze([
-  operation("init", "Initialize or repair repository context.", { cliUsage: " [--profile fast|complex] [--defaults|--interactive] [--no-integrations]" }),
+  operation("init", "Initialize or repair repository context.", { cliUsage: " [--profile fast|complex] [--defaults|--interactive] [--tracker-input <json-file|->] [--no-integrations]" }),
   operation("adopt", "Adopt an Empirical v1 repository non-destructively.", { cliUsage: " [--profile fast|complex] [--no-integrations]" }),
   operation("configure", "Validate and persist project configuration.", { cliUsage: " [--defaults|--interactive] [configuration options]" }),
   operation("policy", "Read or validate Policy v2.", { readOnly: true }),
@@ -53,6 +53,9 @@ export const OPERATIONS = Object.freeze([
   operation("next", "Read the exact current action without mutation.", { readOnly: true }),
   operation("status", "Read exact workflow and completion state.", { readOnly: true }),
   operation("explain", "Explain deterministic state rationale.", { readOnly: true }),
+  operation("tracker-discover", "Discover accessible tracker targets, workflow metadata, and adapter capabilities.", { readOnly: true, cliUsage: " --input <json-file|->" }),
+  operation("tracker-suggest", "Propose the seven-state semantic mapping for one discovered workflow parent.", { readOnly: true, cliUsage: " --input <json-file|->" }),
+  operation("tracker-preview", "Validate and preview one complete effective tracker policy without saving it.", { readOnly: true, cliUsage: " --input <json-file|->" }),
   operation("tracker-configure", "Configure or disable the optional external ticket mirror.", { destructive: true, cliUsage: " --input <json-file|->" }),
   operation("tracker-bind", "Create or attach the selected feature's external ticket.", { destructive: true, idempotent: false, cliUsage: " --input <json-file|->" }),
   operation("tracker-sync", "Converge the selected feature's external ticket to committed local state.", { destructive: true }),

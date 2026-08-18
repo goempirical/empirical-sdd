@@ -8,16 +8,27 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ## [Unreleased]
 
-## [0.23.1] - 2026-08-18
+## [0.24.0] - 2026-08-18
 
 ### Added
 
+- Added guided Linear, GitHub Projects, and Jira discovery/preview during Init,
+  provider-neutral semantic state suggestions, and strict equivalent MCP and
+  non-interactive setup surfaces.
+- Added Tracker Policy v2 ticket behavior (`off`, `manual`, `ensure`), progress
+  visibility, automatic one-ticket reconciliation, idempotent milestone
+  comments, and receipt-approved evidence uploads or commit-pinned links.
 - Added a packaged, runnable integration-repair demo that reproduces a
   completed repository with missing activation artifacts and proves the
   before, repair, and verified-after states without touching user data.
 
 ### Changed
 
+- Tracker synchronization now commits local state first, preserves user-authored
+  Linear descriptions, and resumes transition/comment/artifact effects from a
+  durable acknowledgement ledger.
+- Existing Tracker Policy v1 repositories remain manual/legacy compatible and
+  repair preserves tracker bytes unless explicitly changed or disabled.
 - Simplified the README around installation, everyday use, safety, and links to
   the detailed project documentation.
 
@@ -90,8 +101,8 @@ Published through GitHub Actions trusted publishing with npm provenance.
 
 - Prepared and released package version `0.20.2`.
 
-[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.23.1...HEAD
-[0.23.1]: https://github.com/goempirical/empirical-sdd/compare/v0.23.0...v0.23.1
+[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.24.0...HEAD
+[0.24.0]: https://github.com/goempirical/empirical-sdd/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/goempirical/empirical-sdd/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/goempirical/empirical-sdd/compare/v0.20.4...v0.22.0
 [0.20.4]: https://github.com/goempirical/empirical-sdd/compare/v0.20.3...v0.20.4

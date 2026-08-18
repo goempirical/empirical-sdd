@@ -1,5 +1,5 @@
 import { EmpiricalError } from "./errors.js";
-import type { ProjectConfig, ProjectConfigurationInput } from "./types.js";
+import type { ProjectConfig, ProjectConfigurationInput, TrackerPolicy } from "./types.js";
 
 export type SetupSettings = Pick<ProjectConfig, "evidence" | "isolation" | "decisions">;
 
@@ -62,7 +62,12 @@ export function validateSetupSettings(settings: SetupSettings): void {
 
 export function renderSetupSummary(
   settings: SetupSettings,
-  options: { current: boolean; effective?: boolean; resolvedBase?: string } = { current: false },
+  options: {
+    current: boolean;
+    effective?: boolean;
+    resolvedBase?: string;
+    tracker?: TrackerPolicy | null;
+  } = { current: false },
 ): string {
   const state = options.effective ? "effective" : options.current ? "current" : "recommended";
   const base = settings.isolation.baseBranch === "auto" && options.resolvedBase
@@ -91,7 +96,32 @@ export function renderSetupSummary(
     "│",
     "│  Decisions",
     `│  ${marker(settings.decisions.complexRecords === "required")} ${settings.decisions.complexRecords === "required" ? "Require reviewable decision records for Complex work" : "Do not require Complex decision records"}`,
+    "│",
+    "│  Tracker",
+    ...(options.tracker ? [
+      `│  ● ${trackerLabel(options.tracker)} · ${state}`,
+      `│    Credential source: ${trackerCredentialNames(options.tracker).join(", ")} (environment names only)`,
+    ] : [
+      `│  ○ Local-only (disabled; no provider requests) · ${state}`,
+    ]),
   ].join("\n");
+}
+
+function trackerLabel(policy: TrackerPolicy): string {
+  if (policy.schemaVersion === 1) return `${providerLabel(policy.provider)} · Policy v1 manual/legacy`;
+  return `${providerLabel(policy.provider)} · tickets ${policy.ticket} · progress ${policy.visibility}`;
+}
+
+function providerLabel(provider: TrackerPolicy["provider"]): string {
+  return provider === "github" ? "GitHub Projects" : provider === "linear" ? "Linear" : "Jira";
+}
+
+function trackerCredentialNames(policy: TrackerPolicy): string[] {
+  return policy.provider === "github"
+    ? [policy.credentialEnv.token]
+    : policy.provider === "linear"
+      ? [policy.credentialEnv.apiKey]
+      : [policy.credentialEnv.email, policy.credentialEnv.apiToken];
 }
 
 function marker(enabled: boolean): string {

@@ -10,11 +10,17 @@ import {
   workflowSchema,
 } from "./protocol.js";
 import {
+  discoverTracker,
   parseTrackerBindInput,
+  previewTrackerPolicy,
+  proposeTrackerStateMapping,
   trackerAttachBindInputSchema,
   trackerBindInputSchema,
   trackerCreateBindInputSchema,
+  trackerDiscoveryInputSchema,
+  trackerMappingInputSchema,
   trackerPolicySchema,
+  trackerSetupChangeSchema,
 } from "./tracking.js";
 import { PRODUCT_VERSION, type AgentIntegrationId } from "./types.js";
 
@@ -50,6 +56,7 @@ const deliveryCommitSchema = z.object({
   title: z.string().min(1),
   body: z.string().min(1),
 }).strict();
+const trackerSetupSchema = trackerSetupChangeSchema;
 // MCP SDK 1.30 advertises only root object schemas. Preserve the core union at
 // runtime and mirror its branch applicability in the emitted Draft-7 schema.
 const trackerBindToolSchema = z.object({
@@ -141,9 +148,9 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
   server.registerTool(operationName("init"), {
     title: "Initialize Empirical",
     description: operationSummary("init"),
-    inputSchema: { root: z.string().optional(), profile: profileSchema.optional(), ...configurationSchema },
+    inputSchema: { root: z.string().optional(), profile: profileSchema.optional(), tracker: trackerSetupSchema.optional(), ...configurationSchema },
     annotations: operationAnnotations("init"),
-  }, async ({ root, profile, evidenceRequired, browserForUi, screenshotForUi, codeReview, isolation, base, worktreePath, branchPattern, decisions }) => toolResult(async () => {
+  }, async ({ root, profile, tracker, evidenceRequired, browserForUi, screenshotForUi, codeReview, isolation, base, worktreePath, branchPattern, decisions }) => toolResult(async () => {
     const initialized = await EmpiricalProject.initialize(root ?? defaultRoot, {
       ...(profile ? { profile } : {}),
       evidence: {
@@ -159,6 +166,7 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
         ...(branchPattern ? { branchPattern } : {}),
       },
       decisions: { ...(decisions ? { complexRecords: decisions } : {}) },
+      ...(tracker ? { tracker } : {}),
       setupComplete: true,
     });
     return { state: initialized.state, config: await initialized.project.config(), integrations: initialized.integrations, knowledge: await initialized.project.context(), next: await initialized.project.next() };
@@ -196,12 +204,16 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
   server.registerTool(operationName("configure"), {
     title: "Configure Empirical",
     description: operationSummary("configure"),
-    inputSchema: { root: z.string().optional(), policy: z.unknown().optional(), ...configurationSchema },
+    inputSchema: { root: z.string().optional(), policy: z.unknown().optional(), tracker: trackerSetupSchema.optional(), ...configurationSchema },
     annotations: operationAnnotations("configure"),
-  }, async ({ root, policy, evidenceRequired, browserForUi, screenshotForUi, codeReview, isolation, base, worktreePath, branchPattern, decisions }) => toolResult(async () => {
+  }, async ({ root, policy, tracker, evidenceRequired, browserForUi, screenshotForUi, codeReview, isolation, base, worktreePath, branchPattern, decisions }) => toolResult(async () => {
     const project = await EmpiricalProject.open(root ?? defaultRoot);
+    if (policy !== undefined && tracker !== undefined) {
+      throw new EmpiricalError("INVALID_CONFIG", "Configure project policy and tracker setup in separate exact requests");
+    }
     if (policy !== undefined) return project.configurePolicy(policy);
-    return project.configure({
+    if (tracker?.mode === "apply") await project.previewTracker(tracker.policy);
+    const config = await project.configure({
       evidence: {
         ...(evidenceRequired !== undefined ? { required: evidenceRequired } : {}),
         ...(browserForUi !== undefined ? { browserForUi } : {}),
@@ -217,6 +229,9 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
       decisions: { ...(decisions ? { complexRecords: decisions } : {}) },
       setupComplete: true,
     });
+    if (!tracker || tracker.mode === "preserve") return config;
+    const trackerPolicy = await project.configureTracker(tracker.mode === "disabled" ? null : tracker.policy);
+    return { config, tracker: trackerPolicy };
   }));
 
   server.registerTool(operationName("adopt"), {
@@ -337,6 +352,37 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
     inputSchema: { root: z.string().optional() },
     annotations: operationAnnotations("explain"),
   }, async ({ root }) => toolResult(async () => (await EmpiricalProject.openReadOnly(root ?? defaultRoot)).explain()));
+
+  server.registerTool(operationName("tracker-discover"), {
+    title: "Discover tracker targets and workflow metadata",
+    description: operationSummary("tracker-discover"),
+    inputSchema: z.object({
+      root: z.string().optional(),
+      input: trackerDiscoveryInputSchema,
+    }).strict(),
+    annotations: operationAnnotations("tracker-discover"),
+  }, async ({ input }) => toolResult(async () => discoverTracker(input)));
+
+  server.registerTool(operationName("tracker-preview"), {
+    title: "Preview external ticket tracking",
+    description: operationSummary("tracker-preview"),
+    inputSchema: z.object({
+      root: z.string().optional(),
+      policy: trackerPolicySchema,
+    }).strict(),
+    annotations: operationAnnotations("tracker-preview"),
+  }, async ({ policy }) => toolResult(async () => previewTrackerPolicy(policy)));
+
+  server.registerTool(operationName("tracker-suggest"), {
+    title: "Propose semantic tracker state mapping",
+    description: operationSummary("tracker-suggest"),
+    inputSchema: z.object({
+      root: z.string().optional(),
+      ...trackerMappingInputSchema.shape,
+    }).strict(),
+    annotations: operationAnnotations("tracker-suggest"),
+  }, async ({ input, stateParentId }) => toolResult(async () =>
+    proposeTrackerStateMapping({ input, stateParentId })));
 
   server.registerTool(operationName("tracker-configure"), {
     title: "Configure external ticket tracking",

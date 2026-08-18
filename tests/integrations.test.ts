@@ -523,8 +523,8 @@ describe("agent integrations", () => {
       expect(result.status).toBe(0);
       expect(result.stderr).toBe("");
       expect(result.stdout).toContain("╭───╯    ╰───╮");
-      expect(result.stdout.match(/empirical v0\.23\.1/g)).toHaveLength(1);
-      expect(result.stdout.indexOf("empirical v0.23.1")).toBeLessThan(result.stdout.indexOf("Lifecycle:"));
+      expect(result.stdout.match(/empirical v0\.24\.0/g)).toHaveLength(1);
+      expect(result.stdout.indexOf("empirical v0.24.0")).toBeLessThan(result.stdout.indexOf("Lifecycle:"));
       expect(result.stdout).not.toContain("\u001b[");
       expect(result.stdout).toContain("empirical install");
       expect(result.stdout).toContain("empirical update");
@@ -572,7 +572,7 @@ describe("agent integrations", () => {
     for (const alias of ["version", "--version", "-v"]) {
       const result = spawnSync(process.execPath, [cli, alias], { encoding: "utf8" });
       expect(result.status).toBe(0);
-      expect(result.stdout).toBe("0.23.1\n");
+      expect(result.stdout).toBe("0.24.0\n");
       expect(result.stderr).toBe("");
     }
   });

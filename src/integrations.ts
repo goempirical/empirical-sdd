@@ -71,21 +71,35 @@ never a feature request.
    repair. Preserve existing configuration values and durable workflow history
    unless the user explicitly changes a value.
 2. Before any mutation, render the complete Empirical setup summary for
-   Verification, Parallel work, and Decisions. Offer Apply recommended settings
-   (or Keep current settings), Customize, and Cancel. On Customize, visit one
-   section at a time and end with a complete Save, Edit, or Cancel review.
-3. Cancel stops without calling \`empirical_init\`, \`empirical_context\`, or a
-   private fallback. After confirmation, call \`empirical_init\` with all four
-   explicit evidence booleans plus isolation, base, path, branch, and decision
-   policy. The private fallback is \`empirical __internal init\` with equivalent
-   flags.
-4. Call \`empirical_context\` when context is missing or stale and replace every
+   Verification, Parallel work, Decisions, and Tracker. Tracker MUST show an
+   explicit Local-only option. On repair, Preserve current tracker is the
+   default and MUST make no provider request. Offer Apply recommended settings
+   (or Keep current settings), Customize, Configure tracker, and Cancel. On
+   Customize, visit one section at a time and end with a complete Save, Edit, or
+   Cancel review.
+3. Tracker configuration selects Linear, GitHub Projects, or Jira plus
+   credential environment-variable names only. Call \`empirical_tracker_discover\`
+   to show accessible workspaces/sites, teams/repositories, projects, issue
+   types, fields, and states by name. Propose all seven semantic phase mappings;
+   call \`empirical_tracker_suggest\` for the selected workflow parent, allow
+   shared states, show ambiguity, and obtain an explicit choice for every tied
+   or incompatible phase. Select off/manual/ensure ticket behavior and blockers-final,
+   milestones, or revisions visibility. Call \`empirical_tracker_preview\` and
+   display its complete secret-free effective policy before Save.
+4. Cancel stops without calling \`empirical_init\`, \`empirical_context\`, or a
+   private mutating fallback. After confirmation, call \`empirical_init\` with
+   all four explicit evidence booleans plus isolation, base, path, branch,
+   decision policy, and the explicit preserve/disabled/applied tracker change.
+   The private fallback is \`empirical __internal init\` with equivalent flags
+   and a strict \`--tracker-input\` JSON document; discovery and preview remain
+   separate read-only private operations.
+5. Call \`empirical_context\` when context is missing or stale and replace every
    reported refinement-required topic with repository-grounded knowledge. The
    private fallback is \`empirical __internal context\`.
-5. Ensure project integrations are reconciled by initialization. Report exact
+6. Ensure project integrations are reconciled by initialization. Report exact
    configuration, context, created, updated, removed, and preserved outcomes,
    including whether automatic repository activation is ready.
-6. Stop after setup or repair. Do not call route, discovery, fast, complex,
+7. Stop after setup or repair. Do not call route, discovery, fast, complex,
    yolo, loop, complete, tracker binding, handoff, integrate, deliver, publish,
    or archive, and do not create or select feature workflow state.
 
@@ -129,16 +143,19 @@ the user does not need to mention Empirical or choose a profile.
 6. Show any worktree proposal exactly and wait for approval before calling the
    approved creation operation. Never stash, force, or replace selected work.
 7. Treat Empirical's local journal as authoritative. If .empirical/tracker.json
-   is absent, remain local-only and make no network requests. When the user asks
-   to enable a mirror, collect exactly one provider configuration for GitHub,
-   Linear, or Jira, persist only credential environment-variable names through
-   \`empirical_tracker_configure\`, and create or attach one ticket through
-   \`empirical_tracker_bind\`. Never replace an existing binding implicitly.
+   is absent or ticket behavior is off, remain local-only/off and make no
+   provider requests. In manual mode use \`empirical_tracker_bind\` only for the
+   user's explicit create or attach choice and never replace a binding
+   implicitly. In ensure mode, \`empirical_tracker_sync\` validates a referenced
+   ticket, reconciles the stable feature marker, or creates exactly once when no
+   unique ticket exists; ambiguity requires reconciliation and never a guess.
    After each local workflow mutation is durably committed, call
-   \`empirical_tracker_sync\`. A remote failure leaves local progress intact;
-   report local-only, synced, pending, or failed health and retry only the
-   durable pending projection. Tracker operations are granular MCP tools, not
-   additional skills or user commands.
+   \`empirical_tracker_sync\`. It publishes only configured milestone comments
+   and receipt-approved safe evidence, preserves user-authored descriptions,
+   and retries durable unacknowledged effects. A remote failure leaves local
+   progress intact; report local-only, off, synced, pending, or failed health.
+   Tracker operations are granular MCP tools, not additional skills or user
+   commands.
 8. Execute every returned action, create immutable evidence receipts with the
    configured commands or collected artifacts, complete its exact revision with
    receipt ids, consume the response as the next action, and integrate reviewed

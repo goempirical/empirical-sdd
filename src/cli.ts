@@ -38,7 +38,7 @@ import {
 import { isUninstallConfirmed, uninstallEmpirical, updateEmpirical } from "./lifecycle.js";
 import { runMcpServer } from "./mcp.js";
 import { OPERATIONS, SKILLS, operationById } from "./operations.js";
-import { authorizationSchema } from "./protocol.js";
+import { authorizationSchema, digestJson } from "./protocol.js";
 import { selectAgentsInteractive, type AgentSelectorItem } from "./selector.js";
 import {
   recommendedSetupSettings,
@@ -49,7 +49,16 @@ import {
   type SetupSettings,
 } from "./setup.js";
 import { ProjectStore } from "./storage.js";
-import { parseTrackerBindInput } from "./tracking.js";
+import {
+  discoverTracker,
+  loadTrackerPolicy,
+  parseTrackerBindInput,
+  parseTrackerDiscoveryInput,
+  parseTrackerSetupChange,
+  previewTrackerPolicy,
+  proposeTrackerStateMapping,
+  suggestTrackerStateMapping,
+} from "./tracking.js";
 import { detectBase } from "./worktrees.js";
 import {
   PRODUCT_VERSION,
@@ -64,6 +73,12 @@ import {
   type ProjectConfigurationInput,
   type ProjectStatus,
   type TrackerStatus,
+  type TrackerDiscovery,
+  type TrackerDiscoveryResource,
+  type TrackerPolicy,
+  type TrackerPolicyPreview,
+  type TrackerSetupChange,
+  type TrackerStateMap,
   type UninstallReport,
   type WorktreeHandoff,
   type WorktreeProposal,
@@ -192,12 +207,16 @@ async function main(): Promise<void> {
       const integrations = !takeFlag(context.args, "--no-integrations");
       const defaults = takeFlag(context.args, "--defaults");
       const forceInteractive = takeFlag(context.args, "--interactive");
+      const trackerInputPath = takeOption(context.args, "--tracker-input");
       if (forceInteractive && (defaults || context.json)) {
         throw new EmpiricalError("INVALID_ARGUMENT", "--interactive cannot be combined with --defaults or --json");
       }
       const configuration = readConfigurationFlags(context.args);
       if (forceInteractive && configuration.explicit) {
         throw new EmpiricalError("INVALID_ARGUMENT", "--interactive cannot be combined with configuration flags");
+      }
+      if (forceInteractive && trackerInputPath) {
+        throw new EmpiricalError("INVALID_ARGUMENT", "--interactive cannot be combined with --tracker-input");
       }
       if (defaults && configuration.explicit) {
         throw new EmpiricalError("INVALID_ARGUMENT", "--defaults cannot be combined with configuration flags");
@@ -207,28 +226,35 @@ async function main(): Promise<void> {
         join(context.root, ".empirical", "config.json"),
         "utf8",
       ).then(() => true, () => false);
+      const trackerInput = trackerInputPath
+        ? parseTrackerSetupChange(await readJsonPath<unknown>(trackerInputPath, "init tracker"))
+        : undefined;
       const interactive = !context.json
         && !defaults
         && !configuration.explicit
+        && !trackerInput
         && (forceInteractive || Boolean(process.stdin.isTTY && process.stdout.isTTY));
-      const chosenConfiguration = interactive
+      const chosenSetup = interactive
         ? await interactiveConfiguration(
           context.root,
           existingConfiguration ? await new ProjectStore(context.root).loadConfig() : null,
+          existingConfiguration ? await loadTrackerPolicy(context.root) : null,
         )
-        : configuration.input;
+        : { configuration: configuration.input, tracker: trackerInput };
       const initialized = await EmpiricalProject.initialize(context.root, {
         ...(profile ? { profile } : {}),
         integrations,
-        ...chosenConfiguration,
+        ...chosenSetup.configuration,
+        ...(chosenSetup.tracker ? { tracker: chosenSetup.tracker } : {}),
         setupComplete: true,
       });
       const config = await initialized.project.config();
+      const tracker = await initialized.project.trackerPolicy();
       emit(
         { state: initialized.state, config, integrations: initialized.integrations, next: await initialized.project.next() },
         context.json,
         () => renderIntegrationReport(`Empirical ${PRODUCT_VERSION} is ready in ${initialized.project.store.root}.`, initialized.integrations)
-          + `\n\n${renderSetupSummary(setupSettingsFromConfig(config), { current: true })}`,
+          + `\n\n${renderSetupSummary(setupSettingsFromConfig(config), { current: true, tracker })}`,
       );
       return;
     }
@@ -249,14 +275,18 @@ async function main(): Promise<void> {
       assertNoArgs(context.args, "config");
       const project = await EmpiricalProject.open(context.root);
       const current = await project.config();
-      const input = defaults
-        ? defaultConfiguration()
+      const setup = defaults
+        ? { configuration: defaultConfiguration(), tracker: undefined }
         : configuration.explicit
-            ? { ...configuration.input, setupComplete: true }
+            ? { configuration: { ...configuration.input, setupComplete: true }, tracker: undefined }
           : (forceInteractive || Boolean(process.stdin.isTTY && process.stdout.isTTY)) && !context.json
-            ? await interactiveConfiguration(project.store.root, current)
+            ? await interactiveConfiguration(project.store.root, current, await project.trackerPolicy())
             : (() => { throw new EmpiricalError("CONFIG_REQUIRED", "Use configuration flags, --defaults, or an interactive terminal"); })();
-      const config = await project.configure(input);
+      if (setup.tracker?.mode === "apply") await project.previewTracker(setup.tracker.policy);
+      const config = await project.configure(setup.configuration);
+      if (setup.tracker && setup.tracker.mode !== "preserve") {
+        await project.configureTracker(setup.tracker.mode === "disabled" ? null : setup.tracker.policy);
+      }
       emit(config, context.json, renderConfig);
       return;
     }
@@ -491,6 +521,24 @@ async function main(): Promise<void> {
       assertNoArgs(context.args, "explain");
       const project = await EmpiricalProject.openReadOnly(context.root);
       emit(await project.explain(), context.json, renderExplain);
+      return;
+    }
+    case "tracker-discover": {
+      const input = parseTrackerDiscoveryInput(
+        await readJsonInput<unknown>(context.args, "tracker-discover"),
+      );
+      emit(await discoverTracker(input), context.json, renderTrackerDiscovery);
+      return;
+    }
+    case "tracker-preview": {
+      const policy = await readJsonInput<unknown>(context.args, "tracker-preview");
+      emit(await previewTrackerPolicy(policy), context.json, renderTrackerPreview);
+      return;
+    }
+    case "tracker-suggest": {
+      const input = await readJsonInput<unknown>(context.args, "tracker-suggest");
+      emit(await proposeTrackerStateMapping(input), context.json, (value) =>
+        renderTrackerMapping(value as import("./types.js").TrackerMappingSuggestion));
       return;
     }
     case "tracker-configure": {
@@ -751,32 +799,59 @@ class LinePrompter {
   close(): void { this.readline.close(); }
 }
 
+interface InteractiveSetupChoice {
+  configuration: ProjectConfigurationInput;
+  tracker: TrackerSetupChange | undefined;
+}
+
 async function interactiveConfiguration(
   root: string,
   current: Awaited<ReturnType<EmpiricalProject["config"]>> | null,
-): Promise<ProjectConfigurationInput> {
+  currentTracker: TrackerPolicy | null,
+): Promise<InteractiveSetupChoice> {
   const prompt = new LinePrompter();
   let settings = current ? setupSettingsFromConfig(current) : recommendedSetupSettings();
   let resolvedBase: string | undefined;
   if (settings.isolation.baseBranch === "auto") {
     try { resolvedBase = detectBase(root); } catch { resolvedBase = undefined; }
   }
-  console.log(`\n${renderSetupSummary(settings, { current: Boolean(current), ...(resolvedBase ? { resolvedBase } : {}) })}`);
+  console.log(`\n${renderSetupSummary(settings, {
+    current: Boolean(current),
+    ...(resolvedBase ? { resolvedBase } : {}),
+    tracker: currentTracker,
+  })}`);
   try {
     const primary = current ? "keep" : "apply";
     console.log("\n◇ Use these settings?");
     console.log(`│  ● ${current ? "Keep current settings" : "Apply recommended settings"} (default)`);
     console.log("│  ○ Customize");
+    console.log("│  ○ Configure tracker");
     console.log("│  ○ Cancel");
     const firstChoice = await askEnumDefault(
       prompt,
       `Choice [${primary}]: `,
       primary,
-      new Set([primary, current ? "k" : "a", "customize", "c", "cancel", "x", "q"]),
+      new Set([primary, current ? "k" : "a", "customize", "c", "tracker", "t", "cancel", "x", "q"]),
     );
     if (["cancel", "x", "q"].includes(firstChoice)) throw setupCancelled();
     if (firstChoice === primary || firstChoice === (current ? "k" : "a")) {
-      return setupConfigurationInput(settings);
+      return { configuration: setupConfigurationInput(settings), tracker: { mode: "preserve" } };
+    }
+    if (firstChoice === "tracker" || firstChoice === "t") {
+      const tracker = await interactiveTrackerSetup(prompt, currentTracker);
+      const previewPolicy = tracker.mode === "apply" ? tracker.policy : null;
+      console.log(`\n${renderSetupSummary(settings, {
+        current: false,
+        effective: true,
+        ...(resolvedBase ? { resolvedBase } : {}),
+        tracker: previewPolicy,
+      })}`);
+      console.log("\n◇ Save this effective tracker setup?");
+      console.log("│  ● Save (default)");
+      console.log("│  ○ Cancel");
+      const choice = await askEnumDefault(prompt, "Choice [save]: ", "save", new Set(["save", "s", "cancel", "x", "q"]));
+      if (["cancel", "x", "q"].includes(choice)) throw setupCancelled();
+      return { configuration: setupConfigurationInput(settings), tracker };
     }
 
     while (true) {
@@ -787,7 +862,12 @@ async function interactiveConfiguration(
         console.log(`\n! ${asErrorMessage(error)}\nPlease review the setup sections again.`);
         continue;
       }
-      console.log(`\n${renderSetupSummary(settings, { current: false, effective: true, ...(resolvedBase ? { resolvedBase } : {}) })}`);
+      console.log(`\n${renderSetupSummary(settings, {
+        current: false,
+        effective: true,
+        ...(resolvedBase ? { resolvedBase } : {}),
+        tracker: currentTracker,
+      })}`);
       console.log("\n◇ Save these effective settings?");
       console.log("│  ● Save (default)");
       console.log("│  ○ Edit");
@@ -798,12 +878,216 @@ async function interactiveConfiguration(
         "save",
         new Set(["save", "s", "edit", "e", "cancel", "x", "q"]),
       );
-      if (finalChoice === "save" || finalChoice === "s") return setupConfigurationInput(settings);
+      if (finalChoice === "save" || finalChoice === "s") {
+        return { configuration: setupConfigurationInput(settings), tracker: { mode: "preserve" } };
+      }
       if (["cancel", "x", "q"].includes(finalChoice)) throw setupCancelled();
     }
   } finally {
     prompt.close();
   }
+}
+
+async function interactiveTrackerSetup(
+  prompt: LinePrompter,
+  current: TrackerPolicy | null,
+): Promise<TrackerSetupChange> {
+  console.log("\n◆ Tracker · discover accessible targets; credential values stay in the host environment.");
+  if (current) console.log("│  preserve (default) · disable · linear · github · jira");
+  else console.log("│  local (default) · linear · github · jira");
+  const fallback = current ? "preserve" : "local";
+  const provider = await askEnumDefault(
+    prompt,
+    `Tracker [${fallback}]: `,
+    fallback,
+    new Set(["preserve", "p", "disable", "disabled", "off", "local", "linear", "github", "jira"]),
+  );
+  if (provider === "preserve" || provider === "p") return { mode: "preserve" };
+  if (["disable", "disabled", "off", "local"].includes(provider)) return { mode: "disabled" };
+
+  let discovery: TrackerDiscovery;
+  let credentialEnv: TrackerPolicy["credentialEnv"];
+  let jiraSiteUrl: string | null = null;
+  if (provider === "linear") {
+    const apiKey = await askDefault(prompt, "Linear credential variable [LINEAR_API_KEY]: ", "LINEAR_API_KEY");
+    credentialEnv = { apiKey };
+    discovery = await discoverTracker({ provider: "linear", credentialEnv });
+  } else if (provider === "github") {
+    const token = await askDefault(prompt, "GitHub credential variable [GITHUB_TOKEN]: ", "GITHUB_TOKEN");
+    credentialEnv = { token };
+    discovery = await discoverTracker({ provider: "github", credentialEnv });
+  } else {
+    jiraSiteUrl = await askRequired(prompt, "Jira Cloud site URL (for example https://example.atlassian.net): ");
+    const email = await askDefault(prompt, "Jira email variable [JIRA_EMAIL]: ", "JIRA_EMAIL");
+    const apiToken = await askDefault(prompt, "Jira API token variable [JIRA_API_TOKEN]: ", "JIRA_API_TOKEN");
+    credentialEnv = { email, apiToken };
+    discovery = await discoverTracker({ provider: "jira", target: { siteUrl: jiraSiteUrl }, credentialEnv });
+  }
+
+  const policyTarget = await chooseTrackerTarget(prompt, discovery, jiraSiteUrl);
+  const scoped = scopedTrackerDiscovery(discovery, policyTarget.stateParent);
+  const suggested = suggestTrackerStateMapping(scoped);
+  const states = await editTrackerMapping(prompt, scoped, suggested);
+  const ticket = await askEnumDefault(
+    prompt,
+    "Ticket behavior [ensure] (off/manual/ensure): ",
+    "ensure",
+    new Set(["off", "manual", "ensure"]),
+  ) as "off" | "manual" | "ensure";
+  const visibility = await askEnumDefault(
+    prompt,
+    "Progress visibility [milestones] (blockers-final/milestones/revisions): ",
+    "milestones",
+    new Set(["blockers-final", "milestones", "revisions"]),
+  ) as "blockers-final" | "milestones" | "revisions";
+  const policy: TrackerPolicy = provider === "linear"
+    ? {
+        schemaVersion: 2,
+        provider: "linear",
+        target: policyTarget.target as Extract<TrackerPolicy, { provider: "linear" }>["target"],
+        credentialEnv: credentialEnv as Extract<TrackerPolicy, { provider: "linear" }>["credentialEnv"],
+        states,
+        ticket,
+        visibility,
+      }
+    : provider === "github"
+      ? {
+          schemaVersion: 2,
+          provider: "github",
+          target: policyTarget.target as Extract<TrackerPolicy, { provider: "github" }>["target"],
+          credentialEnv: credentialEnv as Extract<TrackerPolicy, { provider: "github" }>["credentialEnv"],
+          states,
+          ticket,
+          visibility,
+        }
+      : {
+          schemaVersion: 2,
+          provider: "jira",
+          target: policyTarget.target as Extract<TrackerPolicy, { provider: "jira" }>["target"],
+          credentialEnv: credentialEnv as Extract<TrackerPolicy, { provider: "jira" }>["credentialEnv"],
+          states,
+          ticket,
+          visibility,
+        };
+  const preview = await previewTrackerPolicy(policy);
+  console.log("\n◆ Effective tracker configuration");
+  console.log(`│  Provider: ${preview.policy.provider} · Policy v${preview.policy.schemaVersion}`);
+  console.log(`│  Target: ${preview.target.map((entry) => `${entry.name} (${entry.kind})`).join(" → ")}`);
+  console.log(`│  Ticket behavior: ${preview.effective.ticket}`);
+  console.log(`│  Progress visibility: ${preview.effective.visibility}`);
+  for (const phase of Object.keys(states) as Array<keyof TrackerStateMap>) {
+    const resource = scoped.resources.find((entry) => entry.kind === "state" && entry.id === states[phase]);
+    console.log(`│  ${phase}: ${resource?.name ?? states[phase]} (${states[phase]})`);
+  }
+  console.log(`│  Credential source: ${Object.values(credentialEnv).join(", ")} (values are not saved)`);
+  return { mode: "apply", policy };
+}
+
+async function chooseTrackerTarget(
+  prompt: LinePrompter,
+  discovery: TrackerDiscovery,
+  jiraSiteUrl: string | null,
+): Promise<{ target: TrackerPolicy["target"]; stateParent: string }> {
+  if (discovery.provider === "linear") {
+    const team = await chooseTrackerResource(prompt, "Linear team", discovery.resources.filter((resource) => resource.kind === "team"));
+    const projects = discovery.resources.filter((resource) => resource.kind === "project" && resource.parentId === team.id);
+    const project = projects.length
+      ? await chooseTrackerResource(prompt, "Linear project (or none)", projects, true)
+      : null;
+    return { target: { teamId: team.id, projectId: project?.id ?? null }, stateParent: team.id };
+  }
+  if (discovery.provider === "github") {
+    const owner = await chooseTrackerResource(prompt, "GitHub owner", discovery.resources.filter((resource) => resource.kind === "workspace"));
+    const repository = await chooseTrackerResource(prompt, "GitHub repository", discovery.resources.filter((resource) => resource.kind === "repository" && resource.parentId === owner.id));
+    const project = await chooseTrackerResource(prompt, "GitHub Project", discovery.resources.filter((resource) => resource.kind === "project" && resource.parentId === owner.id));
+    const field = await chooseTrackerResource(prompt, "Status field", discovery.resources.filter((resource) => resource.kind === "field" && resource.parentId === project.id));
+    const ownerName = owner.key ?? repository.key?.split("/")[0] ?? owner.name;
+    return {
+      target: { owner: ownerName, repository: repository.name, projectId: project.id, statusFieldId: field.id },
+      stateParent: field.id,
+    };
+  }
+  const project = await chooseTrackerResource(prompt, "Jira project", discovery.resources.filter((resource) => resource.kind === "project"));
+  const issueType = await chooseTrackerResource(prompt, "Jira issue type", discovery.resources.filter((resource) => resource.kind === "issue-type" && resource.parentId === project.id));
+  return {
+    target: { siteUrl: jiraSiteUrl!, projectKey: project.key ?? project.id, issueTypeId: issueType.id },
+    stateParent: project.id,
+  };
+}
+
+function chooseTrackerResource(
+  prompt: LinePrompter,
+  label: string,
+  resources: TrackerDiscoveryResource[],
+  allowNone?: false,
+): Promise<TrackerDiscoveryResource>;
+function chooseTrackerResource(
+  prompt: LinePrompter,
+  label: string,
+  resources: TrackerDiscoveryResource[],
+  allowNone: true,
+): Promise<TrackerDiscoveryResource | null>;
+async function chooseTrackerResource(
+  prompt: LinePrompter,
+  label: string,
+  resources: TrackerDiscoveryResource[],
+  allowNone = false,
+): Promise<TrackerDiscoveryResource | null> {
+  if (resources.length === 0 && !allowNone) throw new EmpiricalError("TRACKER_TARGET_UNAVAILABLE", `Discovery returned no accessible ${label}`);
+  console.log(`\n◇ ${label}`);
+  if (allowNone) console.log("│  0. None");
+  resources.forEach((resource, index) => console.log(`│  ${index + 1}. ${resource.name} · ${resource.id}`));
+  while (true) {
+    const fallback = allowNone ? "0" : resources.length === 1 ? "1" : "";
+    const answer = await prompt.ask(`Choice${fallback ? ` [${fallback}]` : ""}: `) || fallback;
+    if (allowNone && answer === "0") return null;
+    if (/^\d+$/.test(answer)) {
+      const selected = resources[Number(answer) - 1];
+      if (selected) return selected;
+    }
+    console.log("! Choose one of the displayed numbers.");
+  }
+}
+
+function scopedTrackerDiscovery(discovery: TrackerDiscovery, parentId: string): TrackerDiscovery {
+  const resources = discovery.resources.filter((resource) => resource.kind === "state" && resource.parentId === parentId);
+  const body = {
+    schemaVersion: 1 as const,
+    provider: discovery.provider,
+    resources,
+    capabilities: discovery.capabilities,
+    complete: true as const,
+  };
+  return { ...body, digest: digestJson(body) };
+}
+
+async function editTrackerMapping(
+  prompt: LinePrompter,
+  discovery: TrackerDiscovery,
+  suggestion: ReturnType<typeof suggestTrackerStateMapping>,
+): Promise<TrackerStateMap> {
+  const states = discovery.resources.filter((resource) => resource.kind === "state");
+  const mapping = {} as TrackerStateMap;
+  console.log("\n◆ Semantic state mapping · phases may share one provider state.");
+  for (const phase of Object.keys(suggestion.phases) as Array<keyof TrackerStateMap>) {
+    const proposed = suggestion.phases[phase];
+    const defaultState = proposed.selectedStateId
+      ? states.find((state) => state.id === proposed.selectedStateId) ?? null
+      : null;
+    console.log(`\n◇ ${phase}${proposed.ambiguous ? " · explicit choice required" : ""}`);
+    states.forEach((state, index) => console.log(`│  ${index + 1}. ${state.name} · ${state.id}${state.id === defaultState?.id ? " · suggested" : ""}`));
+    while (true) {
+      const fallback = defaultState && !proposed.ambiguous ? String(states.indexOf(defaultState) + 1) : "";
+      const answer = await prompt.ask(`Choice${fallback ? ` [${fallback}]` : ""}: `) || fallback;
+      const selected = /^\d+$/.test(answer) ? states[Number(answer) - 1] : undefined;
+      if (selected) {
+        mapping[phase] = selected.id;
+        break;
+      }
+      console.log("! Choose one displayed state; ambiguity is never guessed.");
+    }
+  }
+  return mapping;
 }
 
 async function customizeSetup(prompt: LinePrompter, current: SetupSettings): Promise<SetupSettings> {
@@ -1260,13 +1544,17 @@ async function readJsonInput<T>(args: string[], command: string): Promise<T> {
     );
   }
   assertNoArgs(args, command);
+  return readJsonPath<T>(inputPath, command);
+}
+
+async function readJsonPath<T>(inputPath: string, label: string): Promise<T> {
   const text = inputPath === "-" ? await readStdin() : await readFile(inputPath, "utf8");
   try {
     return JSON.parse(text) as T;
   } catch (error) {
     throw new EmpiricalError(
       "INVALID_ARGUMENT",
-      `${command} input is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+      `${label} input is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 }
@@ -1416,9 +1704,57 @@ function renderTrackerStatus(tracker: TrackerStatus): string {
     `- Committed revision: ${tracker.committedRevision}`,
     `- Last-synced revision: ${tracker.lastSyncedRevision ?? "none"}`,
     `- Pending revision: ${tracker.pendingRevision ?? "none"}`,
+    ...(tracker.schemaVersion === undefined ? [] : [`- Policy schema: ${tracker.schemaVersion}`]),
+    ...(tracker.ticket === undefined ? [] : [`- Ticket behavior: ${tracker.ticket}`]),
+    ...(tracker.visibility === undefined ? [] : [`- Progress visibility: ${tracker.visibility}`]),
+    ...(tracker.pendingEffects === undefined ? [] : [`- Pending effects: ${tracker.pendingEffects}`]),
     `- Failure: ${failure}`,
     `- Failure at: ${failureAt}`,
     `- Recovery: ${recovery}`,
+  ].join("\n");
+}
+
+function renderTrackerDiscovery(value: unknown): string {
+  const discovery = value as TrackerDiscovery;
+  const resources = discovery.resources.map((resource) => {
+    const metadata = [resource.kind, resource.key, resource.stateType]
+      .filter((entry): entry is string => Boolean(entry))
+      .join(" · ");
+    return `- ${resource.name} (${resource.id})${metadata ? ` — ${metadata}` : ""}`;
+  });
+  return [
+    `Tracker discovery: ${discovery.provider}`,
+    `Capabilities: comments=${discovery.capabilities.comments}, uploads=${discovery.capabilities.uploads}, durable-links=${discovery.capabilities.durableLinks}`,
+    ...resources,
+    `Discovery digest: ${discovery.digest}`,
+  ].join("\n");
+}
+
+function renderTrackerPreview(value: unknown): string {
+  const preview = value as TrackerPolicyPreview;
+  return [
+    `Tracker policy preview: ${preview.policy.provider} v${preview.policy.schemaVersion}`,
+    `Target: ${preview.target.map((resource) => `${resource.name} (${resource.kind})`).join(" → ")}`,
+    `Ticket behavior: ${preview.effective.ticket}`,
+    `Progress visibility: ${preview.effective.visibility}`,
+    "State mapping:",
+    ...Object.entries(preview.mapping).map(([phase, resource]) =>
+      `- ${phase}: ${resource.name} (${resource.id})`),
+    `Credential sources: ${Object.values(preview.policy.credentialEnv).join(", ")} (values are not saved)`,
+    `Preview digest: ${preview.digest}`,
+  ].join("\n");
+}
+
+function renderTrackerMapping(mapping: import("./types.js").TrackerMappingSuggestion): string {
+  return [
+    `Tracker mapping suggestion: ${mapping.provider}`,
+    ...Object.entries(mapping.phases).map(([phase, suggestion]) => {
+      const selected = suggestion.selectedStateId
+        ? suggestion.candidates.find((candidate) => candidate.stateId === suggestion.selectedStateId)
+        : null;
+      return `- ${phase}: ${selected ? `${selected.name} (${selected.stateId})` : "explicit choice required"}`;
+    }),
+    ...(mapping.ambiguous.length ? [`Unresolved: ${mapping.ambiguous.join(", ")}`] : []),
   ].join("\n");
 }
 
@@ -1426,11 +1762,20 @@ function trackerRecoveryHint(code: string): string {
   if (code === "TRACKER_CREATE_AMBIGUOUS") {
     return "Run tracker-sync to reconcile the attempted create. If it remains ambiguous, locate and attach the ticket or explicitly confirm a duplicate-risk create retry.";
   }
+  if (code === "TRACKER_BIND_AMBIGUOUS" || code === "TRACKER_MARKER_AMBIGUOUS") {
+    return "Inspect the target for competing Empirical markers, then explicitly attach the one valid ticket; Empirical will not guess or create another ticket.";
+  }
   if (code === "TRACKER_TARGET_MISMATCH" || code === "TRACKER_PROVIDER_MISMATCH") {
     return "Restore the policy target that owns this binding, or explicitly replace and revalidate the binding for the intended target.";
   }
   if (code === "TRACKER_CREDENTIAL_MISSING") {
     return "Inject the configured credential environment variable into the MCP or CLI host process, then run tracker-sync again.";
+  }
+  if (code === "TRACKER_ARTIFACT_UNSAFE" || code === "TRACKER_ARTIFACT_RECEIPT_INVALID") {
+    return "Repair or replace the committed evidence receipt/artifact with a contained, regular, safe file, commit local state, then retry tracker-sync.";
+  }
+  if (code === "TRACKER_HTTP_FAILED" || code === "TRACKER_TRANSPORT_FAILED" || code === "TRACKER_GRAPHQL_FAILED") {
+    return "Check provider availability and token permissions; local progress is already committed, so retry tracker-sync after access recovers.";
   }
   return "Resolve the reported tracker or provider failure, then run tracker-sync to retry the durable pending revision.";
 }
