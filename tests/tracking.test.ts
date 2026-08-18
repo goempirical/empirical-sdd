@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from "bun:test";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -725,7 +725,7 @@ describe("external ticket tracking", () => {
     expect(acknowledged.effects.map((effect: Record<string, string>) => effect.kind)).toEqual(["transition", "comment"]);
   });
 
-  test("receipt-approved Jira evidence uploads once and recovers a lost upload response", async () => {
+  test("receipt-approved Jira evidence through an aliased root uploads once and recovers a lost response", async () => {
     const { root, project, action } = await projectWithFastFeature();
     const artifactBytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
     await writeFile(join(root, "review.png"), artifactBytes);
@@ -742,11 +742,16 @@ describe("external ticket tracking", () => {
       summary: "Implementation committed with review evidence",
       receiptIds: [receipt.id],
     });
+    const aliasedRoot = `${root}-alias`;
+    await symlink(root, aliasedRoot, process.platform === "win32" ? "junction" : "dir");
+    directories.push(aliasedRoot);
+    expect(await realpath(aliasedRoot)).not.toBe(aliasedRoot);
+    const aliasedProject = await EmpiricalProject.open(aliasedRoot, { feature: action.feature! });
     const committedState = await project.statusReport();
     const desiredState = jiraPolicyV2().states[trackerProgress(committedState)];
 
     const discovery = sequence(jiraDiscoveryResponses());
-    await project.configureTracker(jiraPolicyV2(), {
+    await aliasedProject.configureTracker(jiraPolicyV2(), {
       transport: discovery.transport,
       env: { JIRA_EMAIL: "person@example.com", JIRA_API_TOKEN: "jira-secret" },
     });
@@ -769,7 +774,7 @@ describe("external ticket tracking", () => {
       } })),
       new Error("connection closed after Jira accepted the attachment"),
     ]);
-    const interrupted = await project.bindTracker(
+    const interrupted = await aliasedProject.bindTracker(
       { mode: "attach", ticket: "ENG-7" },
       {
         transport: first.transport,
@@ -794,7 +799,7 @@ describe("external ticket tracking", () => {
       issuetype: { id: "10001" },
       attachment: [{ id: "attachment-1", filename, size: artifactBytes.length, mimeType: "image/png" }],
     } }))]);
-    const recovered = await project.syncTracker({
+    const recovered = await aliasedProject.syncTracker({
       transport: retry.transport,
       env: { JIRA_EMAIL: "person@example.com", JIRA_API_TOKEN: "jira-secret" },
     });

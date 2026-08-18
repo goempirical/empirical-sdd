@@ -740,7 +740,7 @@ async function loadTrackerArtifacts(
       if (isSecretLikeArtifactPath(artifact.path)) {
         throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "A secret-like evidence artifact path cannot be projected");
       }
-      const absolute = resolve(root, artifact.path);
+      const absolute = resolve(canonicalRoot, artifact.path);
       const contained = relative(canonicalRoot, absolute);
       if (contained === ".." || contained.startsWith("../") || contained.startsWith("..\\")) {
         throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "An evidence artifact escapes the repository");
@@ -2009,7 +2009,7 @@ async function publishRemoteArtifact(
 
 async function readTrackerArtifactBytes(root: string, artifact: TrackerArtifact): Promise<Buffer> {
   const canonicalRoot = await realpath(resolve(root));
-  const absolute = resolve(root, artifact.path);
+  const absolute = resolve(canonicalRoot, artifact.path);
   const contained = relative(canonicalRoot, absolute);
   if (contained === ".." || contained.startsWith("../") || contained.startsWith("..\\")) {
     throw new EmpiricalError("TRACKER_ARTIFACT_UNSAFE", "An evidence artifact escapes the repository before upload");
