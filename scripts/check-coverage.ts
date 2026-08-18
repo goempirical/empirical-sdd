@@ -50,7 +50,12 @@ for (const [file, coverage] of [...files].sort(([left], [right]) => left.localeC
   coveredFunctions += coverage.functionsHit;
 }
 
-const processAdapterModules = new Set(["src/cli.ts", "src/mcp.ts", "src/index.ts"]);
+const processAdapterModules = new Set([
+  "src/cli.ts",
+  "src/demo-integration-repair.ts",
+  "src/index.ts",
+  "src/mcp.ts",
+]);
 const sourceModules = (await readdir(resolve(root, "src")))
   .filter((name) => name.endsWith(".ts"))
   .map((name) => `src/${name}`);

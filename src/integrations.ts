@@ -216,6 +216,20 @@ const MCP_SERVER = {
   command: "empirical",
   args: ["mcp"],
 };
+const CODEX_MCP_START = "# empirical-sdd:mcp:start";
+const CODEX_MCP_END = "# empirical-sdd:mcp:end";
+const CODEX_MCP_BLOCK = `${CODEX_MCP_START}
+[mcp_servers.empirical]
+command = "empirical"
+args = ["mcp"]
+${CODEX_MCP_END}`;
+
+export interface ProjectIntegrationInspection {
+  ready: boolean;
+  required: string[];
+  missing: string[];
+  drifted: string[];
+}
 
 export interface InstallGlobalAgentSkillsOptions {
   all?: boolean;
@@ -291,6 +305,64 @@ export async function installProjectIntegrations(root: string): Promise<Integrat
   await mergeMcpJson(root, join(root, ".gemini", "settings.json"), report, { cwd: "." });
   await mergeCodexToml(root, join(root, ".codex", "config.toml"), report);
   return report;
+}
+
+export async function inspectProjectIntegrations(
+  rootInput: string,
+): Promise<ProjectIntegrationInspection> {
+  const root = resolve(rootInput);
+  const targets = [
+    ...["AGENTS.md", "CLAUDE.md", "GEMINI.md"].map((label) => ({
+      label,
+      inspect: (contents: string) => hasExactManagedBlock(contents, START, END, PROJECT_GUIDANCE),
+    })),
+    ...[
+      ".agents/skills/empirical/SKILL.md",
+      ".claude/skills/empirical/SKILL.md",
+    ].map((label) => ({
+      label,
+      inspect: (contents: string) => contents === LOCAL_EMPIRICAL_SKILL,
+    })),
+    {
+      label: ".mcp.json",
+      inspect: (contents: string) => hasExactMcpEntry(contents),
+    },
+    {
+      label: ".cursor/mcp.json",
+      inspect: (contents: string) => hasExactMcpEntry(contents),
+    },
+    {
+      label: ".gemini/settings.json",
+      inspect: (contents: string) => hasExactMcpEntry(contents, { cwd: "." }),
+    },
+    {
+      label: ".codex/config.toml",
+      inspect: (contents: string) => hasExactManagedBlock(
+        contents,
+        CODEX_MCP_START,
+        CODEX_MCP_END,
+        CODEX_MCP_BLOCK,
+      ),
+    },
+  ];
+  const inspected = await Promise.all(targets.map(async (target) => ({
+    label: target.label,
+    state: await inspectProjectIntegrationTarget(root, target.label, target.inspect),
+  })));
+  const missing = inspected
+    .filter((target) => target.state === "missing")
+    .map((target) => target.label)
+    .sort();
+  const drifted = inspected
+    .filter((target) => target.state === "drifted")
+    .map((target) => target.label)
+    .sort();
+  return {
+    ready: missing.length === 0 && drifted.length === 0,
+    required: targets.map((target) => target.label).sort(),
+    missing,
+    drifted,
+  };
 }
 
 export async function installGlobalAgentSkills(
@@ -711,23 +783,16 @@ async function mergeMcpJson(
 
 async function mergeCodexToml(root: string, path: string, report: IntegrationReport): Promise<void> {
   if (await preserveUnsafeTarget(root, path, report)) return;
-  const start = "# empirical-sdd:mcp:start";
-  const end = "# empirical-sdd:mcp:end";
-  const block = `${start}
-[mcp_servers.empirical]
-command = "empirical"
-args = ["mcp"]
-${end}`;
   if (!(await isFile(path))) {
-    await writeTextAtomic(path, `${block}\n`);
+    await writeTextAtomic(path, `${CODEX_MCP_BLOCK}\n`);
     report.created.push(relativeLabel(root, path));
     return;
   }
   const current = await readFile(path, "utf8");
-  const starts = markerIndexes(current, start);
-  const ends = markerIndexes(current, end);
+  const starts = markerIndexes(current, CODEX_MCP_START);
+  const ends = markerIndexes(current, CODEX_MCP_END);
   if (starts.length === 1 && ends.length === 1 && ends[0]! >= starts[0]!) {
-    const next = `${current.slice(0, starts[0]!)}${block}${current.slice(ends[0]! + end.length)}`;
+    const next = `${current.slice(0, starts[0]!)}${CODEX_MCP_BLOCK}${current.slice(ends[0]! + CODEX_MCP_END.length)}`;
     if (next !== current) {
       await writeTextAtomic(path, next);
       report.updated.push(relativeLabel(root, path));
@@ -743,8 +808,58 @@ ${end}`;
     return;
   }
   const separator = current.endsWith("\n") ? "\n" : "\n\n";
-  await writeTextAtomic(path, `${current}${separator}${block}\n`);
+  await writeTextAtomic(path, `${current}${separator}${CODEX_MCP_BLOCK}\n`);
   report.updated.push(relativeLabel(root, path));
+}
+
+type ProjectIntegrationTargetState = "ready" | "missing" | "drifted";
+
+async function inspectProjectIntegrationTarget(
+  root: string,
+  label: string,
+  inspect: (contents: string) => boolean,
+): Promise<ProjectIntegrationTargetState> {
+  const target = join(root, ...label.split("/"));
+  const segments = label.split("/");
+  let current = root;
+  for (let index = 0; index < segments.length; index += 1) {
+    current = join(current, segments[index]!);
+    const details = await lstat(current).catch((error) => {
+      if (isMissingPathError(error)) return null;
+      throw error;
+    });
+    if (!details) return "missing";
+    if (details.isSymbolicLink()) return "drifted";
+    if (index < segments.length - 1 && !details.isDirectory()) return "drifted";
+    if (index === segments.length - 1 && !details.isFile()) return "drifted";
+  }
+  return inspect(await readFile(target, "utf8")) ? "ready" : "drifted";
+}
+
+function hasExactManagedBlock(
+  contents: string,
+  start: string,
+  end: string,
+  expected: string,
+): boolean {
+  const starts = markerIndexes(contents, start);
+  const ends = markerIndexes(contents, end);
+  return starts.length === 1
+    && ends.length === 1
+    && ends[0]! >= starts[0]!
+    && contents.slice(starts[0]!, ends[0]! + end.length) === expected;
+}
+
+function hasExactMcpEntry(contents: string, extra: Record<string, unknown> = {}): boolean {
+  let document: unknown;
+  try {
+    document = JSON.parse(contents) as unknown;
+  } catch {
+    return false;
+  }
+  if (!isRecord(document) || !isRecord(document.mcpServers)) return false;
+  return JSON.stringify(document.mcpServers.empirical)
+    === JSON.stringify({ ...MCP_SERVER, ...extra });
 }
 
 async function preserveUnsafeTarget(

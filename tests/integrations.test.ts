@@ -7,6 +7,7 @@ import { EmpiricalProject } from "../src/core.js";
 import { EmpiricalError } from "../src/errors.js";
 import {
   EMPIRICAL_AGENT_SKILL_NAMES,
+  inspectProjectIntegrations,
   installGlobalAgentSkills,
   installProjectIntegrations,
   managedGlobalAgentIds,
@@ -48,6 +49,10 @@ async function temporaryDirectory(prefix: string): Promise<string> {
 describe("agent integrations", () => {
   test("project initialization installs automatic local activation and runtime bridges", async () => {
     const root = await temporaryDirectory("empirical-project-integrations-");
+    const missing = await inspectProjectIntegrations(root);
+    expect(missing.ready).toBe(false);
+    expect(missing.missing).toHaveLength(9);
+    expect(missing.drifted).toEqual([]);
     const { integrations } = await EmpiricalProject.initialize(root);
 
     expect(integrations.scope).toBe("project");
@@ -77,6 +82,12 @@ describe("agent integrations", () => {
     expect(await readFile(join(root, ".claude", "skills", "empirical", "SKILL.md"), "utf8"))
       .toBe(localSkill);
     expect(await readFile(join(root, ".mcp.json"), "utf8")).toContain('"empirical"');
+    expect(await inspectProjectIntegrations(root)).toMatchObject({
+      ready: true,
+      missing: [],
+      drifted: [],
+      required: expect.arrayContaining(["AGENTS.md", ".agents/skills/empirical/SKILL.md"]),
+    });
 
     const repeated = await EmpiricalProject.initialize(root);
     expect(repeated.integrations.created).toEqual([]);
@@ -179,6 +190,13 @@ describe("agent integrations", () => {
     );
     expect(await readFile(join(outside, "AGENTS.md"), "utf8")).toBe("outside instructions\n");
     await expect(readFile(join(outside, "SKILL.md"), "utf8")).rejects.toBeDefined();
+    expect(await inspectProjectIntegrations(root)).toMatchObject({
+      ready: false,
+      drifted: expect.arrayContaining([
+        "AGENTS.md",
+        ".agents/skills/empirical/SKILL.md",
+      ]),
+    });
   });
 
   test("global install creates only the registry-backed Empirical skill for every selected agent", async () => {
@@ -505,8 +523,8 @@ describe("agent integrations", () => {
       expect(result.status).toBe(0);
       expect(result.stderr).toBe("");
       expect(result.stdout).toContain("╭───╯    ╰───╮");
-      expect(result.stdout.match(/empirical v0\.23\.0/g)).toHaveLength(1);
-      expect(result.stdout.indexOf("empirical v0.23.0")).toBeLessThan(result.stdout.indexOf("Lifecycle:"));
+      expect(result.stdout.match(/empirical v0\.23\.1/g)).toHaveLength(1);
+      expect(result.stdout.indexOf("empirical v0.23.1")).toBeLessThan(result.stdout.indexOf("Lifecycle:"));
       expect(result.stdout).not.toContain("\u001b[");
       expect(result.stdout).toContain("empirical install");
       expect(result.stdout).toContain("empirical update");
@@ -554,7 +572,7 @@ describe("agent integrations", () => {
     for (const alias of ["version", "--version", "-v"]) {
       const result = spawnSync(process.execPath, [cli, alias], { encoding: "utf8" });
       expect(result.status).toBe(0);
-      expect(result.stdout).toBe("0.23.0\n");
+      expect(result.stdout).toBe("0.23.1\n");
       expect(result.stderr).toBe("");
     }
   });

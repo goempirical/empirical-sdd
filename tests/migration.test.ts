@@ -224,7 +224,7 @@ describe("atomic Schema-4 to Schema-5 migration", () => {
     });
     expect(await json(join(empirical, "context", "manifest.json"))).toMatchObject({
       schemaVersion: 2,
-      generator: "empirical-0.23.0",
+      generator: "empirical-0.23.1",
       pages: expect.arrayContaining([
         expect.objectContaining({
           path: ".empirical/context/overview.md",

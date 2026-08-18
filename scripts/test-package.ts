@@ -51,6 +51,7 @@ try {
     "dist/mcp.d.ts",
     "dist/integrations.js",
     "dist/integrations.d.ts",
+    "dist/demo-integration-repair.js",
     "CHANGELOG.md",
     "docs/versioning.md",
   ]) {
@@ -77,12 +78,12 @@ try {
     `import { EmpiricalProject, PRODUCT_VERSION, SCHEMA_VERSION } from "empirical-sdd";
 import { canonicalJson } from "empirical-sdd/protocol";
 import { createMcpServer } from "empirical-sdd/mcp";
-import { EMPIRICAL_AGENT_SKILL_NAMES, uninstallGlobalAgentSkills } from "empirical-sdd/integrations";
+import { EMPIRICAL_AGENT_SKILL_NAMES, inspectProjectIntegrations, uninstallGlobalAgentSkills } from "empirical-sdd/integrations";
 
-if (typeof EmpiricalProject !== "function" || PRODUCT_VERSION !== "0.23.0" || SCHEMA_VERSION !== 5) throw new Error("root export mismatch");
+if (typeof EmpiricalProject !== "function" || PRODUCT_VERSION !== "0.23.1" || SCHEMA_VERSION !== 5) throw new Error("root export mismatch");
 if (canonicalJson({ b: 2, a: 1 }) !== '{"a":1,"b":2}') throw new Error("protocol export mismatch");
 if (typeof createMcpServer !== "function") throw new Error("MCP export mismatch");
-if (EMPIRICAL_AGENT_SKILL_NAMES.length !== 1 || EMPIRICAL_AGENT_SKILL_NAMES[0] !== "empirical-init" || typeof uninstallGlobalAgentSkills !== "function") throw new Error("integration export mismatch");
+if (EMPIRICAL_AGENT_SKILL_NAMES.length !== 1 || EMPIRICAL_AGENT_SKILL_NAMES[0] !== "empirical-init" || typeof inspectProjectIntegrations !== "function" || typeof uninstallGlobalAgentSkills !== "function") throw new Error("integration export mismatch");
 let blocked = false;
 try { await import("empirical-sdd/storage"); } catch (error) { blocked = error?.code === "ERR_PACKAGE_PATH_NOT_EXPORTED"; }
 if (!blocked) throw new Error("internal package subpath was exported");
@@ -98,21 +99,42 @@ if (!blocked) throw new Error("internal package subpath was exported");
   if (!packagedHelp.includes("empirical uninstall")) {
     throw new Error("Packed CLI help omitted empirical uninstall");
   }
+  const demoOutput = run(
+    node,
+    [join(consumer, "node_modules", "empirical-sdd", "dist", "demo-integration-repair.js")],
+    consumer,
+  );
+  const demo = JSON.parse(demoOutput) as {
+    before?: { finding?: { code?: string }; automaticActivation?: string };
+    after?: { finding?: { code?: string }; automaticActivation?: string };
+    durableState?: { configPreserved?: boolean; workflowStatePreserved?: boolean };
+  };
+  if (
+    demo.before?.finding?.code !== "PROJECT_INTEGRATIONS_MISSING"
+    || demo.before.automaticActivation !== "blocked"
+    || demo.after?.finding?.code !== "PROJECT_INTEGRATIONS_READY"
+    || demo.after.automaticActivation !== "ready"
+    || demo.durableState?.configPreserved !== true
+    || demo.durableState.workflowStatePreserved !== true
+  ) {
+    throw new Error("Packed integration-repair demo did not prove safe repair");
+  }
 
   await writeFile(
     join(consumer, "types.ts"),
     `import { EmpiricalProject, type UninstallReport, type WorkflowState } from "empirical-sdd";
 import { type EvidenceReceipt } from "empirical-sdd/protocol";
 import { createMcpServer } from "empirical-sdd/mcp";
-import { uninstallGlobalAgentSkills, type EmpiricalAgentSkillName } from "empirical-sdd/integrations";
+import { inspectProjectIntegrations, uninstallGlobalAgentSkills, type EmpiricalAgentSkillName, type ProjectIntegrationInspection } from "empirical-sdd/integrations";
 // @ts-expect-error package internals are intentionally unavailable
 import { ProjectStore } from "empirical-sdd/storage";
 void EmpiricalProject; void createMcpServer;
 const state = null as unknown as WorkflowState;
 const receipt = null as unknown as EvidenceReceipt;
 const skill = null as unknown as EmpiricalAgentSkillName;
+const inspection = null as unknown as ProjectIntegrationInspection;
 const uninstall = null as unknown as UninstallReport;
-void state; void receipt; void skill; void uninstall; void uninstallGlobalAgentSkills; void ProjectStore;
+void state; void receipt; void skill; void inspection; void uninstall; void inspectProjectIntegrations; void uninstallGlobalAgentSkills; void ProjectStore;
 `,
     "utf8",
   );

@@ -25,6 +25,7 @@ const result = await Bun.build({
     resolve(root, "src/mcp.ts"),
     resolve(root, "src/integrations.ts"),
     resolve(root, "src/cli.ts"),
+    resolve(root, "src/demo-integration-repair.ts"),
   ],
   outdir: output,
   target: "node",

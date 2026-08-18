@@ -13,6 +13,7 @@ import {
   verifyDeliveryReceipt,
   type GitHubDeliveryReceipt,
 } from "./delivery.js";
+import { inspectProjectIntegrations } from "./integrations.js";
 import { readJournal } from "./journal.js";
 import { inspectRepositoryKnowledge } from "./knowledge.js";
 import { parsePolicy } from "./policy.js";
@@ -40,6 +41,11 @@ export interface DoctorReport {
   status: "healthy" | "warnings" | "errors";
   readonly: true;
   findings: DoctorFinding[];
+}
+
+interface SchemaInspection {
+  version: number | null;
+  setupComplete: boolean | null;
 }
 
 function finding(
@@ -105,7 +111,7 @@ async function featureDirectories(root: string): Promise<string[]> {
     .sort();
 }
 
-async function inspectSchema(root: string, findings: DoctorFinding[]): Promise<number | null> {
+async function inspectSchema(root: string, findings: DoctorFinding[]): Promise<SchemaInspection> {
   const configPath = join(root, ".empirical", "config.json");
   if (!(await exists(configPath))) {
     findings.push(
@@ -117,11 +123,12 @@ async function inspectSchema(root: string, findings: DoctorFinding[]): Promise<n
         "Invoke the empirical skill to complete repository setup before starting workflow work.",
       ),
     );
-    return null;
+    return { version: null, setupComplete: null };
   }
   try {
     const config = await readJson<Record<string, unknown>>(configPath);
     const version = typeof config.schemaVersion === "number" ? config.schemaVersion : null;
+    const setupComplete = typeof config.setupComplete === "boolean" ? config.setupComplete : null;
     if (version === 5) {
       findings.push(finding("ok", "SCHEMA_CURRENT", "schema", "Repository state uses Schema 5."));
     } else if (version === 4) {
@@ -145,7 +152,7 @@ async function inspectSchema(root: string, findings: DoctorFinding[]): Promise<n
         ),
       );
     }
-    return version;
+    return { version, setupComplete };
   } catch (error) {
     findings.push(
       finding(
@@ -156,7 +163,84 @@ async function inspectSchema(root: string, findings: DoctorFinding[]): Promise<n
         "Repair config.json from a trusted repository snapshot.",
       ),
     );
-    return null;
+    return { version: null, setupComplete: null };
+  }
+}
+
+async function inspectProjectIntegrationReadiness(
+  root: string,
+  schema: SchemaInspection,
+  findings: DoctorFinding[],
+): Promise<void> {
+  if (schema.version !== 5) return;
+  if (schema.setupComplete === false) {
+    findings.push(
+      finding(
+        "warning",
+        "PROJECT_SETUP_INCOMPLETE",
+        "integrations",
+        "Repository setup is incomplete, so automatic Empirical activation is disabled.",
+        "Invoke empirical-init explicitly to review and complete repository setup.",
+      ),
+    );
+    return;
+  }
+  if (schema.setupComplete !== true) {
+    findings.push(
+      finding(
+        "error",
+        "PROJECT_SETUP_STATE_INVALID",
+        "integrations",
+        "Schema 5 config does not contain a valid setupComplete boolean.",
+        "Repair .empirical/config.json from trusted state, then invoke empirical-init explicitly.",
+      ),
+    );
+    return;
+  }
+  try {
+    const inspection = await inspectProjectIntegrations(root);
+    if (inspection.missing.length > 0) {
+      findings.push(
+        finding(
+          "error",
+          "PROJECT_INTEGRATIONS_MISSING",
+          "integrations",
+          `Automatic activation is not ready; required project integrations are missing: ${inspection.missing.join(", ")}.`,
+          "Invoke empirical-init explicitly to reconcile project integrations, then rerun Doctor.",
+        ),
+      );
+    }
+    if (inspection.drifted.length > 0) {
+      findings.push(
+        finding(
+          "error",
+          "PROJECT_INTEGRATIONS_DRIFTED",
+          "integrations",
+          `Automatic activation is not ready; required project integrations are drifted or unsafe: ${inspection.drifted.join(", ")}.`,
+          "Invoke empirical-init explicitly to repair Empirical-owned content. Resolve any reported unmanaged or unsafe collision, then rerun Doctor.",
+        ),
+      );
+    }
+    if (inspection.ready) {
+      findings.push(
+        finding(
+          "ok",
+          "PROJECT_INTEGRATIONS_READY",
+          "integrations",
+          `${inspection.required.length} required project integrations are current; automatic activation is ready.`,
+        ),
+      );
+    }
+  } catch (error) {
+    findings.push(
+      finding(
+        "error",
+        "PROJECT_INTEGRATIONS_INSPECTION_FAILED",
+        "integrations",
+        error instanceof Error ? error.message : String(error),
+        "Inspect repository path permissions and safety, then rerun Doctor; Doctor did not change any file.",
+      ),
+    );
   }
 }
 
@@ -717,11 +801,12 @@ export async function doctorRepository(rootInput: string): Promise<DoctorReport>
   const root = resolve(rootInput);
   const findings: DoctorFinding[] = [];
   const schema = await inspectSchema(root, findings);
+  await inspectProjectIntegrationReadiness(root, schema, findings);
   await inspectMigration(root, findings);
   await inspectPolicy(root, findings);
   await inspectTracker(root, findings);
   await inspectKnowledge(root, findings);
-  await inspectJournals(root, schema, findings);
+  await inspectJournals(root, schema.version, findings);
   await inspectLocks(root, findings);
   await inspectToolchain(root, findings);
   await inspectClaimsAndWorktrees(root, findings);

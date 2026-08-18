@@ -1,6 +1,6 @@
 {
   "name": "empirical-sdd",
-  "version": "0.23.0",
+  "version": "0.23.1",
   "description": "Agent-neutral, resumable spec-driven development for every terminal-capable coding agent",
   "type": "module",
   "bin": {
@@ -43,6 +43,7 @@
     "prepack": "bun run build",
     "test:package": "bun run scripts/test-package.ts",
     "test:consistency": "bun run scripts/check-consistency.ts",
+    "demo:integration-repair": "node dist/demo-integration-repair.js",
     "ci": "bun run check && bun run test && bun run test:coverage && bun run test:dist && bun run test:package && bun run test:consistency && git diff --check"
   },
   "keywords": [

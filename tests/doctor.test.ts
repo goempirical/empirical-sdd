@@ -39,7 +39,7 @@ async function fixture(): Promise<{ parent: string; root: string }> {
   git(root, ["config", "user.name", "Empirical Test"]);
   await writeFile(join(root, "README.md"), "doctor fixture\n", "utf8");
   await writeFile(join(root, "package.json"), '{"scripts":{"test":"bun test"}}\n', "utf8");
-  await EmpiricalProject.initialize(root, { integrations: false, setupComplete: true });
+  await EmpiricalProject.initialize(root, { setupComplete: true });
   await Promise.all(["overview", "architecture", "commands", "conventions"].map((page) =>
     writeFile(
       join(root, ".empirical", "context", `${page}.md`),
@@ -113,8 +113,116 @@ describe("read-only Doctor diagnostics", () => {
     expect(report.findings).toContainEqual(
       expect.objectContaining({ code: "TRACKER_LOCAL_ONLY", severity: "ok" }),
     );
+    expect(report.findings).toContainEqual(
+      expect.objectContaining({ code: "PROJECT_INTEGRATIONS_READY", severity: "ok" }),
+    );
     expect(await fileSnapshot(root)).toEqual(beforeFiles);
     expect(gitSnapshot(root)).toEqual(beforeGit);
+  });
+
+  test("detects completed repositories with missing integrations and verifies explicit repair", async () => {
+    const { root } = await fixture();
+    const missing = [
+      "AGENTS.md",
+      ".agents/skills/empirical/SKILL.md",
+      ".mcp.json",
+    ];
+    await Promise.all(missing.map((path) => rm(join(root, ...path.split("/")))));
+    const project = await EmpiricalProject.open(root);
+    const beforeConfig = await project.config();
+    const beforeState = await project.status();
+    const beforeFiles = await fileSnapshot(root);
+    const beforeGit = gitSnapshot(root);
+
+    const report = await doctorRepository(root);
+
+    expect(report.readonly).toBe(true);
+    expect(report.status).toBe("errors");
+    expect(report.findings).toContainEqual(expect.objectContaining({
+      code: "PROJECT_INTEGRATIONS_MISSING",
+      severity: "error",
+      message: expect.stringContaining(".agents/skills/empirical/SKILL.md"),
+      remediation: expect.stringContaining("empirical-init"),
+    }));
+    expect(await fileSnapshot(root)).toEqual(beforeFiles);
+    expect(gitSnapshot(root)).toEqual(beforeGit);
+
+    const repaired = await EmpiricalProject.initialize(root);
+    expect(repaired.integrations.created.sort()).toEqual(missing.sort());
+    expect(await repaired.project.config()).toEqual(beforeConfig);
+    expect(await repaired.project.status()).toEqual(beforeState);
+    const verified = await doctorRepository(root);
+    expect(verified.findings).toContainEqual(expect.objectContaining({
+      code: "PROJECT_INTEGRATIONS_READY",
+      severity: "ok",
+    }));
+    expect(verified.findings.some((entry) => entry.code === "PROJECT_INTEGRATIONS_MISSING")).toBe(false);
+    expect(verified.findings.some((entry) => entry.code === "PROJECT_INTEGRATIONS_DRIFTED")).toBe(false);
+  });
+
+  test("defers integration readiness until setup is complete and rejects an invalid completion marker", async () => {
+    const { root } = await fixture();
+    const project = await EmpiricalProject.open(root);
+    await project.configure({ setupComplete: false });
+    await rm(join(root, "AGENTS.md"));
+
+    const incomplete = await doctorRepository(root);
+    expect(incomplete.findings).toContainEqual(expect.objectContaining({
+      code: "PROJECT_SETUP_INCOMPLETE",
+      severity: "warning",
+    }));
+    expect(incomplete.findings.some((entry) => entry.code === "PROJECT_INTEGRATIONS_MISSING")).toBe(false);
+
+    const configPath = join(root, ".empirical", "config.json");
+    const config = JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>;
+    delete config.setupComplete;
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+    const invalid = await doctorRepository(root);
+    expect(invalid.findings).toContainEqual(expect.objectContaining({
+      code: "PROJECT_SETUP_STATE_INVALID",
+      severity: "error",
+    }));
+    expect(invalid.findings.some((entry) => entry.code === "PROJECT_INTEGRATIONS_MISSING")).toBe(false);
+  });
+
+  test("repairs owned integration drift but preserves and continues reporting unmanaged collisions", async () => {
+    const { root } = await fixture();
+    const skillPath = join(root, ".agents", "skills", "empirical", "SKILL.md");
+    const skill = await readFile(skillPath, "utf8");
+    await writeFile(skillPath, skill.replace("# Empirical\n", "# Stale Empirical\n"), "utf8");
+
+    const drifted = await doctorRepository(root);
+    expect(drifted.findings).toContainEqual(expect.objectContaining({
+      code: "PROJECT_INTEGRATIONS_DRIFTED",
+      severity: "error",
+      message: expect.stringContaining(".agents/skills/empirical/SKILL.md"),
+    }));
+    const ownedRepair = await EmpiricalProject.initialize(root);
+    expect(ownedRepair.integrations.updated).toContain(".agents/skills/empirical/SKILL.md");
+    expect((await doctorRepository(root)).findings).toContainEqual(expect.objectContaining({
+      code: "PROJECT_INTEGRATIONS_READY",
+      severity: "ok",
+    }));
+
+    const collisionPath = join(root, ".mcp.json");
+    const collision = '{"mcpServers":{"empirical":{"command":"custom-agent","args":[]}}}\n';
+    await writeFile(collisionPath, collision, "utf8");
+    const collisionBefore = await fileSnapshot(root);
+    const collisionReport = await doctorRepository(root);
+    expect(collisionReport.findings).toContainEqual(expect.objectContaining({
+      code: "PROJECT_INTEGRATIONS_DRIFTED",
+      severity: "error",
+      message: expect.stringContaining(".mcp.json"),
+    }));
+    expect(await fileSnapshot(root)).toEqual(collisionBefore);
+
+    const preserved = await EmpiricalProject.initialize(root);
+    expect(preserved.integrations.preserved).toContain(".mcp.json (existing empirical MCP entry)");
+    expect(await readFile(collisionPath, "utf8")).toBe(collision);
+    expect((await doctorRepository(root)).findings).toContainEqual(expect.objectContaining({
+      code: "PROJECT_INTEGRATIONS_DRIFTED",
+      severity: "error",
+    }));
   });
 
   test("validates dormant tracker records without policy and leaves their hashes unchanged", async () => {
@@ -227,7 +335,7 @@ describe("read-only Doctor diagnostics", () => {
     git(root, ["config", "user.email", "test@example.com"]);
     git(root, ["config", "user.name", "Empirical Test"]);
     await writeFile(join(root, "index.html"), "<!doctype html><title>Fixture</title>\n", "utf8");
-    await EmpiricalProject.initialize(root, { integrations: false, setupComplete: true });
+    await EmpiricalProject.initialize(root, { setupComplete: true });
     git(root, ["add", "."]);
     git(root, ["commit", "-m", "placeholder context fixture"]);
     const before = await fileSnapshot(root);
