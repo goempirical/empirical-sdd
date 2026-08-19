@@ -27,6 +27,7 @@ import type {
   TrackerBindInput,
   TrackerHttpRequest,
   TrackerHttpResponse,
+  TrackerOAuthResolver,
   TrackerStateMap,
   TrackerTransport,
   WorkflowState,
@@ -430,6 +431,50 @@ describe("external ticket tracking", () => {
       transport: sequence(jiraDiscoveryResponses()).transport,
       env: { JIRA_EMAIL: "person@example.com", JIRA_API_TOKEN: "jira-secret" },
     })).valid).toBe(true);
+  });
+
+  test("OAuth discovery takes precedence and Jira uses the Atlassian Cloud API context", async () => {
+    const resolver: TrackerOAuthResolver = {
+      resolve: async (request) => {
+        if (request.provider === "github") return { provider: "github", accessToken: "oauth-github" };
+        if (request.provider === "linear") return { provider: "linear", accessToken: "oauth-linear" };
+        return { provider: "jira", accessToken: "oauth-jira", cloudId: "cloud-123" };
+      },
+    };
+
+    const linear = sequence([linearDiscoveryResponse()]);
+    await discoverTracker(
+      { provider: "linear", credentialEnv: { apiKey: "LINEAR_SECRET_KEY" } },
+      { transport: linear.transport, env: { LINEAR_SECRET_KEY: "environment-linear" }, oauthResolver: resolver },
+    );
+    expect(linear.calls[0]?.headers.Authorization).toBe("Bearer oauth-linear");
+    expect(JSON.stringify(linear.calls)).not.toContain("environment-linear");
+
+    const github = sequence([githubDiscoveryResponse()]);
+    await discoverTracker(
+      { provider: "github", credentialEnv: { token: "GITHUB_TOKEN" } },
+      { transport: github.transport, env: { GITHUB_TOKEN: "environment-github" }, oauthResolver: resolver },
+    );
+    expect(github.calls[0]?.headers.Authorization).toBe("Bearer oauth-github");
+    expect(JSON.stringify(github.calls)).not.toContain("environment-github");
+
+    const jira = sequence(jiraDiscoveryResponses());
+    await discoverTracker({
+      provider: "jira",
+      target: { siteUrl: "https://empirical.atlassian.net" },
+      credentialEnv: { email: "JIRA_EMAIL", apiToken: "JIRA_API_TOKEN" },
+    }, {
+      transport: jira.transport,
+      env: { JIRA_EMAIL: "environment@example.com", JIRA_API_TOKEN: "environment-jira" },
+      oauthResolver: resolver,
+    });
+    expect(jira.calls).toHaveLength(4);
+    for (const request of jira.calls) {
+      expect(request.url).toStartWith("https://api.atlassian.com/ex/jira/cloud-123/rest/api/3/");
+      expect(request.headers.Authorization).toBe("Bearer oauth-jira");
+    }
+    expect(JSON.stringify(jira.calls)).not.toContain("environment@example.com");
+    expect(JSON.stringify(jira.calls)).not.toContain("environment-jira");
   });
 
   test("discovery fails closed on permissions, provider errors, and incomplete nested pagination", async () => {
@@ -1053,6 +1098,25 @@ describe("external ticket tracking", () => {
     expect(persisted).not.toContain("lin_api_");
   });
 
+  test("project tracker operations cannot override the repository secret-file boundary", async () => {
+    const { root, project } = await projectWithFastFeature();
+    await project.configureTracker(linearPolicy());
+    const inside = join(root, "tracker-secrets.env");
+    await writeFile(inside, "LINEAR_API_KEY=must-stay-outside\n", { mode: 0o600 });
+    let requests = 0;
+    const result = await project.bindTracker({ mode: "attach", ticket: "EMP-2" }, {
+      env: {},
+      secretFilePath: inside,
+      repositoryRoot: tmpdir(),
+      transport: async () => {
+        requests += 1;
+        return json(200, {});
+      },
+    });
+    expect(requests).toBe(0);
+    expect(result.tracker.failure?.code).toBe("TRACKER_SECRET_FILE_IN_REPOSITORY");
+  });
+
   test("status distinguishes synchronized, unresolved replacement, and target-drift records", async () => {
     const { root, project, action } = await projectWithFastFeature();
     await project.configureTracker(linearPolicy());
@@ -1539,6 +1603,7 @@ describe("external ticket tracking", () => {
       { mode: "attach", ticket: "EMP-1", description: "ignored" },
       { mode: "attach", ticket: "EMP-1", confirmCreateRetry: true },
       { mode: "create", unexpected: true },
+      { mode: "create", description: "Authorization: Bearer credential-must-not-enter-tools" },
     ];
     for (const input of invalid) {
       await expect(project.bindTracker(input as TrackerBindInput, {

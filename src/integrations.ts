@@ -82,9 +82,19 @@ never a feature request.
    (or Keep current settings), Customize, Configure tracker, and Cancel. On
    Customize, visit one section at a time and end with a complete Save, Edit, or
    Cancel review.
-3. \`Track all work\` selects Linear, GitHub Projects, or Jira plus credential
-   environment-variable names only. It MUST persist Tracker Policy v2 with
-   ticket behavior \`ensure\`. Call \`empirical_tracker_discover\`
+3. \`Track all work\` selects Linear, GitHub Projects, or Jira and starts with
+   trusted host OAuth. Use only negotiated MCP URL-mode elicitation for the
+   out-of-band OAuth handoff; never use form elicitation, ordinary tool input,
+   tool output, or assistant text for a credential. If OAuth is unavailable or
+   declined, say exactly \`Never paste credentials into chat\`, show the expanded
+   host-only file path (\`\${XDG_CONFIG_HOME:-$HOME/.config}/empirical/secrets.env\`
+   on POSIX or \`%APPDATA%\\Empirical\\secrets.env\` on Windows), and name only
+   the fallback fields: \`LINEAR_SECRET_KEY\`, \`GITHUB_TOKEN\`, or both
+   \`JIRA_EMAIL\` and \`JIRA_API_TOKEN\`. Never ask for, accept, echo, forward, or
+   put a value in a command. Pause while the human edits that host file outside
+   chat, then resume only after they confirm host-side configuration. Persist
+   environment-variable names only in Tracker Policy v2 with ticket behavior
+   \`ensure\`. Call \`empirical_tracker_discover\`
    to show accessible workspaces/sites, teams/repositories, projects, issue
    types, fields, and states by name. Propose all seven semantic phase mappings;
    call \`empirical_tracker_suggest\` for the selected workflow parent, allow
@@ -163,7 +173,12 @@ the user does not need to mention Empirical or choose a profile.
    and retries durable unacknowledged effects. A remote failure leaves local
    progress intact; report local-only, off, synced, pending, or failed health.
    Tracker operations are granular MCP tools, not additional skills or user
-   commands.
+   commands. OAuth authorization is out-of-band through negotiated URL mode.
+   Raw credentials are never chat text or tool arguments/results. If OAuth is
+   unavailable, tell the human \`Never paste credentials into chat\` and pause
+   for direct host-file configuration at
+   \`\${XDG_CONFIG_HOME:-$HOME/.config}/empirical/secrets.env\` on POSIX or
+   \`%APPDATA%\\Empirical\\secrets.env\` on Windows.
 8. Execute every returned action, create immutable evidence receipts with the
    configured commands or collected artifacts, complete its exact revision with
    receipt ids, consume the response as the next action, and integrate reviewed

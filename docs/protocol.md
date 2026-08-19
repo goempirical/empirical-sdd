@@ -1,4 +1,4 @@
-# Empirical protocol 0.24
+# Empirical protocol 0.25
 
 ## Shared contract
 
@@ -124,10 +124,21 @@ explicitly chose No tracking. Neither state triggers a workflow schema
 migration or provider access. Tracker Policy v1/v2 records choose one GitHub,
 Linear, or Jira target, store the complete normalized `specification`, `planned`,
 `in-progress`, `verification`, `review`, `blocked`, and `done` map, and
-reference credentials by environment-variable name only. Credential names use
-the strict uppercase runtime grammar; the host injects nonblank values with
-access to the exact configured target. Policy stores neither values nor
-provider authorization.
+reference fallback credentials by environment-variable name only. Credential
+names use the strict uppercase runtime grammar. Policy stores neither values,
+OAuth connection identity, tokens, nor provider authorization.
+
+Authentication is a runtime-only concern. A trusted host OAuth resolver is
+queried first and returns only a strictly typed, in-memory provider credential.
+When authorization is needed, its secret-free descriptor may cross MCP only by
+explicitly negotiated URL-mode elicitation. Form elicitation and ordinary tool
+input/output are never credential channels. If OAuth is unavailable or
+declined, resolution checks one complete injected environment source, then one
+complete guarded user secrets file source; it never combines a partial Jira
+identity across sources. The fallback file is outside the repository at
+`${XDG_CONFIG_HOME:-$HOME/.config}/empirical/secrets.env` on POSIX or
+`%APPDATA%\Empirical\secrets.env` on Windows. **Never paste credentials into
+chat.**
 
 Policy v1 remains readable and byte-preserved. Its effective behavior is manual
 ticket binding plus the legacy provider projection. Policy v2 adds `ticket` as
@@ -138,7 +149,8 @@ a complete zero-match reconciliation. Ambiguity is durable failure state, never
 a selection heuristic.
 
 Discovery is ephemeral and provider-neutral: strict input names a provider and
-credential variables; output contains canonical/display identities, parent
+fallback credential-variable names, while runtime resolution remains
+OAuth-first; output contains canonical/display identities, parent
 relationships, state semantics/positions, capabilities, completeness, and a
 digest. Mapping suggestions rank provider semantics and lifecycle position
 before name refinements, allow shared provider states, and leave tied primary
@@ -173,7 +185,9 @@ summary, blocker, and reviewable artifacts without editing human descriptions.
 Artifacts can originate only in committed immutable collected receipts and are
 rechecked for digest, containment, symlinks, media type, secret-like path, count,
 and size before upload or a commit-pinned durable link. Artifact bytes and
-credential values are never persisted in tracker state.
+credential values are never persisted in tracker state. Existing v1/v2 policy
+bytes and valid names such as `LINEAR_API_KEY` remain compatible; only new
+Linear setup suggests `LINEAR_SECRET_KEY`.
 
 The remote system is never read as workflow authority. Provider failures
 therefore change only tracker health (`pending` or `failed`) and cannot alter

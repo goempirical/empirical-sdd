@@ -78,6 +78,9 @@ describe("agent integrations", () => {
     expect(localSkill).toContain("selected non-terminal work exists");
     expect(localSkill).toContain("five passes");
     expect(localSkill).toContain("local journal as authoritative");
+    expect(localSkill).toContain("OAuth authorization is out-of-band through negotiated URL mode");
+    expect(localSkill).toContain("Never paste credentials into chat");
+    expect(localSkill).toContain("${XDG_CONFIG_HOME:-$HOME/.config}/empirical/secrets.env");
     expect(localSkill).toContain("Stop only at Done, Blocked,\n   or Awaiting Human");
     expect(await readFile(join(root, ".claude", "skills", "empirical", "SKILL.md"), "utf8"))
       .toBe(localSkill);
@@ -248,8 +251,13 @@ describe("agent integrations", () => {
     expect(initSkill).toContain("`Track all work` as the recommended");
     expect(initSkill).toContain("`No tracking` as the explicit alternative");
     expect(initSkill).toContain("MUST NOT bypass that choice");
-    expect(initSkill).toContain("ticket behavior `ensure`");
+    expect(initSkill).toContain("environment-variable names only in Tracker Policy v2 with ticket behavior");
+    expect(initSkill).toContain("`ensure`. Call `empirical_tracker_discover`");
     expect(initSkill).toContain("strict provider-free disabled setup record");
+    expect(initSkill).toContain("negotiated MCP URL-mode elicitation");
+    expect(initSkill).toContain("Never paste credentials into chat");
+    expect(initSkill).toContain("LINEAR_SECRET_KEY");
+    expect(initSkill).toContain("%APPDATA%\\Empirical\\secrets.env");
 
     const repeated = await installGlobalAgentSkills(home, { all: true, pathValue: "" });
     expect(repeated.created).toEqual([]);
@@ -530,8 +538,8 @@ describe("agent integrations", () => {
       expect(result.status).toBe(0);
       expect(result.stderr).toBe("");
       expect(result.stdout).toContain("╭───╯    ╰───╮");
-      expect(result.stdout.match(/empirical v0\.24\.1/g)).toHaveLength(1);
-      expect(result.stdout.indexOf("empirical v0.24.1")).toBeLessThan(result.stdout.indexOf("Lifecycle:"));
+      expect(result.stdout.match(/empirical v0\.25\.0/g)).toHaveLength(1);
+      expect(result.stdout.indexOf("empirical v0.25.0")).toBeLessThan(result.stdout.indexOf("Lifecycle:"));
       expect(result.stdout).not.toContain("\u001b[");
       expect(result.stdout).toContain("empirical install");
       expect(result.stdout).toContain("empirical update");
@@ -579,7 +587,7 @@ describe("agent integrations", () => {
     for (const alias of ["version", "--version", "-v"]) {
       const result = spawnSync(process.execPath, [cli, alias], { encoding: "utf8" });
       expect(result.status).toBe(0);
-      expect(result.stdout).toBe("0.24.1\n");
+      expect(result.stdout).toBe("0.25.0\n");
       expect(result.stderr).toBe("");
     }
   });

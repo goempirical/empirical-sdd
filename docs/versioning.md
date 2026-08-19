@@ -25,6 +25,11 @@ and the prepared changelog heading must match it. `SCHEMA_VERSION` changes only
 when durable state compatibility changes; a package version change does not
 imply a schema change.
 
+The prepared `0.25.0` release is an alpha MINOR: it adds a public trusted-host
+OAuth resolver and guarded fallback behavior while leaving Schema 5 and
+Tracker Policy v1/v2 compatible. Existing credential-variable names are not
+migrated or rewritten.
+
 ## Changelog rules
 
 Every user-observable change starts under `Unreleased` using applicable Keep a

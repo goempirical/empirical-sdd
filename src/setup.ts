@@ -1,4 +1,9 @@
 import { EmpiricalError } from "./errors.js";
+import {
+  defaultTrackerSecretFilePath,
+  trackerAuthenticationGuidance,
+  trackerCredentialNames,
+} from "./tracker-auth.js";
 import type { TrackerSetupState } from "./tracking.js";
 import type { ProjectConfig, ProjectConfigurationInput, TrackerPolicy } from "./types.js";
 
@@ -81,6 +86,9 @@ export function renderSetupSummary(
       ? { mode: "configured", policy: options.tracker } as const
       : { mode: "disabled", policy: null } as const
     : { mode: "unconfigured", policy: null } as const);
+  const trackerGuidance = trackerSetup.mode === "configured"
+    ? trackerAuthenticationGuidance(trackerSetup.policy)
+    : null;
   return [
     "◆ Empirical setup",
     `│  ${options.effective ? "Effective settings" : options.current ? "Current settings" : "Recommended settings"}`,
@@ -107,12 +115,18 @@ export function renderSetupSummary(
     "│  Tracker",
     ...(trackerSetup.mode === "configured" ? [
       `│  ● ${trackerSelectionLabel(trackerSetup.policy)} · ${state}`,
+      "│    Authentication: trusted host OAuth preferred",
+      `│    Fallback file: ${trackerGuidance!.secretFilePath}`,
       `│    Credential source: ${trackerCredentialNames(trackerSetup.policy).join(", ")} (environment names only)`,
+      `│    ${trackerGuidance!.warning}.`,
     ] : trackerSetup.mode === "disabled" ? [
       `│  ● No tracking (local-only; no provider requests) · ${state}`,
     ] : [
       `│  ● Track all work (recommended; configure a provider before Save) · ${state}`,
       "│  ○ No tracking (local-only; no provider requests)",
+      "│    Authentication: trusted host OAuth preferred for Linear, GitHub, and Jira.",
+      `│    Host-only fallback file: ${defaultTrackerSecretFilePath()}`,
+      "│    Never paste credentials into chat.",
       "│    Choose one tracker mode before setup can be saved.",
     ]),
   ].join("\n");
@@ -132,14 +146,6 @@ function trackerLabel(policy: TrackerPolicy): string {
 
 function providerLabel(provider: TrackerPolicy["provider"]): string {
   return provider === "github" ? "GitHub Projects" : provider === "linear" ? "Linear" : "Jira";
-}
-
-function trackerCredentialNames(policy: TrackerPolicy): string[] {
-  return policy.provider === "github"
-    ? [policy.credentialEnv.token]
-    : policy.provider === "linear"
-      ? [policy.credentialEnv.apiKey]
-      : [policy.credentialEnv.email, policy.credentialEnv.apiToken];
 }
 
 function marker(enabled: boolean): string {

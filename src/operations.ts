@@ -1,5 +1,7 @@
 import type { ExecutionMode, Workflow } from "./protocol.js";
 
+const TRACKER_AUTH_BOUNDARY = "OAuth is preferred. If unavailable, use the host-only fallback file at ${XDG_CONFIG_HOME:-$HOME/.config}/empirical/secrets.env on POSIX or %APPDATA%\\Empirical\\secrets.env on Windows. Never paste credentials into chat; raw credentials are never tool input or output.";
+
 export interface OperationDefinition {
   id: string;
   mcpName: string;
@@ -53,12 +55,12 @@ export const OPERATIONS = Object.freeze([
   operation("next", "Read the exact current action without mutation.", { readOnly: true }),
   operation("status", "Read exact workflow and completion state.", { readOnly: true }),
   operation("explain", "Explain deterministic state rationale.", { readOnly: true }),
-  operation("tracker-discover", "Discover accessible tracker targets, workflow metadata, and adapter capabilities.", { readOnly: true, cliUsage: " --input <json-file|->" }),
-  operation("tracker-suggest", "Propose the seven-state semantic mapping for one discovered workflow parent.", { readOnly: true, cliUsage: " --input <json-file|->" }),
-  operation("tracker-preview", "Validate and preview one complete effective tracker policy without saving it.", { readOnly: true, cliUsage: " --input <json-file|->" }),
-  operation("tracker-configure", "Configure or disable the optional external ticket mirror.", { destructive: true, cliUsage: " --input <json-file|->" }),
-  operation("tracker-bind", "Create or attach the selected feature's external ticket.", { destructive: true, idempotent: false, cliUsage: " --input <json-file|->" }),
-  operation("tracker-sync", "Converge the selected feature's external ticket to committed local state.", { destructive: true }),
+  operation("tracker-discover", `Discover accessible tracker targets, workflow metadata, and adapter capabilities. ${TRACKER_AUTH_BOUNDARY}`, { readOnly: true, cliUsage: " --input <json-file|->" }),
+  operation("tracker-suggest", `Propose the seven-state semantic mapping for one discovered workflow parent. ${TRACKER_AUTH_BOUNDARY}`, { readOnly: true, cliUsage: " --input <json-file|->" }),
+  operation("tracker-preview", `Validate and preview one complete effective tracker policy without saving it. ${TRACKER_AUTH_BOUNDARY}`, { readOnly: true, cliUsage: " --input <json-file|->" }),
+  operation("tracker-configure", `Configure or disable the optional external ticket mirror. ${TRACKER_AUTH_BOUNDARY}`, { destructive: true, cliUsage: " --input <json-file|->" }),
+  operation("tracker-bind", `Create or attach the selected feature's external ticket. ${TRACKER_AUTH_BOUNDARY}`, { destructive: true, idempotent: false, cliUsage: " --input <json-file|->" }),
+  operation("tracker-sync", `Converge the selected feature's external ticket to committed local state. ${TRACKER_AUTH_BOUNDARY}`, { destructive: true }),
   operation("complete", "Complete the exact current revision.", { idempotent: false, cliUsage: " --revision N --outcome <passed|failed|awaiting_human|blocked> --summary <text> [--receipt id ...]" }),
   operation("retry", "Resume a blocked exact revision.", { idempotent: false, cliUsage: " --revision N [--actor name]" }),
   operation("verify", "Validate receipts without advancing state.", { readOnly: true }),

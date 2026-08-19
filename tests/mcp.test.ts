@@ -4,8 +4,12 @@ import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { InMemoryTransport } from "@modelcontextprotocol/sdk/inMemory.js";
+import { ElicitRequestSchema, type ClientCapabilities } from "@modelcontextprotocol/sdk/types.js";
 import { EmpiricalProject } from "../src/core.js";
+import { createMcpServer } from "../src/mcp.js";
 import { OPERATIONS, operationAnnotations } from "../src/operations.js";
+import type { TrackerHttpRequest, TrackerOAuthResolver } from "../src/types.js";
 
 const directories: string[] = [];
 
@@ -377,5 +381,328 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
     });
   } finally {
     await client.close();
+  }
+}, 30_000);
+
+test("tracker OAuth uses only explicitly negotiated URL elicitation and otherwise falls back", async () => {
+  const cases: Array<{
+    label: string;
+    capabilities: ClientCapabilities;
+    action: "accept" | "decline" | "cancel";
+    expectedElicitations: number;
+    expectedAuthorizations: number;
+    expectedAuthorization: string;
+  }> = [
+    {
+      label: "url accepted",
+      capabilities: { elicitation: { url: {} } },
+      action: "accept",
+      expectedElicitations: 1,
+      expectedAuthorizations: 1,
+      expectedAuthorization: "Bearer oauth-linear-token",
+    },
+    {
+      label: "url declined",
+      capabilities: { elicitation: { url: {} } },
+      action: "decline",
+      expectedElicitations: 1,
+      expectedAuthorizations: 1,
+      expectedAuthorization: "fallback-linear-token",
+    },
+    {
+      label: "url cancelled",
+      capabilities: { elicitation: { url: {} } },
+      action: "cancel",
+      expectedElicitations: 1,
+      expectedAuthorizations: 1,
+      expectedAuthorization: "fallback-linear-token",
+    },
+    {
+      label: "form only",
+      capabilities: { elicitation: { form: {} } },
+      action: "decline",
+      expectedElicitations: 0,
+      expectedAuthorizations: 0,
+      expectedAuthorization: "fallback-linear-token",
+    },
+    {
+      label: "legacy empty",
+      capabilities: { elicitation: {} },
+      action: "decline",
+      expectedElicitations: 0,
+      expectedAuthorizations: 0,
+      expectedAuthorization: "fallback-linear-token",
+    },
+    {
+      label: "absent",
+      capabilities: {},
+      action: "decline",
+      expectedElicitations: 0,
+      expectedAuthorizations: 0,
+      expectedAuthorization: "fallback-linear-token",
+    },
+  ];
+
+  for (const scenario of cases) {
+    const root = await mkdtemp(join(tmpdir(), "empirical-mcp-oauth-"));
+    directories.push(root);
+    let connected = false;
+    let authorizationCalls = 0;
+    const requests: TrackerHttpRequest[] = [];
+    const elicitations: unknown[] = [];
+    const resolver: TrackerOAuthResolver = {
+      authorize: async ({ provider }) => {
+        authorizationCalls += 1;
+        return {
+          provider,
+          elicitationId: `connect-${provider}`,
+          message: `Connect ${provider} through the trusted host`,
+          url: `https://auth.example.test/connect?provider=${provider}`,
+        };
+      },
+      resolve: async () => connected
+        ? { provider: "linear", accessToken: "oauth-linear-token" }
+        : null,
+    };
+    const server = createMcpServer(root, {
+      trackerDependencies: {
+        env: { LINEAR_SECRET_KEY: "fallback-linear-token" },
+        oauthResolver: resolver,
+        transport: async (request) => {
+          requests.push(request);
+          return {
+            status: 200,
+            body: JSON.stringify({ data: {
+              organization: { id: "workspace-1", name: "Empirical", urlKey: "empirical" },
+              teams: {
+                nodes: [{
+                  id: "team-1",
+                  name: "Engineering",
+                  key: "ENG",
+                  projects: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+                  states: {
+                    nodes: [{ id: "state-1", name: "Todo", type: "unstarted", position: 0 }],
+                    pageInfo: { hasNextPage: false, endCursor: null },
+                  },
+                }],
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            } }),
+          };
+        },
+      },
+    });
+    const client = new Client(
+      { name: `empirical-${scenario.label}`, version: "1.0.0" },
+      { capabilities: scenario.capabilities },
+    );
+    if (scenario.capabilities.elicitation !== undefined) {
+      client.setRequestHandler(ElicitRequestSchema, async (request) => {
+        elicitations.push(request.params);
+        if (scenario.action === "accept") connected = true;
+        return { action: scenario.action };
+      });
+    }
+    const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverTransport);
+    await client.connect(clientTransport);
+    try {
+      const result = await client.callTool({
+        name: "empirical_tracker_discover",
+        arguments: {
+          root,
+          input: { provider: "linear", credentialEnv: { apiKey: "LINEAR_SECRET_KEY" } },
+        },
+      });
+      expect(result.isError, scenario.label).not.toBe(true);
+      expect(authorizationCalls, scenario.label).toBe(scenario.expectedAuthorizations);
+      expect(elicitations, scenario.label).toHaveLength(scenario.expectedElicitations);
+      for (const elicitation of elicitations as Array<Record<string, unknown>>) {
+        expect(elicitation.mode).toBe("url");
+        expect(elicitation).not.toHaveProperty("requestedSchema");
+      }
+      expect(requests, scenario.label).toHaveLength(1);
+      expect(requests[0]?.headers.Authorization).toBe(scenario.expectedAuthorization);
+      const publicBoundary = JSON.stringify({ result, elicitations });
+      expect(publicBoundary).not.toContain("oauth-linear-token");
+      expect(publicBoundary).not.toContain("fallback-linear-token");
+    } finally {
+      await client.close();
+      await server.close().catch(() => undefined);
+    }
+  }
+}, 30_000);
+
+test("in-process MCP routes OAuth through every tracker operation without exposing credentials", async () => {
+  const root = await mkdtemp(join(tmpdir(), "empirical-mcp-tracker-operations-"));
+  directories.push(root);
+  const secret = "oauth-sentinel-never-public";
+  const elicitations: unknown[] = [];
+  const requests: TrackerHttpRequest[] = [];
+  const server = createMcpServer(root, {
+    trackerDependencies: {
+      env: {},
+      oauthResolver: {
+        authorize: async ({ provider }) => ({
+          provider,
+          elicitationId: `connect-${provider}`,
+          message: `Connect ${provider} through the trusted host`,
+          url: `https://auth.example.test/connect?provider=${provider}`,
+        }),
+        resolve: async () => ({ provider: "linear", accessToken: secret }),
+      },
+      transport: async (request) => {
+        requests.push(request);
+        return {
+          status: 200,
+          body: JSON.stringify({
+            data: {
+              organization: { id: "workspace-1", name: "Empirical", urlKey: "empirical" },
+              teams: {
+                nodes: [{
+                  id: "linear-team",
+                  name: "Engineering",
+                  key: "ENG",
+                  projects: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } },
+                  states: {
+                    nodes: Object.entries(trackerStates).map(([name, id], position) => ({
+                      id,
+                      name,
+                      type: name === "done" ? "completed" : name === "specification" ? "unstarted" : "started",
+                      position,
+                    })),
+                    pageInfo: { hasNextPage: false, endCursor: null },
+                  },
+                }],
+                pageInfo: { hasNextPage: false, endCursor: null },
+              },
+            },
+          }),
+        };
+      },
+    },
+  });
+  const client = new Client(
+    { name: "empirical-tracker-operations", version: "1.0.0" },
+    { capabilities: { elicitation: { url: {} } } },
+  );
+  client.setRequestHandler(ElicitRequestSchema, async (request) => {
+    elicitations.push(request.params);
+    return { action: "accept" };
+  });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverTransport);
+  await client.connect(clientTransport);
+  try {
+    const results = [
+      await client.callTool({
+        name: "empirical_init",
+        arguments: {
+          root,
+          profile: "fast",
+          evidenceRequired: false,
+          browserForUi: false,
+          screenshotForUi: false,
+          codeReview: false,
+          isolation: "off",
+          decisions: "off",
+          tracker: { mode: "disabled" },
+        },
+      }),
+      await client.callTool({
+        name: "empirical_fast",
+        arguments: { root, request: "Exercise the trusted tracker boundary" },
+      }),
+      await client.callTool({
+        name: "empirical_tracker_preview",
+        arguments: { root, policy: linearTrackerPolicy },
+      }),
+      await client.callTool({
+        name: "empirical_tracker_suggest",
+        arguments: {
+          root,
+          input: { provider: "linear", credentialEnv: linearTrackerPolicy.credentialEnv },
+          stateParentId: "linear-team",
+        },
+      }),
+      await client.callTool({
+        name: "empirical_tracker_configure",
+        arguments: { root, policy: linearTrackerPolicy },
+      }),
+      await client.callTool({
+        name: "empirical_tracker_bind",
+        arguments: { root, mode: "attach", ticket: "ENG-1" },
+      }),
+      await client.callTool({
+        name: "empirical_tracker_sync",
+        arguments: { root },
+      }),
+    ];
+
+    expect(results.slice(0, 5).every((result) => result.isError !== true)).toBe(true);
+    expect(elicitations.length).toBeGreaterThanOrEqual(5);
+    expect(elicitations.every((value) =>
+      (value as Record<string, unknown>).mode === "url" && !("requestedSchema" in (value as Record<string, unknown>))))
+      .toBe(true);
+    expect(requests.length).toBeGreaterThanOrEqual(3);
+    expect(JSON.stringify({ results, elicitations })).not.toContain(secret);
+  } finally {
+    await client.close();
+    await server.close().catch(() => undefined);
+  }
+}, 30_000);
+
+test("form-only tracker setup fails closed with safe host-side recovery guidance", async () => {
+  const root = await mkdtemp(join(tmpdir(), "empirical-mcp-form-only-"));
+  directories.push(root);
+  let providerCalls = 0;
+  const server = createMcpServer(root, {
+    trackerDependencies: {
+      env: {},
+      oauthResolver: {
+        authorize: async ({ provider }) => ({
+          provider,
+          elicitationId: `connect-${provider}`,
+          message: `Connect ${provider} through the trusted host`,
+          url: `https://auth.example.test/connect?provider=${provider}`,
+        }),
+        resolve: async () => null,
+      },
+      transport: async () => {
+        providerCalls += 1;
+        throw new Error("provider transport must not run");
+      },
+    },
+  });
+  const client = new Client(
+    { name: "empirical-form-only", version: "1.0.0" },
+    { capabilities: { elicitation: { form: {} } } },
+  );
+  let elicitationCalls = 0;
+  client.setRequestHandler(ElicitRequestSchema, async () => {
+    elicitationCalls += 1;
+    return { action: "decline" };
+  });
+  const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
+  await server.connect(serverTransport);
+  await client.connect(clientTransport);
+  try {
+    const result = await client.callTool({
+      name: "empirical_tracker_discover",
+      arguments: {
+        root,
+        input: { provider: "linear", credentialEnv: { apiKey: "LINEAR_SECRET_KEY" } },
+      },
+    });
+    expect(result.isError).toBe(true);
+    expect(elicitationCalls).toBe(0);
+    expect(providerCalls).toBe(0);
+    const content = JSON.stringify(result.content);
+    expect(content).toContain("LINEAR_SECRET_KEY");
+    expect(content).toContain("empirical/secrets.env");
+    expect(content).toContain("Never paste credentials into chat");
+  } finally {
+    await client.close();
+    await server.close().catch(() => undefined);
   }
 }, 30_000);

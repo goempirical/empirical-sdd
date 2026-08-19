@@ -199,11 +199,14 @@ export class EmpiricalProject {
     root = process.cwd(),
     options: InitOptions = {},
   ): Promise<{ project: EmpiricalProject; state: WorkflowState; integrations: IntegrationReport }> {
+    const absoluteRoot = resolve(root);
     const trackerChange = options.tracker ? parseTrackerSetupChange(options.tracker) : undefined;
     if (trackerChange?.mode === "apply") {
-      await previewTrackerPolicy(trackerChange.policy, options.trackerDependencies);
+      await previewTrackerPolicy(
+        trackerChange.policy,
+        withTrackerRepositoryRoot(options.trackerDependencies ?? {}, absoluteRoot),
+      );
     }
-    const absoluteRoot = resolve(root);
     await mkdir(absoluteRoot, { recursive: true });
     const store = new ProjectStore(absoluteRoot);
     if (await store.exists()) {
@@ -342,28 +345,28 @@ export class EmpiricalProject {
     dependencies: TrackerDependencies = {},
   ): Promise<TrackerPolicy | null> {
     if (this.readOnly) throw new EmpiricalError("READ_ONLY", "Tracker configuration requires a writable project");
-    return configureTrackerPolicy(this.store.root, value, dependencies);
+    return configureTrackerPolicy(this.store.root, value, withTrackerRepositoryRoot(dependencies, this.store.root));
   }
 
   async discoverTracker(
     input: TrackerDiscoveryInput,
     dependencies: TrackerDependencies = {},
   ): Promise<TrackerDiscovery> {
-    return discoverTracker(input, dependencies);
+    return discoverTracker(input, withTrackerRepositoryRoot(dependencies, this.store.root));
   }
 
   async previewTracker(
     value: unknown,
     dependencies: TrackerDependencies = {},
   ): Promise<TrackerPolicyPreview> {
-    return previewTrackerPolicy(value, dependencies);
+    return previewTrackerPolicy(value, withTrackerRepositoryRoot(dependencies, this.store.root));
   }
 
   async proposeTrackerMapping(
     value: unknown,
     dependencies: TrackerDependencies = {},
   ): Promise<TrackerMappingSuggestion> {
-    return proposeTrackerStateMapping(value, dependencies);
+    return proposeTrackerStateMapping(value, withTrackerRepositoryRoot(dependencies, this.store.root));
   }
 
   async bindTracker(
@@ -3229,6 +3232,10 @@ function completionRank(level: "implemented" | "verified" | "integrated" | "deli
 
 function emptyIntegrationReport(): IntegrationReport {
   return { scope: "project", selected: [], destinations: [], created: [], updated: [], removed: [], preserved: [], entrypoints: [] };
+}
+
+function withTrackerRepositoryRoot(dependencies: TrackerDependencies, root: string): TrackerDependencies {
+  return { ...dependencies, repositoryRoot: root };
 }
 
 async function existingKnowledgePaths(root: string): Promise<string[]> {

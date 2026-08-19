@@ -73,6 +73,44 @@ Read operations, proposals, and Doctor do not mutate. Worktree creation,
 configured command execution, integration, delivery, and publication are
 explicitly effectful and retain their own safety gates.
 
+## OAuth and host fallback boundary
+
+Tracker authentication is OAuth-first when the embedding host supplies a
+`TrackerOAuthResolver`. The resolver owns provider application registration,
+callbacks, token refresh/revocation, and encrypted custody; Empirical receives
+only one strictly validated in-memory credential for the current operation.
+The default stdio process has no hosted broker and does not pretend otherwise.
+
+```ts
+import { createMcpServer } from "empirical-sdd/mcp";
+
+const server = createMcpServer(repositoryRoot, {
+  trackerDependencies: { oauthResolver: trustedHostResolver },
+});
+```
+
+If the resolver reports that authorization is required, Empirical validates a
+secret-free HTTPS handoff and inspects the connected client's negotiated
+capabilities. It calls `elicitation/create` only when `elicitation.url` is
+explicitly declared and sends only `mode: "url"`, a message, an opaque ID, and
+the URL. A form-only declaration, legacy empty `elicitation: {}`, absent
+capability, decline, cancellation, or handoff failure never causes a form or a
+credential request. Resolution then continues through the host fallback.
+
+> **Never paste credentials into chat.** Raw credentials are not valid MCP
+> arguments or results. If OAuth is unavailable, edit the host file directly:
+> `${XDG_CONFIG_HOME:-$HOME/.config}/empirical/secrets.env` on POSIX or
+> `%APPDATA%\Empirical\secrets.env` on Windows. Do not put a value in a command,
+> shell history, process argument, repository file, assistant message, or tool
+> call.
+
+New setup names `LINEAR_SECRET_KEY`, `GITHUB_TOKEN`, and the Jira pair
+`JIRA_EMAIL` plus `JIRA_API_TOKEN`. Resolution is atomic by source: connected
+OAuth, then a complete injected environment set, then a complete checked file
+set. The file must be outside the repository, at most 64 KiB, a regular
+non-symbolic-link file, strictly formatted, and owner-only on POSIX. Existing
+policies naming `LINEAR_API_KEY` or another valid variable remain unchanged.
+
 ## External ticket mirror
 
 With no `.empirical/tracker.json`, tracker setup is unconfigured while status
@@ -86,8 +124,11 @@ document, or `null` to persist No tracking.
 User-facing Init first requires Track all work (recommended) or No tracking
 when no prior choice exists. Setup then uses the same contract in every client:
 
-1. Call `empirical_tracker_discover` with a provider and credential
-   environment-variable names. Jira also needs its credential-free Cloud site
+1. Start with the trusted host OAuth connection. If it is unavailable, show
+   the exact host file path and fallback variable names above, pause while the
+   human edits the file outside chat, and resume only after host-side
+   confirmation. Then call `empirical_tracker_discover` with a provider and
+   fallback environment-variable names. Jira also needs its credential-free Cloud site
    origin. The result contains named workspaces/sites, teams/repositories,
    projects, issue types, fields, states, parent relationships, and adapter
    capabilities; no catalog is persisted.
@@ -125,7 +166,7 @@ Tracker Policy v2 adds behavior without changing provider target shapes:
   "schemaVersion": 2,
   "provider": "linear",
   "target": { "teamId": "discovered-team", "projectId": "discovered-project" },
-  "credentialEnv": { "apiKey": "LINEAR_API_KEY" },
+  "credentialEnv": { "apiKey": "LINEAR_SECRET_KEY" },
   "states": { "specification": "todo", "planned": "todo", "in-progress": "started", "verification": "qa", "review": "qa", "blocked": "started", "done": "done" },
   "ticket": "ensure",
   "visibility": "milestones"
@@ -173,9 +214,10 @@ ticket; do not omit the key or use the string `"null"`.
 
 Every `credentialEnv` value is an environment-variable **name**, never a
 credential. Names are 3–64 uppercase ASCII letters, digits, or underscores,
-start with a letter, and contain at least one underscore. The host must inject
-a nonblank runtime value into the Empirical MCP/agent process. The credential
-must be authorized for the exact configured target and effects:
+start with a letter, and contain at least one underscore. OAuth remains the
+preferred runtime source; the named nonblank value is consulted only as a
+fallback from injected host state or the guarded host file. The resulting
+credential must be authorized for the exact configured target and effects:
 
 - Linear: discover the workspace/team/project/workflow, and read, create,
   update, and comment on issues in the selected team and optional project.
@@ -186,8 +228,13 @@ must be authorized for the exact configured target and effects:
   update, and comment on issues; write issue properties; perform configured
   transitions; and add attachments when evidence upload is enabled.
 
-Empirical does not discover credentials, elevate provider permissions, or
-serialize runtime values. Missing variables are reported by name only.
+Empirical does not discover credentials, elevate provider permissions, mutate
+the process environment, or serialize runtime values. Missing authentication
+is reported with names and the concrete host path only. Linear OAuth uses a
+Bearer header while its personal API-key fallback retains Linear's raw
+`Authorization` value. Jira OAuth uses Bearer authorization at
+`https://api.atlassian.com/ex/jira/{cloudId}`; Jira fallback uses the configured
+tenant origin with Basic authorization.
 
 In `manual` mode, `empirical_tracker_bind` accepts `{ "mode": "create" }` or
 `{ "mode": "attach", "ticket": "..." }`. In `ensure` mode ordinary

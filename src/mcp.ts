@@ -4,6 +4,7 @@ import { z } from "zod";
 import { EmpiricalProject } from "./core.js";
 import { EmpiricalError, asErrorMessage } from "./errors.js";
 import { OPERATIONS, operationAnnotations, operationById } from "./operations.js";
+import { trackerOAuthAuthorization } from "./tracker-auth.js";
 import {
   authorizationSchema,
   executionModeSchema,
@@ -22,7 +23,18 @@ import {
   trackerPolicySchema,
   trackerSetupChangeSchema,
 } from "./tracking.js";
-import { PRODUCT_VERSION, type AgentIntegrationId } from "./types.js";
+import {
+  PRODUCT_VERSION,
+  type AgentIntegrationId,
+  type TrackerDependencies,
+  type TrackerDiscoveryInput,
+  type TrackerPolicy,
+} from "./types.js";
+
+export interface EmpiricalMcpServerOptions {
+  /** Trusted host-only tracker dependencies, including an optional OAuth resolver. */
+  trackerDependencies?: TrackerDependencies;
+}
 
 const profileSchema = z.enum(["fast", "complex"]);
 const changeTypeSchema = z.enum(["feature", "fix", "chore"]);
@@ -96,7 +108,10 @@ const trackerBindToolSchema = z.object({
   ],
 });
 
-export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
+export function createMcpServer(
+  defaultRoot = mcpDefaultRoot(),
+  options: EmpiricalMcpServerOptions = {},
+): McpServer {
   const registered = new Set<string>();
   const operationName = (id: string): string => {
     const definition = operationById(id);
@@ -113,7 +128,7 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
     { name: "empirical-sdd", version: PRODUCT_VERSION },
     {
       instructions:
-        "Use Empirical through its single registry-backed skill. Route deterministically, keep local workflow state authoritative, mirror committed progress only through the granular tracker operations, record immutable evidence receipts, complete exact revisions, and integrate reviewed deltas against an independent target. Bounded standing authorization never suppresses host prompts or weakens Git, credential, publication, or deletion safety floors.",
+        "Use Empirical through its single registry-backed skill. Route deterministically, keep local workflow state authoritative, mirror committed progress only through the granular tracker operations, record immutable evidence receipts, complete exact revisions, and integrate reviewed deltas against an independent target. Bounded standing authorization never suppresses host prompts or weakens Git, credential, publication, or deletion safety floors. Tracker authentication is OAuth-first through negotiated URL-mode elicitation; raw credentials are never valid tool input or output and must never be pasted into chat.",
     },
   );
 
@@ -361,7 +376,12 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
       input: trackerDiscoveryInputSchema,
     }).strict(),
     annotations: operationAnnotations("tracker-discover"),
-  }, async ({ input }) => toolResult(async () => discoverTracker(input)));
+  }, async ({ root, input }) => toolResult(async () => {
+    const effectiveRoot = root ?? defaultRoot;
+    const dependencies = trackerDependenciesForRoot(options.trackerDependencies, effectiveRoot);
+    await prepareTrackerOAuthHandoff(server, input, dependencies);
+    return discoverTracker(input, dependencies);
+  }));
 
   server.registerTool(operationName("tracker-preview"), {
     title: "Preview external ticket tracking",
@@ -371,7 +391,12 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
       policy: trackerPolicySchema,
     }).strict(),
     annotations: operationAnnotations("tracker-preview"),
-  }, async ({ policy }) => toolResult(async () => previewTrackerPolicy(policy)));
+  }, async ({ root, policy }) => toolResult(async () => {
+    const effectiveRoot = root ?? defaultRoot;
+    const dependencies = trackerDependenciesForRoot(options.trackerDependencies, effectiveRoot);
+    await prepareTrackerOAuthHandoff(server, policy, dependencies);
+    return previewTrackerPolicy(policy, dependencies);
+  }));
 
   server.registerTool(operationName("tracker-suggest"), {
     title: "Propose semantic tracker state mapping",
@@ -381,8 +406,12 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
       ...trackerMappingInputSchema.shape,
     }).strict(),
     annotations: operationAnnotations("tracker-suggest"),
-  }, async ({ input, stateParentId }) => toolResult(async () =>
-    proposeTrackerStateMapping({ input, stateParentId })));
+  }, async ({ root, input, stateParentId }) => toolResult(async () => {
+    const effectiveRoot = root ?? defaultRoot;
+    const dependencies = trackerDependenciesForRoot(options.trackerDependencies, effectiveRoot);
+    await prepareTrackerOAuthHandoff(server, input, dependencies);
+    return proposeTrackerStateMapping({ input, stateParentId }, dependencies);
+  }));
 
   server.registerTool(operationName("tracker-configure"), {
     title: "Configure external ticket tracking",
@@ -392,24 +421,40 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
       policy: trackerPolicySchema.nullable(),
     }).strict(),
     annotations: operationAnnotations("tracker-configure"),
-  }, async ({ root, policy }) => toolResult(async () =>
-    (await EmpiricalProject.open(root ?? defaultRoot)).configureTracker(policy)));
+  }, async ({ root, policy }) => toolResult(async () => {
+    const effectiveRoot = root ?? defaultRoot;
+    const dependencies = trackerDependenciesForRoot(options.trackerDependencies, effectiveRoot);
+    if (policy) await prepareTrackerOAuthHandoff(server, policy, dependencies);
+    return (await EmpiricalProject.open(effectiveRoot)).configureTracker(policy, dependencies);
+  }));
 
   server.registerTool(operationName("tracker-bind"), {
     title: "Create or attach an external ticket",
     description: operationSummary("tracker-bind"),
     inputSchema: trackerBindToolSchema,
     annotations: operationAnnotations("tracker-bind"),
-  }, async ({ root, ...input }) => toolResult(async () =>
-    (await EmpiricalProject.open(root ?? defaultRoot)).bindTracker(parseTrackerBindInput(input))));
+  }, async ({ root, ...input }) => toolResult(async () => {
+    const effectiveRoot = root ?? defaultRoot;
+    const dependencies = trackerDependenciesForRoot(options.trackerDependencies, effectiveRoot);
+    const project = await EmpiricalProject.open(effectiveRoot);
+    const policy = await project.trackerPolicy();
+    if (policy) await prepareTrackerOAuthHandoff(server, policy, dependencies);
+    return project.bindTracker(parseTrackerBindInput(input), dependencies);
+  }));
 
   server.registerTool(operationName("tracker-sync"), {
     title: "Synchronize external ticket tracking",
     description: operationSummary("tracker-sync"),
     inputSchema: { root: z.string().optional() },
     annotations: operationAnnotations("tracker-sync"),
-  }, async ({ root }) => toolResult(async () =>
-    (await EmpiricalProject.open(root ?? defaultRoot)).syncTracker()));
+  }, async ({ root }) => toolResult(async () => {
+    const effectiveRoot = root ?? defaultRoot;
+    const dependencies = trackerDependenciesForRoot(options.trackerDependencies, effectiveRoot);
+    const project = await EmpiricalProject.open(effectiveRoot);
+    const policy = await project.trackerPolicy();
+    if (policy) await prepareTrackerOAuthHandoff(server, policy, dependencies);
+    return project.syncTracker(dependencies);
+  }));
 
   server.registerTool(operationName("complete"), {
     title: "Complete current action",
@@ -603,13 +648,45 @@ export function createMcpServer(defaultRoot = mcpDefaultRoot()): McpServer {
   return server;
 }
 
-export async function runMcpServer(defaultRoot?: string): Promise<void> {
-  const server = createMcpServer(defaultRoot);
+export async function runMcpServer(
+  defaultRoot?: string,
+  options: EmpiricalMcpServerOptions = {},
+): Promise<void> {
+  const server = createMcpServer(defaultRoot, options);
   await server.connect(new StdioServerTransport());
 }
 
 function mcpDefaultRoot(): string {
   return process.env.CLAUDE_PROJECT_DIR || process.cwd();
+}
+
+async function prepareTrackerOAuthHandoff(
+  server: McpServer,
+  subject: TrackerPolicy | TrackerDiscoveryInput,
+  dependencies: TrackerDependencies,
+): Promise<void> {
+  const elicitation = server.server.getClientCapabilities()?.elicitation;
+  if (!isRecord(elicitation) || !isRecord(elicitation.url)) return;
+  const authorization = await trackerOAuthAuthorization(subject, dependencies);
+  if (!authorization) return;
+  try {
+    await server.server.elicitInput({
+      mode: "url",
+      message: authorization.message,
+      elicitationId: authorization.elicitationId,
+      url: authorization.url,
+    });
+  } catch {
+    // A failed or unsupported out-of-band handoff must never degrade to a
+    // form. The operation continues through the ordinary host-only fallback.
+  }
+}
+
+function trackerDependenciesForRoot(
+  dependencies: TrackerDependencies | undefined,
+  root: string,
+): TrackerDependencies {
+  return { ...(dependencies ?? {}), repositoryRoot: root };
 }
 
 async function toolResult(operation: () => Promise<unknown>) {

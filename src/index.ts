@@ -25,6 +25,15 @@ export {
   RECEIPT_SCHEMA_VERSION,
   SCHEMA_VERSION,
 } from "./protocol.js";
+export {
+  DEFAULT_TRACKER_CREDENTIAL_ENV,
+  defaultTrackerCredentialEnv,
+  defaultTrackerSecretFilePath,
+  resolveTrackerAuthentication,
+  trackerAuthenticationGuidance,
+  trackerCredentialNames,
+  trackerOAuthAuthorization,
+} from "./tracker-auth.js";
 
 export type {
   ActionPacket,
@@ -66,6 +75,13 @@ export type {
   TrackerBindResult,
   TrackerBinding,
   TrackerDependencies,
+  TrackerAuthenticationGuidance,
+  TrackerAuthenticationSource,
+  TrackerOAuthAuthorization,
+  TrackerOAuthCredential,
+  TrackerOAuthRequest,
+  TrackerOAuthResolver,
+  ResolvedTrackerAuthentication,
   TrackerDiscovery,
   TrackerDiscoveryInput,
   TrackerDiscoveryResource,

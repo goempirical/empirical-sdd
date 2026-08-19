@@ -21,6 +21,9 @@ describe("setup settings", () => {
     expect(summary).toContain("Require reviewable decision records for Complex work");
     expect(summary).toContain("Track all work (recommended; configure a provider before Save)");
     expect(summary).toContain("No tracking (local-only; no provider requests)");
+    expect(summary).toContain("Authentication: trusted host OAuth preferred for Linear, GitHub, and Jira");
+    expect(summary).toContain("empirical/secrets.env");
+    expect(summary).toContain("Never paste credentials into chat");
     expect(summary).toContain("Choose one tracker mode before setup can be saved");
     expect(setupConfigurationInput(settings)).toMatchObject({ setupComplete: true, evidence: { required: true } });
   });
@@ -59,6 +62,8 @@ describe("setup settings", () => {
     });
     expect(configured).toContain("Track all work · Linear · tickets ensure");
     expect(configured).toContain("Credential source: LINEAR_API_KEY (environment names only)");
+    expect(configured).toContain("Authentication: trusted host OAuth preferred");
+    expect(configured).toContain("Never paste credentials into chat");
   });
 
   test("explains inactive UI sub-policies without erasing them", () => {

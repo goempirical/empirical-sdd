@@ -50,6 +50,10 @@ import {
 } from "./setup.js";
 import { ProjectStore } from "./storage.js";
 import {
+  defaultTrackerCredentialEnv,
+  trackerAuthenticationGuidance,
+} from "./tracker-auth.js";
+import {
   discoverTracker,
   loadTrackerSetupState,
   parseTrackerBindInput,
@@ -75,6 +79,7 @@ import {
   type ProjectStatus,
   type TrackerStatus,
   type TrackerDiscovery,
+  type TrackerDiscoveryInput,
   type TrackerDiscoveryResource,
   type TrackerPolicy,
   type TrackerPolicyPreview,
@@ -534,17 +539,21 @@ async function main(): Promise<void> {
       const input = parseTrackerDiscoveryInput(
         await readJsonInput<unknown>(context.args, "tracker-discover"),
       );
-      emit(await discoverTracker(input), context.json, renderTrackerDiscovery);
+      emit(
+        await discoverTracker(input, { repositoryRoot: context.root }),
+        context.json,
+        (value) => renderTrackerDiscovery(value, input),
+      );
       return;
     }
     case "tracker-preview": {
       const policy = await readJsonInput<unknown>(context.args, "tracker-preview");
-      emit(await previewTrackerPolicy(policy), context.json, renderTrackerPreview);
+      emit(await previewTrackerPolicy(policy, { repositoryRoot: context.root }), context.json, renderTrackerPreview);
       return;
     }
     case "tracker-suggest": {
       const input = await readJsonInput<unknown>(context.args, "tracker-suggest");
-      emit(await proposeTrackerStateMapping(input), context.json, (value) =>
+      emit(await proposeTrackerStateMapping(input, { repositoryRoot: context.root }), context.json, (value) =>
         renderTrackerMapping(value as import("./types.js").TrackerMappingSuggestion));
       return;
     }
@@ -845,7 +854,7 @@ async function interactiveConfiguration(
       if (currentTrackerSetup.mode !== "unconfigured") {
         return { configuration: setupConfigurationInput(settings), tracker: { mode: "preserve" } };
       }
-      const tracker = await interactiveTrackerSetup(prompt, currentTrackerSetup);
+      const tracker = await interactiveTrackerSetup(prompt, currentTrackerSetup, root);
       console.log(`\n${renderSetupSummary(settings, {
         current: false,
         effective: true,
@@ -856,7 +865,7 @@ async function interactiveConfiguration(
       return { configuration: setupConfigurationInput(settings), tracker };
     }
     if (firstChoice === "tracker" || firstChoice === "t") {
-      const tracker = await interactiveTrackerSetup(prompt, currentTrackerSetup);
+      const tracker = await interactiveTrackerSetup(prompt, currentTrackerSetup, root);
       console.log(`\n${renderSetupSummary(settings, {
         current: false,
         effective: true,
@@ -877,7 +886,7 @@ async function interactiveConfiguration(
         continue;
       }
       if (!customizedTracker && currentTrackerSetup.mode === "unconfigured") {
-        customizedTracker = await interactiveTrackerSetup(prompt, currentTrackerSetup);
+        customizedTracker = await interactiveTrackerSetup(prompt, currentTrackerSetup, root);
       }
       const tracker = customizedTracker ?? { mode: "preserve" as const };
       console.log(`\n${renderSetupSummary(settings, {
@@ -909,8 +918,9 @@ async function interactiveConfiguration(
 async function interactiveTrackerSetup(
   prompt: LinePrompter,
   current: TrackerSetupState,
+  root: string,
 ): Promise<TrackerSetupChange> {
-  console.log("\n◆ Tracker · discover accessible targets; credential values stay in the host environment.");
+  console.log("\n◆ Tracker · OAuth first; raw credentials stay outside Empirical, MCP, and chat.");
   let trackAll = false;
   let provider: string;
   if (current.mode === "unconfigured") {
@@ -954,20 +964,36 @@ async function interactiveTrackerSetup(
   let discovery: TrackerDiscovery;
   let credentialEnv: TrackerPolicy["credentialEnv"];
   let jiraSiteUrl: string | null = null;
+  const authentication = trackerAuthenticationGuidance(
+    provider as TrackerPolicy["provider"],
+    { repositoryRoot: root },
+  );
+  console.log("\n◆ Authentication");
+  console.log(`│  OAuth (preferred): connect ${provider} through the trusted host when available.`);
+  console.log(`│  Host-only fallback file: ${authentication.secretFilePath}`);
+  console.log(`│  Fallback variable names: ${authentication.credentialNames.join(", ")}`);
+  console.log(`│  ${authentication.warning}.`);
+  console.log("│  Edit the host file directly outside chat; never put a credential value in a command or prompt.");
   if (provider === "linear") {
-    const apiKey = await askDefault(prompt, "Linear credential variable [LINEAR_API_KEY]: ", "LINEAR_API_KEY");
+    const defaults = defaultTrackerCredentialEnv("linear");
+    const apiKey = await askDefault(prompt, `Linear fallback variable [${defaults.apiKey}]: `, defaults.apiKey);
     credentialEnv = { apiKey };
-    discovery = await discoverTracker({ provider: "linear", credentialEnv });
+    discovery = await discoverTracker({ provider: "linear", credentialEnv }, { repositoryRoot: root });
   } else if (provider === "github") {
-    const token = await askDefault(prompt, "GitHub credential variable [GITHUB_TOKEN]: ", "GITHUB_TOKEN");
+    const defaults = defaultTrackerCredentialEnv("github");
+    const token = await askDefault(prompt, `GitHub fallback variable [${defaults.token}]: `, defaults.token);
     credentialEnv = { token };
-    discovery = await discoverTracker({ provider: "github", credentialEnv });
+    discovery = await discoverTracker({ provider: "github", credentialEnv }, { repositoryRoot: root });
   } else {
+    const defaults = defaultTrackerCredentialEnv("jira");
     jiraSiteUrl = await askRequired(prompt, "Jira Cloud site URL (for example https://example.atlassian.net): ");
-    const email = await askDefault(prompt, "Jira email variable [JIRA_EMAIL]: ", "JIRA_EMAIL");
-    const apiToken = await askDefault(prompt, "Jira API token variable [JIRA_API_TOKEN]: ", "JIRA_API_TOKEN");
+    const email = await askDefault(prompt, `Jira fallback email variable [${defaults.email}]: `, defaults.email);
+    const apiToken = await askDefault(prompt, `Jira fallback API token variable [${defaults.apiToken}]: `, defaults.apiToken);
     credentialEnv = { email, apiToken };
-    discovery = await discoverTracker({ provider: "jira", target: { siteUrl: jiraSiteUrl }, credentialEnv });
+    discovery = await discoverTracker(
+      { provider: "jira", target: { siteUrl: jiraSiteUrl }, credentialEnv },
+      { repositoryRoot: root },
+    );
   }
 
   const policyTarget = await chooseTrackerTarget(prompt, discovery, jiraSiteUrl);
@@ -1018,7 +1044,7 @@ async function interactiveTrackerSetup(
           ticket,
           visibility,
         };
-  const preview = await previewTrackerPolicy(policy);
+  const preview = await previewTrackerPolicy(policy, { repositoryRoot: root });
   console.log("\n◆ Effective tracker configuration");
   console.log(`│  Provider: ${preview.policy.provider} · Policy v${preview.policy.schemaVersion}`);
   console.log(`│  Target: ${preview.target.map((entry) => `${entry.name} (${entry.kind})`).join(" → ")}`);
@@ -1028,7 +1054,10 @@ async function interactiveTrackerSetup(
     const resource = scoped.resources.find((entry) => entry.kind === "state" && entry.id === states[phase]);
     console.log(`│  ${phase}: ${resource?.name ?? states[phase]} (${states[phase]})`);
   }
-  console.log(`│  Credential source: ${Object.values(credentialEnv).join(", ")} (values are not saved)`);
+  console.log("│  Authentication: trusted host OAuth preferred");
+  console.log(`│  Fallback file: ${authentication.secretFilePath}`);
+  console.log(`│  Credential source: ${Object.values(credentialEnv).join(", ")} (names only; values are never saved)`);
+  console.log(`│  ${authentication.warning}.`);
   return { mode: "apply", policy };
 }
 
@@ -1797,8 +1826,9 @@ function renderTrackerStatus(tracker: TrackerStatus): string {
   ].join("\n");
 }
 
-function renderTrackerDiscovery(value: unknown): string {
+function renderTrackerDiscovery(value: unknown, input: TrackerDiscoveryInput): string {
   const discovery = value as TrackerDiscovery;
+  const authentication = trackerAuthenticationGuidance(input);
   const resources = discovery.resources.map((resource) => {
     const metadata = [resource.kind, resource.key, resource.stateType]
       .filter((entry): entry is string => Boolean(entry))
@@ -1808,6 +1838,10 @@ function renderTrackerDiscovery(value: unknown): string {
   return [
     `Tracker discovery: ${discovery.provider}`,
     `Capabilities: comments=${discovery.capabilities.comments}, uploads=${discovery.capabilities.uploads}, durable-links=${discovery.capabilities.durableLinks}`,
+    "Authentication: trusted host OAuth preferred",
+    `Fallback file: ${authentication.secretFilePath}`,
+    `Fallback names: ${authentication.credentialNames.join(", ")}`,
+    `${authentication.warning}.`,
     ...resources,
     `Discovery digest: ${discovery.digest}`,
   ].join("\n");
@@ -1815,15 +1849,19 @@ function renderTrackerDiscovery(value: unknown): string {
 
 function renderTrackerPreview(value: unknown): string {
   const preview = value as TrackerPolicyPreview;
+  const authentication = trackerAuthenticationGuidance(preview.policy);
   return [
     `Tracker policy preview: ${preview.policy.provider} v${preview.policy.schemaVersion}`,
     `Target: ${preview.target.map((resource) => `${resource.name} (${resource.kind})`).join(" → ")}`,
     `Ticket behavior: ${preview.effective.ticket}`,
     `Progress visibility: ${preview.effective.visibility}`,
+    "Authentication: trusted host OAuth preferred",
+    `Fallback file: ${authentication.secretFilePath}`,
+    `${authentication.warning}.`,
     "State mapping:",
     ...Object.entries(preview.mapping).map(([phase, resource]) =>
       `- ${phase}: ${resource.name} (${resource.id})`),
-    `Credential sources: ${Object.values(preview.policy.credentialEnv).join(", ")} (values are not saved)`,
+    `Credential sources: ${Object.values(preview.policy.credentialEnv).join(", ")} (names only; values are never saved)`,
     `Preview digest: ${preview.digest}`,
   ].join("\n");
 }
