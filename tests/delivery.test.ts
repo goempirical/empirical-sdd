@@ -5,6 +5,7 @@ import {
   assertSafeDeliveryArgv,
   deliverToGitHub,
   executePublicationPlan,
+  githubAuthenticationEnvironment,
   githubCliConfigurationEnvironment,
   inspectPublication,
   localOnlyYoloAuthorization,
@@ -17,10 +18,11 @@ import {
   type PullRequestFact,
 } from "../src/delivery.js";
 import { createAuthorization, sha256 } from "../src/protocol.js";
-import type {
-  CapturedRuntimeResult,
-  ProcessAdapter,
-  ProcessOutcome,
+import {
+  executeCommandCaptured,
+  type CapturedRuntimeResult,
+  type ProcessAdapter,
+  type ProcessOutcome,
 } from "../src/runtime.js";
 
 const sourceCommit = "1".repeat(40);
@@ -488,6 +490,79 @@ describe("GitHub CLI authentication boundary", () => {
       platform: "linux",
       home: " ",
     })).toThrow("operating-system home");
+  });
+
+  test("scopes the ephemeral gh helper configuration to exact git pushes", () => {
+    const options = {
+      env: { GH_CONFIG_DIR: "/host/gh" },
+      platform: "linux" as const,
+      home: "/home/tester",
+    };
+    expect(githubAuthenticationEnvironment(["gh", "pr", "list"], options)).toEqual({
+      GH_CONFIG_DIR: "/host/gh",
+    });
+    expect(githubAuthenticationEnvironment(["git", "push", "origin", "branch"], options)).toEqual({
+      GH_CONFIG_DIR: "/host/gh",
+      GIT_TERMINAL_PROMPT: "0",
+      GIT_CONFIG_COUNT: "2",
+      GIT_CONFIG_KEY_0: "credential.https://github.com.helper",
+      GIT_CONFIG_VALUE_0: "",
+      GIT_CONFIG_KEY_1: "credential.https://github.com.helper",
+      GIT_CONFIG_VALUE_1: "!gh auth git-credential",
+    });
+    for (const argv of [
+      ["git", "ls-remote", "origin"],
+      ["git", "fetch", "origin", "main"],
+      ["npm", "view", "empirical-sdd"],
+      ["bun", "run", "ci"],
+    ]) {
+      expect(githubAuthenticationEnvironment(argv, options)).toEqual({});
+    }
+  });
+
+  test("records only environment keys when a sanitized push cannot authenticate", async () => {
+    const configDirectory = join("/private", "host-gh-config");
+    const environment = githubAuthenticationEnvironment(
+      ["git", "push", "origin", "branch"],
+      {
+        env: { GH_CONFIG_DIR: configDirectory },
+        platform: "linux",
+        home: "/home/tester",
+      },
+    );
+    const invocations: Parameters<ProcessAdapter>[0][] = [];
+    const result = await executeCommandCaptured(
+      process.cwd(),
+      {
+        argv: ["git", "push", "origin", "branch"],
+        cwd: ".",
+        timeoutMs: 1_000,
+        maxOutputBytes: 8_192,
+        environment,
+      },
+      async (invocation) => {
+        invocations.push(invocation);
+        return processOutcome("", 128, "fatal: Authentication failed");
+      },
+    );
+    expect(invocations).toHaveLength(1);
+    expect(invocations[0]?.env).toMatchObject(environment);
+    expect(invocations[0]?.env.HOME).toBeUndefined();
+    expect(invocations[0]?.env.GH_TOKEN).toBeUndefined();
+    expect(invocations[0]?.env.GITHUB_TOKEN).toBeUndefined();
+    expect(result.result.exitCode).toBe(128);
+    expect(result.result.environmentKeys).toEqual(expect.arrayContaining([
+      "GH_CONFIG_DIR",
+      "GIT_CONFIG_COUNT",
+      "GIT_CONFIG_KEY_0",
+      "GIT_CONFIG_KEY_1",
+      "GIT_CONFIG_VALUE_0",
+      "GIT_CONFIG_VALUE_1",
+      "GIT_TERMINAL_PROMPT",
+      "PATH",
+    ]));
+    expect(JSON.stringify(result.result)).not.toContain(configDirectory);
+    expect(JSON.stringify(result.result)).not.toContain("gh auth git-credential");
   });
 
   test("passes only the non-secret configuration locator to built-in gh commands", async () => {
