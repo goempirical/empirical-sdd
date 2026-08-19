@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from "bun:test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
@@ -162,7 +162,7 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
 
     const initialized = await client.callTool({
       name: "empirical_init",
-      arguments: { root },
+      arguments: { root, tracker: { mode: "disabled" } },
     });
     expect(initialized.isError).not.toBe(true);
     expect(initialized.structuredContent).toMatchObject({
@@ -172,6 +172,8 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
         manifest: ".empirical/context/manifest.json",
       },
     });
+    expect(JSON.parse(await readFile(join(root, ".empirical", "tracker.json"), "utf8")))
+      .toEqual({ schemaVersion: 1, mode: "disabled" });
 
     const context = await client.callTool({ name: "empirical_context", arguments: { root } });
     expect(context.isError).not.toBe(true);

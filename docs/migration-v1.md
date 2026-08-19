@@ -75,9 +75,10 @@ Upgrading does not replace an existing feature binding. Same-target bindings
 are reprojected under the new policy digest; target drift still requires an
 explicit replacement. New v2 Linear progress is append-only through comments
 and leaves descriptions untouched. Dormant v1 binding/pending records remain
-locally diagnosable. To stop tracking, choose Disabled; this removes only the
-active policy and performs no provider request, so dormant feature records can
-be recovered if the policy is restored.
+locally diagnosable. To stop tracking, choose No tracking; this atomically
+replaces only the active policy with the provider-free disabled setup record
+and performs no provider request, so dormant feature records can be recovered
+if a policy is restored.
 
 After an interrupted ensure create, retry sync first: dispatched attempts are
 reconciled and never blindly resent. `TRACKER_BIND_AMBIGUOUS` requires choosing

@@ -24,8 +24,9 @@ Schema 5 model.
   candidate validation, projection rollback, and integration receipts.
 - `delivery.ts` owns protected GitHub source/evidence PR convergence and
   explicit publication planning.
-- `tracking.ts` owns provider discovery/preview and semantic mapping, optional
-  Tracker Policy v1/v2, ensure/manual/off binding, target-bound feature
+- `tracking.ts` owns the unconfigured/disabled/configured setup state, provider
+  discovery/preview and semantic mapping, optional Tracker Policy v1/v2,
+  ensure/manual/off binding, target-bound feature
   bindings, per-effect durable pending operations, safe receipt artifacts, and
   GitHub, Linear, and Jira adapters.
 - `knowledge.ts` owns Manifest v2 fingerprints and fresh-by-default retrieval.
@@ -50,7 +51,7 @@ Git common directory
 repository checkout
 ├── Schema-5 config + Policy v2 + Manifest v2
 ├── marker-owned automatic workflow dispatchers and local skills
-├── optional secret-free Tracker Policy v1 or v2
+├── optional disabled setup record or secret-free Tracker Policy v1/v2
 ├── living capability projections
 ├── discovery records
 └── selected feature

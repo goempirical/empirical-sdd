@@ -161,14 +161,14 @@ try {
   const packageJson = JSON.parse(await readFile(resolve(import.meta.dir, "../package.json"), "utf8")) as { version: string };
   for (const args of [["version"], ["--version"], ["-v"]]) {
     const version = await runCli(root, args);
-    if (version.stdout !== "0.24.0\n" || packageJson.version !== "0.24.0") {
+    if (version.stdout !== "0.24.1\n" || packageJson.version !== "0.24.1") {
       throw new Error(`Bundled/package version mismatch: ${version.stdout}`);
     }
   }
   for (const args of [[], ["help"], ["--help"], ["-h"]]) {
     const help = await runCli(root, args);
     if (
-      !help.stdout.includes("empirical v0.24.0")
+      !help.stdout.includes("empirical v0.24.1")
       || !help.stdout.includes("through 1 installed skill")
       || !help.stdout.includes("Explicitly initialize or repair Empirical")
       || help.stdout.includes("\u001b[")

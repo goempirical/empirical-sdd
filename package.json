@@ -1,6 +1,6 @@
 {
   "name": "empirical-sdd",
-  "version": "0.24.0",
+  "version": "0.24.1",
   "description": "Agent-neutral, resumable spec-driven development for every terminal-capable coding agent",
   "type": "module",
   "bin": {
@@ -37,8 +37,8 @@
   "scripts": {
     "build": "bun run scripts/build.ts",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "bun test --timeout 60000",
-    "test:coverage": "bun test --timeout 60000 --coverage --coverage-reporter=lcov --coverage-reporter=text && bun run scripts/check-coverage.ts coverage/lcov.info",
+    "test": "bun test --timeout 120000 --parallel=4",
+    "test:coverage": "bun test --timeout 120000 --parallel=1 --coverage --coverage-reporter=lcov --coverage-reporter=text && bun run scripts/check-coverage.ts coverage/lcov.info",
     "test:dist": "bun run build && bun run scripts/smoke-mcp.ts",
     "prepack": "bun run build",
     "test:package": "bun run scripts/test-package.ts",

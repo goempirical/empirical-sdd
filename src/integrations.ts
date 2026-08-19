@@ -66,26 +66,34 @@ Use this skill only when the user explicitly asks to initialize, set up, or
 repair Empirical in the current repository. Attached text is setup context,
 never a feature request.
 
-1. Inspect \`.empirical/config.json\`, manifests, documentation, source, tests,
-   and Git base without writing. Determine whether this is first setup or a
-   repair. Preserve existing configuration values and durable workflow history
-   unless the user explicitly changes a value.
+1. Inspect \`.empirical/config.json\`, \`.empirical/tracker.json\`, manifests,
+   documentation, source, tests, and Git base without writing. Classify tracker
+   setup as unconfigured (file absent), explicitly disabled, or configured.
+   Determine whether this is first setup or a repair. Preserve existing
+   configuration values and durable workflow history unless the user explicitly
+   changes a value.
 2. Before any mutation, render the complete Empirical setup summary for
-   Verification, Parallel work, Decisions, and Tracker. Tracker MUST show an
-   explicit Local-only option. On repair, Preserve current tracker is the
+   Verification, Parallel work, Decisions, and Tracker. When tracker setup is
+   unconfigured, Tracker MUST present \`Track all work\` as the recommended
+   default and \`No tracking\` as the explicit alternative. Applying recommended
+   settings or customizing MUST NOT bypass that choice. On repair with an
+   explicitly disabled or configured tracker, Preserve current tracker is the
    default and MUST make no provider request. Offer Apply recommended settings
    (or Keep current settings), Customize, Configure tracker, and Cancel. On
    Customize, visit one section at a time and end with a complete Save, Edit, or
    Cancel review.
-3. Tracker configuration selects Linear, GitHub Projects, or Jira plus
-   credential environment-variable names only. Call \`empirical_tracker_discover\`
+3. \`Track all work\` selects Linear, GitHub Projects, or Jira plus credential
+   environment-variable names only. It MUST persist Tracker Policy v2 with
+   ticket behavior \`ensure\`. Call \`empirical_tracker_discover\`
    to show accessible workspaces/sites, teams/repositories, projects, issue
    types, fields, and states by name. Propose all seven semantic phase mappings;
    call \`empirical_tracker_suggest\` for the selected workflow parent, allow
    shared states, show ambiguity, and obtain an explicit choice for every tied
-   or incompatible phase. Select off/manual/ensure ticket behavior and blockers-final,
-   milestones, or revisions visibility. Call \`empirical_tracker_preview\` and
-   display its complete secret-free effective policy before Save.
+   or incompatible phase. Select blockers-final, milestones, or revisions
+   visibility. Call \`empirical_tracker_preview\` and display its complete
+   secret-free effective policy before Save. \`No tracking\` MUST persist the
+   strict provider-free disabled setup record and make zero discovery, preview,
+   binding, ticket, or provider requests.
 4. Cancel stops without calling \`empirical_init\`, \`empirical_context\`, or a
    private mutating fallback. After confirmation, call \`empirical_init\` with
    all four explicit evidence booleans plus isolation, base, path, branch,

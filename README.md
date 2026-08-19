@@ -42,14 +42,17 @@ verified, integrated, delivered, or published.
 
 ## Tracker setup
 
-`empirical-init` always shows a Tracker section. Keep Local-only to make no
-provider requests, or select Linear, GitHub Projects, or Jira. Empirical reads
+`empirical-init` always shows a Tracker section. When no prior choice exists,
+it recommends **Track all work** and requires choosing that or **No tracking**
+before setup can be saved. Track all selects Linear, GitHub Projects, or Jira;
+No tracking persists a provider-free choice and makes no provider requests.
+Empirical reads
 credential values only from the environment-variable names you provide,
 discovers accessible targets and workflow states, proposes all seven semantic
 mappings, and shows the complete secret-free policy before saving. Ambiguous
 state suggestions require an explicit choice; simple boards may intentionally
 reuse one provider state for several phases. Repair preserves an existing
-tracker policy unless you explicitly change or disable it.
+tracker policy or explicit No tracking choice unless you change it.
 
 Tracker Policy v2 supports `off`, `manual`, and `ensure` ticket behavior plus
 blockers/final, phase-milestone, or every-revision progress comments. `ensure`

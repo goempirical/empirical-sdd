@@ -1,4 +1,5 @@
 import { EmpiricalError } from "./errors.js";
+import type { TrackerSetupState } from "./tracking.js";
 import type { ProjectConfig, ProjectConfigurationInput, TrackerPolicy } from "./types.js";
 
 export type SetupSettings = Pick<ProjectConfig, "evidence" | "isolation" | "decisions">;
@@ -67,6 +68,7 @@ export function renderSetupSummary(
     effective?: boolean;
     resolvedBase?: string;
     tracker?: TrackerPolicy | null;
+    trackerSetup?: TrackerSetupState;
   } = { current: false },
 ): string {
   const state = options.effective ? "effective" : options.current ? "current" : "recommended";
@@ -74,6 +76,11 @@ export function renderSetupSummary(
     ? `auto (currently ${options.resolvedBase})`
     : settings.isolation.baseBranch;
   const inactive = settings.evidence.required ? "" : " · inactive";
+  const trackerSetup = options.trackerSetup ?? ("tracker" in options
+    ? options.tracker
+      ? { mode: "configured", policy: options.tracker } as const
+      : { mode: "disabled", policy: null } as const
+    : { mode: "unconfigured", policy: null } as const);
   return [
     "◆ Empirical setup",
     `│  ${options.effective ? "Effective settings" : options.current ? "Current settings" : "Recommended settings"}`,
@@ -98,13 +105,24 @@ export function renderSetupSummary(
     `│  ${marker(settings.decisions.complexRecords === "required")} ${settings.decisions.complexRecords === "required" ? "Require reviewable decision records for Complex work" : "Do not require Complex decision records"}`,
     "│",
     "│  Tracker",
-    ...(options.tracker ? [
-      `│  ● ${trackerLabel(options.tracker)} · ${state}`,
-      `│    Credential source: ${trackerCredentialNames(options.tracker).join(", ")} (environment names only)`,
+    ...(trackerSetup.mode === "configured" ? [
+      `│  ● ${trackerSelectionLabel(trackerSetup.policy)} · ${state}`,
+      `│    Credential source: ${trackerCredentialNames(trackerSetup.policy).join(", ")} (environment names only)`,
+    ] : trackerSetup.mode === "disabled" ? [
+      `│  ● No tracking (local-only; no provider requests) · ${state}`,
     ] : [
-      `│  ○ Local-only (disabled; no provider requests) · ${state}`,
+      `│  ● Track all work (recommended; configure a provider before Save) · ${state}`,
+      "│  ○ No tracking (local-only; no provider requests)",
+      "│    Choose one tracker mode before setup can be saved.",
     ]),
   ].join("\n");
+}
+
+function trackerSelectionLabel(policy: TrackerPolicy): string {
+  const selection = policy.schemaVersion === 2 && policy.ticket === "ensure"
+    ? "Track all work"
+    : "Tracker configured";
+  return `${selection} · ${trackerLabel(policy)}`;
 }
 
 function trackerLabel(policy: TrackerPolicy): string {

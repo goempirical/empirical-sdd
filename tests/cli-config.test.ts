@@ -46,7 +46,7 @@ describe("first-run configuration CLI", () => {
     const directory = await root();
     const first = await run(internal([
       "init", "--interactive", "--no-integrations", "--root", directory,
-    ]), "customize\noff\non\noff\non\nask\nmain\n../{repo}-sandbox-{feature}\n{type}/team-{feature}\nrequired\nsave\n");
+    ]), "customize\noff\non\noff\non\nask\nmain\n../{repo}-sandbox-{feature}\n{type}/team-{feature}\nrequired\nno-tracking\nsave\n");
     expect(first.exitCode).toBe(0);
     expect(first.stderr).toBe("");
     expect(first.stdout).toContain("Empirical setup");
@@ -54,6 +54,8 @@ describe("first-run configuration CLI", () => {
     expect(first.stdout).toContain("Verification policy");
     expect(first.stdout).toContain("Default Git base");
     expect(first.stdout).toContain("Complex decision records");
+    expect(first.stdout).toContain("Track all work (recommended default)");
+    expect(first.stdout).toContain("No tracking");
     expect(first.stdout).toContain("Save these effective settings");
     expect(JSON.parse(await readFile(join(directory, ".empirical/config.json"), "utf8"))).toMatchObject({
       setupComplete: true,
@@ -66,6 +68,8 @@ describe("first-run configuration CLI", () => {
       },
       decisions: { complexRecords: "required" },
     });
+    expect(JSON.parse(await readFile(join(directory, ".empirical/tracker.json"), "utf8")))
+      .toEqual({ schemaVersion: 1, mode: "disabled" });
 
     const second = await run(internal(["init", "--interactive", "--no-integrations", "--root", directory]), "\n");
     expect(second.exitCode).toBe(0);
@@ -75,6 +79,18 @@ describe("first-run configuration CLI", () => {
       evidence: { required: false, browserForUi: true, screenshotForUi: false, codeReview: true },
       isolation: { mode: "ask", baseBranch: "main" },
     });
+  });
+
+  test("applying recommended settings still requires and persists a tracker choice", async () => {
+    const directory = await root();
+    const initialized = await run(internal([
+      "init", "--interactive", "--no-integrations", "--root", directory,
+    ]), "\nno-tracking\n\n");
+    expect(initialized.exitCode).toBe(0);
+    expect(initialized.stdout).toContain("Track all work (recommended default)");
+    expect(initialized.stdout).toContain("Save this complete setup?");
+    expect(JSON.parse(await readFile(join(directory, ".empirical/tracker.json"), "utf8")))
+      .toEqual({ schemaVersion: 1, mode: "disabled" });
   });
 
   test("setup cancellation happens before first-run or repair mutation", async () => {
@@ -138,7 +154,8 @@ describe("first-run configuration CLI", () => {
     ]));
     expect(initialized.exitCode).toBe(0);
     expect(JSON.parse(initialized.stdout).config.setupComplete).toBe(true);
-    expect(await stat(join(directory, ".empirical", "tracker.json")).then(() => true, () => false)).toBe(false);
+    expect(JSON.parse(await readFile(join(directory, ".empirical", "tracker.json"), "utf8")))
+      .toEqual({ schemaVersion: 1, mode: "disabled" });
 
     const invalidRoot = await root();
     const invalidTrackerInput = join(invalidRoot, "tracker-setup.json");
