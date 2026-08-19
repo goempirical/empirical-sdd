@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "id": "executed-75e9c6a3dd0af11e5de8f2d3",
+  "criteria": [
+    "AC-1",
+    "AC-10",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7",
+    "AC-8",
+    "AC-9"
+  ],
+  "evidenceKinds": [
+    "test"
+  ],
+  "summary": "Complete deterministic 0.25.0 release CI: type safety, serial regression and coverage suites, bundled CLI/MCP smoke, clean package consumer, metadata consistency, and diff hygiene.",
+  "passed": false,
+  "startedAt": "2026-08-19T22:32:54.856Z",
+  "completedAt": "2026-08-19T22:41:06.321Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "secure-tracker-auth",
+    "specRevision": 3,
+    "specDigest": "sha256:02059b9aff3bda9ca12013dbb7e30d0709cec82407db34813d014d596a55d50b",
+    "treeDigest": "sha256:8b1bd534304a0757701412b1ae75345c01c41bc4b0fdd40b190e9262b4bab004",
+    "policyDigest": "sha256:d1f5cd886f30de09b672911041c00cda350042fe9d96e5595a6d9ca4be592e0c"
+  },
+  "digest": "sha256:dac8c8e05b971c1cd118a55bad5471252f4c2dde052a52b21c412b6a592cc7dd",
+  "kind": "executed",
+  "command": {
+    "argv": [
+      "bun",
+      "run",
+      "ci"
+    ],
+    "cwd": ".",
+    "timeoutMs": 900000,
+    "maxOutputBytes": 4194304,
+    "environmentKeys": [
+      "PATH",
+      "TMPDIR"
+    ]
+  },
+  "result": {
+    "exitCode": null,
+    "signal": "SIGTERM",
+    "timedOut": false,
+    "stdoutDigest": "sha256:08d344b3baf6186217c9210f2241e3794d65a2001365046d5473e779d25a1247",
+    "stderrDigest": "sha256:7da2cdff4d95841c01727620aa78c345c9ea69eef8f961791b778bd7eb0b662d",
+    "stdoutTail": "bun test v1.3.14 (0d9b296a) 1x PARALLEL\nbun test v1.3.14 (0d9b296a) 1x PARALLEL\n",
+    "stderrTail": "access [1.06ms]\n(pass) GitHub CLI authentication boundary > scopes the ephemeral gh helper configuration to exact git pushes [0.45ms]\n(pass) GitHub CLI authentication boundary > records only environment keys when a sanitized push cannot authenticate [14.70ms]\n(pass) GitHub CLI authentication boundary > passes only the non-secret configuration locator to built-in gh commands [16.57ms]\n(pass) GitHub CLI authentication boundary > reports an unusable stored login without credential fallback [4.23ms]\n(pass) explicit immutable publication > ordinary YOLO remains local/integrated and cannot infer publication [2.30ms]\n(pass) explicit immutable publication > plans only absent immutable artifacts and converges identical retries [1.61ms]\n(pass) explicit immutable publication > stops on immutable conflicts and executes an approved plan without replacement flags [6.61ms]\n(pass) explicit immutable publication > queries remote publication state and verifies convergence independently [5.72ms]\n\ntests/selector.test.ts:\n(pass) agent installer selector > preselects detected and remembered agents and renders status and paths [6.96ms]\n(pass) agent installer selector > supports movement, filtering by name, id, alias, and destination, and toggling [3.83ms]\n(pass) agent installer selector > bounds the viewport, reports hidden rows, and keeps every frame width-safe [3.37ms]\n(pass) agent installer selector > refuses empty submission and preserves an explicit empty default [0.31ms]\n(pass) agent installer selector > restores raw mode and cursor visibility when rendering fails [9.86ms]\n\ntests/lifecycle.test.ts:\n(pass) package lifecycle > update upgrades the package before refreshing installed agent entrypoints [1.33ms]\n(pass) package lifecycle > update stops with a stage-specific error when package update fails [0.87ms]\n(pass) package lifecycle > update reports integration refresh failures separately [0.83ms]\n(pass) package lifecycle > uninstall removes the exact global package through the platform npm executable [0.70ms]\n(pass) package lifecycle > uninstall reports package-stage failure after managed cleanup may have occurred [0.39ms]\n(pass) package lifecycle > uninstall confirmation defaults closed and accepts only an explicit yes [0.63ms]\n\ntests/integrations.test.ts:\n(pass) agent integrations > project initialization installs automatic local activation and runtime bridges [769.98ms]\n(pass) agent integrations > project repair replaces owned guidance, removes owned legacy artifacts, and preserves collisions [287.58ms]\n(pass) agent integrations > 0.22-style repository repair preserves configuration, context, and history without feature state [604.46ms]\n(pass) agent integrations > project activation never follows instruction or skill symbolic links [74.74ms]\n(pass) agent integrations > global install creates only the registry-backed Empirical skill for every selected agent [3028.33ms]\n(pass) agent integrations > global refresh updates current managed skills, removes managed legacy skills, and preserves unmanaged collisions [2997.38ms]\n(pass) agent integrations > global migration keeps the old managed workflow until Init is fully installed [502.23ms]\n(pass) agent integrations > an explicit selection installs selected agents and removes only deselected managed skills [2890.49ms]\n(pass) agent integrations > shared roots are reconciled once and remain until the last selected target leaves [1410.96ms]\n(pass) agent integrations > legacy aliases canonicalize, project-only targets fail, and unmanaged selection metadata is preserved [503.61ms]\n(pass) agent integrations > global refresh does not follow skill or parent-directory symbolic links [3053.89ms]\n(pass) agent integrations > global uninstall removes only owned skills and metadata and converges [1271.53ms]\n(pass) agent integrations > global uninstall preserves incompatible selection metadata [719.18ms]\n(pass) agent integrations > global integration rejects empty and filesystem-root homes [1.01ms]\n(pass) agent integrations > install CLI works outside a project and reports one human and JSON entrypoint per agent [5666.36ms]\n(pass) agent integrations > primary help exposes only install, update, and uninstall as normal terminal commands [4304.91ms]\n(pass) agent integrations > every registry operation and public subcommand has no-write usable help [44162.98ms]\n(pass) agent integrations > version aliases remain exact and unbranded [3732.19ms]\n(pass) agent integrations > public workflow verbs are rejected before project discovery [8893.92ms]\n(pass) agent integrations > non-interactive install requires an explicit selection [1972.96ms]\n(pass) agent integrations > non-interactive uninstall refuses before mutation without --yes [2257.18ms]\n(pass) agent integrations > confirmed uninstall works outside a repository with JSON and human reports [4540.74ms]\n(pass) agent integrations > repeatable agent flags install the exact selection [1680.77ms]\n(pass) agent integrations > yes mode preserves detected agents without prompting [1235.76ms]\n(pass) agent integrations > yes mode reuses a remembered broad selection without detecting it [3104.51ms]\n\ntests/setup.test.ts:\n(pass) setup settings > renders every safe default before persistence [2.16ms]\n(pass) setup settings > distinguishes an explicit no-tracking choice from missing tracker setup [1.81ms]\n(pass) setup settings > explains inactive UI sub-policies without erasing them [0.55ms]\n(pass) setup settings > validates path and branch templates before save [1.69ms]\n\n 252 pass\n 0 fail\n 2087 expect() calls\nRan 252 tests across 22 files. [444.39s]\n$ bun test --timeout 120000 --parallel=1 --coverage --coverage-reporter=lcov --coverage-reporter=text && bun run scripts/check-coverage.ts coverage/lcov.info\n\ntests/agents.test.ts:\n(pass) agent detection and handoff > handoff is unavailable until a Complex specification has passed [952.77ms]\n(pass) agent detection and handoff > detection distinguishes prompt and workspace launch capabilities [12.82ms]\n(pass) agent detection and handoff > handoff only authorizes an unchanged option after explicit approval and never launches it [1092.34ms]\n\ntests/mcp.test.ts:\n(pass) the bundled stdio MCP server exposes and executes the portable workflow tools [9498.50ms]\n(pass) tracker OAuth uses only explicitly negotiated URL elicitation and otherwise falls back [511.82ms]\n(pass) in-process MCP routes OAuth through every tracker operation without exposing credentials [2680.19ms]\n(pass) form-only tracker setup fails closed with safe host-side recovery guidance [29.80ms]\n\ntests/journal.test.ts:\n(pass) hash-chained journal > appends a linked deterministic chain and reduces current state [56.79ms]\n(pass) hash-chained journal > rejects filename, link, body, and state tampering [81.02ms]\n(pass) hash-chained journal > rejects semantically invalid re-digested events and symbolic event files [46.13ms]\n(pass) hash-chained journal > compacts around a verified snapshot boundary and remains appendable [72.52ms]\n(pass) hash-chained journal > recovers transactionally from every compaction interruption [160.36ms]\n(pass) hash-chained journal > repeated compaction preserves the latest chain boundary [85.68ms]\n(pass) hash-chained journal > recovers every interrupted compaction when a previous snapshot exists [230.54ms]\n\ntests/worktree-isolation.test.ts:\n(pass) Git worktree isolation > unrelated work returns a complete read-only proposal [3949.13ms]\n(pass) Git worktree isolation > approved creation blocks a dirty source checkout [3665.74ms]\n(pass) Git worktree isolation > approved clean creation runs exact -b behavior and starts the request in the new checkout [5962.90ms]\n(pass) Git worktree isolation > a linked worktree does not inherit a committed blocked feature owned by its source checkout [5532.46ms]\n(pass) Git worktree isolation > branch and path collisions are rejected without force or workflow mutation [5561.83ms]\n(pass) Git worktree isolation > editable type, base, branch, and path survive proposal and approval [2325.40ms]\nerror: script \"test:coverage\" was terminated by signal SIGTERM (Polite quit request)\nerror: script \"ci\" was terminated by signal SIGTERM (Polite quit request)\n",
+    "stdoutTruncated": false,
+    "stderrTruncated": false
+  }
+}

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
-  "generator": "empirical-0.24.1",
-  "sourceDigest": "sha256:8f9a253350f3b5adb34750c53227e6b9c5a6ea5f5625ccf6a3d7c3f56bfa7152",
+  "generator": "empirical-0.23.0",
+  "sourceDigest": "sha256:d267ee68eb1ec9f869787635f5cccc45bd54c170f035bce0e6774c03078528ea",
   "files": [
     {
       "path": ".agents/skills/empirical/SKILL.md",
@@ -55,8 +55,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 5208,
-      "digest": "sha256:8a4159d757bc42e4a7021b987de046b9897bb162fd4f2cc471fb80834a7939d5"
+      "size": 7169,
+      "digest": "sha256:dce16a2cb37fed0eb293072ef66577bec0728e2e8094d57b9d7a6b4fed5b1486"
     },
     {
       "path": "CLAUDE.md",
@@ -80,8 +80,8 @@
     },
     {
       "path": "README.md",
-      "size": 4582,
-      "digest": "sha256:22c036e019055ce0d2fdb4ec10a163121085b0892014e1807d57a05a74066f04"
+      "size": 5770,
+      "digest": "sha256:05eefcef0eb83530b2f5a857880ab741a962f8ee9575c4e86b946fc173c8e982"
     },
     {
       "path": "SECURITY.md",
@@ -95,18 +95,18 @@
     },
     {
       "path": "docs/architecture.md",
-      "size": 8161,
-      "digest": "sha256:4c9ef66bc607ef99983c57793f8652a8a6a2c95fbc1cbae42d9ba0a2d86fef2b"
+      "size": 8745,
+      "digest": "sha256:bade85177b37e102e191688294acb15336ba6391c2fec03b9b04f208e68a3eef"
     },
     {
       "path": "docs/demo.md",
       "size": 6567,
-      "digest": "sha256:b28cb72955b536c9c601b6700391166f73b2a5a96d15c1c2399840faa9a98018"
+      "digest": "sha256:f293fffe288d8ed1dd59b3fd7def559900b66cd35fc68572a3d978b80845be0e"
     },
     {
       "path": "docs/mcp.md",
-      "size": 13212,
-      "digest": "sha256:c7752a1dc90c82c1374c5646a33877a985ccda26dcd74fb2df91876c501fa447"
+      "size": 15859,
+      "digest": "sha256:562695b5c50e8e1d614a414c946a8afb89f930db1873e831313c76dbbfa991be"
     },
     {
       "path": "docs/migration-v1.md",
@@ -116,22 +116,22 @@
     {
       "path": "docs/openspec-comparison.md",
       "size": 1679,
-      "digest": "sha256:dd177a83c808199ea245be5ca170e4f495de08284ebe6a0f8e8015f07546a5fb"
+      "digest": "sha256:72179668e72e16f0a2ec16d9ff12c00a294163bc9c368f11829c551e725cd616"
     },
     {
       "path": "docs/protocol.md",
-      "size": 9907,
-      "digest": "sha256:ffe48d6f1d4a58d74c20b6afd6bb33c8eab5c49a54bf376d6a73d55bb04d117c"
+      "size": 10842,
+      "digest": "sha256:10d8255d9441e0a80d0ec3631835f90eca68d5347e67ad954b27c7ff1e21c8d8"
     },
     {
       "path": "docs/security.md",
-      "size": 5336,
-      "digest": "sha256:05c35c8c3d819e5880d3a8eff3c48e335eeeaa75c8c10b20856b491815ac812c"
+      "size": 7141,
+      "digest": "sha256:cd9b41797068b9f42ba1b8e01405c14cae019b6d6664db9074b1b002e45c8f4a"
     },
     {
       "path": "docs/versioning.md",
-      "size": 3007,
-      "digest": "sha256:1a8e6d5e826ec0d02b236e57d4fca4ec48ab441dff9f9308ffe746ef3236b86f"
+      "size": 3258,
+      "digest": "sha256:07fdabf85eb1c5c66f8ca237fe0f74a2555766515f51624b1fa82eaccb5bf7a2"
     },
     {
       "path": "openspec/config.yaml",
@@ -140,8 +140,8 @@
     },
     {
       "path": "package.json",
-      "size": 2165,
-      "digest": "sha256:cd1900092a883feb64e196d0d2e78e10d80857e4f7f3c28b8124de5fe33590a7"
+      "size": 2244,
+      "digest": "sha256:4ef091f623e8287aa19130990fe73538a62daea3ea4b0fe838291e730cecf98d"
     },
     {
       "path": "scripts/build.ts",
@@ -150,8 +150,8 @@
     },
     {
       "path": "scripts/check-consistency.ts",
-      "size": 5831,
-      "digest": "sha256:e3e7af8f665ffd9c0c9921f97877ceacc73adb42903aca7acdf6160e24d9160c"
+      "size": 5886,
+      "digest": "sha256:4d257e860062aa3a740546acae45cf558a6914a3dd1896d87bc4a0e9cec296f3"
     },
     {
       "path": "scripts/check-coverage.ts",
@@ -170,13 +170,13 @@
     },
     {
       "path": "scripts/smoke-mcp.ts",
-      "size": 10054,
-      "digest": "sha256:fb3353c7543eed5ccbe7df5d8ef77bf5db7feb8637b7fee845f00324d1b13cd1"
+      "size": 10060,
+      "digest": "sha256:58acbb5b36316f14df37f12f7b7341457465a8c43bdf3dbfc1778f5fac753d6c"
     },
     {
       "path": "scripts/test-package.ts",
-      "size": 6622,
-      "digest": "sha256:5fd26ac193ae03fb338e88e874d406cdcf831e645aa3a2781ea50fee61c6a3bc"
+      "size": 7003,
+      "digest": "sha256:695369c1c3e0886ab3430a3557aee77cc0a2d4b628028512cd055c2f88568f8e"
     },
     {
       "path": "src/agent-catalog.ts",
@@ -200,8 +200,8 @@
     },
     {
       "path": "src/cli.ts",
-      "size": 94507,
-      "digest": "sha256:caf112274a554c9f79f3b90b6b0008729c9b262a648a3c177582aeff53ac6ea3"
+      "size": 96512,
+      "digest": "sha256:897ee32f3ea53e2c407f16e867b27a299a78358192e00d808af7d04558c2632a"
     },
     {
       "path": "src/coordination.ts",
@@ -210,8 +210,8 @@
     },
     {
       "path": "src/core.ts",
-      "size": 124367,
-      "digest": "sha256:3903c91ba5a0205e8d7fcbc958c41966782cc9db64f8c4e063295c069ac7160d"
+      "size": 124777,
+      "digest": "sha256:3049d5e69e53f6f72069654f422e70c2f6fbc04a106017aa36b6be8d1462cd21"
     },
     {
       "path": "src/decisions.ts",
@@ -235,8 +235,8 @@
     },
     {
       "path": "src/doctor.ts",
-      "size": 27567,
-      "digest": "sha256:1ba88d530708e1ccc615f9677b10215dce67d3f943f9a71e1e185a268e820c9a"
+      "size": 28102,
+      "digest": "sha256:a95e0fc055a2381c95e396600af5e5275fa72aca2c762b8b92302a8a8d11be4f"
     },
     {
       "path": "src/errors.ts",
@@ -250,13 +250,13 @@
     },
     {
       "path": "src/index.ts",
-      "size": 2609,
-      "digest": "sha256:379dc6ba1a81baba8b68a0727a15ea83c737c9920e6169ca94a91eefde0f3d05"
+      "size": 3062,
+      "digest": "sha256:63a02eadce8948a9d6958e26fe3e8558880ac4cd24a146d4bb9f3c1ea5628b5c"
     },
     {
       "path": "src/integrations.ts",
-      "size": 38358,
-      "digest": "sha256:d0fbc0d9067b9384be75c18ffd01a39f04d9f922db2f93bceaf6e94d9cd6dc59"
+      "size": 39530,
+      "digest": "sha256:b4aec541e2a7c38d44cc2983a7c80440646c6d1d6953c124f8b799d291f29a35"
     },
     {
       "path": "src/journal.ts",
@@ -280,8 +280,8 @@
     },
     {
       "path": "src/mcp.ts",
-      "size": 28605,
-      "digest": "sha256:d17c196dd3f461e716feb166267f9a8bda9b5e7a0d6eb34c77dce3edab51c07b"
+      "size": 31815,
+      "digest": "sha256:02c7c31fdae06a1ddf994031ffcb8ac08bd69b8e5802e61fd19e69c4882e5274"
     },
     {
       "path": "src/migration-scratch.ts",
@@ -295,8 +295,8 @@
     },
     {
       "path": "src/operations.ts",
-      "size": 8648,
-      "digest": "sha256:81d3e5ca99c19ef725ab4e2f17c1bb77faf8b31ef3e482cf1b2599c36dd6c05b"
+      "size": 9100,
+      "digest": "sha256:0cadf4f6e2f43acf0a8f67b43f4889ae37d09b70f03a995894af9c2e6a6e6b80"
     },
     {
       "path": "src/policy.ts",
@@ -306,7 +306,7 @@
     {
       "path": "src/protocol.ts",
       "size": 14489,
-      "digest": "sha256:5439882d0cd640790408d2349ba7158d5e76ea964d7fbb9a44debee33dd7526c"
+      "digest": "sha256:c457598e4a312c20625f48cdfccc8680cef476c1aa3deb3be06c379c4c618938"
     },
     {
       "path": "src/routing.ts",
@@ -325,8 +325,8 @@
     },
     {
       "path": "src/setup.ts",
-      "size": 6819,
-      "digest": "sha256:5821aad144524f6c4059c2bfdc432ec499901f49fa7543f8a12b980aeb2d7e11"
+      "size": 7181,
+      "digest": "sha256:e0b4998b5e19ddc347341e9b206114744618735fc2c5051df965c716193c6a56"
     },
     {
       "path": "src/specifications.ts",
@@ -336,17 +336,22 @@
     {
       "path": "src/storage.ts",
       "size": 38869,
-      "digest": "sha256:ac08ea89333304d78999ef639ab4df32de5a1b012cf97345f7d7dba77d39e1bf"
+      "digest": "sha256:25d87900e9ea85da8f344dc710d1ee500cb98017b29796cfdf6784f0996f6588"
+    },
+    {
+      "path": "src/tracker-auth.ts",
+      "size": 17546,
+      "digest": "sha256:05b578c1b5b6dc50cb49546a23231eaf79ad52eb4427161f42e59d068eb2ea55"
     },
     {
       "path": "src/tracking.ts",
-      "size": 185461,
-      "digest": "sha256:97bbeb0caf16549eef0a83e6d90eddc69a84df32a6f7131cb8a8f4a03e20d5e1"
+      "size": 187537,
+      "digest": "sha256:a398ed154f310524683dc22068d280a90c85e059c0f05e45400fed66b7e4ba13"
     },
     {
       "path": "src/types.ts",
-      "size": 21082,
-      "digest": "sha256:12f197e9e1f7d349e075acc6f587d5167ebcc3affc09e87b120af1a6bfbde3c6"
+      "size": 23636,
+      "digest": "sha256:2eddf0adfda138ff0388e4273f56ebe0abe95e91a72bfad17232b0c6642defe8"
     },
     {
       "path": "src/worktrees.ts",
@@ -381,7 +386,7 @@
     {
       "path": "tests/core.test.ts",
       "size": 31818,
-      "digest": "sha256:c8184b37414879684831176e633a0e83d1e697445a31903630a4a2c2e8fed64a"
+      "digest": "sha256:e95699bd6a4580fd5b578533dff04fae2a0db0a75e1a887b516722e6a35709b3"
     },
     {
       "path": "tests/delivery.test.ts",
@@ -400,8 +405,8 @@
     },
     {
       "path": "tests/integrations.test.ts",
-      "size": 37581,
-      "digest": "sha256:cdbfbbf8ee1cc5fcd6a849e34d94b40d0065bf1fad7915068992ccaeb9dab7c4"
+      "size": 38240,
+      "digest": "sha256:c3ab35bfb6db944f9010c8a3455eb30a48e2eba8a3f205f3d04c0884b51a013f"
     },
     {
       "path": "tests/journal.test.ts",
@@ -425,13 +430,13 @@
     },
     {
       "path": "tests/mcp.test.ts",
-      "size": 16779,
-      "digest": "sha256:e051ffb41ac82b928855dfe9e83915be352158a06c425cdf288ebeccb5b80c00"
+      "size": 28603,
+      "digest": "sha256:c20ffab9de92faeeaf39510553020db1fce97a1d38fcbd0a75ba6cc52526a08b"
     },
     {
       "path": "tests/migration.test.ts",
       "size": 14310,
-      "digest": "sha256:63b85a60d4093d967c87f46d0e13daed4c1eb0951581f8a4c59c0f34ee59ecb2"
+      "digest": "sha256:65f9df2fa0452273b347add5c9859e0233c7b3212733a7f3d6bc9966c290d0fa"
     },
     {
       "path": "tests/selector.test.ts",
@@ -440,18 +445,23 @@
     },
     {
       "path": "tests/setup.test.ts",
-      "size": 4036,
-      "digest": "sha256:d27da8f9acb737348c6259a9181d042df325c7b4b35680a820e973b7f67f2f77"
+      "size": 4421,
+      "digest": "sha256:b092a40c54921d9d6aa9d3d0bdd3d94f6b18662df1076fea351ea72578f1862d"
+    },
+    {
+      "path": "tests/tracker-auth.test.ts",
+      "size": 14039,
+      "digest": "sha256:00fa42058e9a0b5d6fdd684daaa499827bb5019e9eafd4b396fd661afc1e0a25"
     },
     {
       "path": "tests/tracking.test.ts",
-      "size": 93675,
-      "digest": "sha256:c9489819fca10b60344c54365659d3c175c26c95d4cc8dd83650eb32fd134d1b"
+      "size": 96752,
+      "digest": "sha256:4cd521c98ac56d55d451ddb1bad68e21ae444b8587d7cec3cb676d4bf342801d"
     },
     {
       "path": "tests/trust-foundations.test.ts",
       "size": 21032,
-      "digest": "sha256:20d3f2f20d308ef10321e89f4c3a8e33a6a98768cd786605789107d0e3292700"
+      "digest": "sha256:b5d18aa2bb2b925c20b145b29be4f01191ed3aa1c5323602c30a1a8af4d9264b"
     },
     {
       "path": "tests/worktree-isolation.test.ts",
@@ -467,7 +477,7 @@
   "pages": [
     {
       "path": ".empirical/context/index.md",
-      "generator": "empirical-0.24.1",
+      "generator": "empirical-0.23.0",
       "managed": false,
       "dependencies": [
         ".agents/skills/empirical/SKILL.md",
@@ -537,6 +547,7 @@
         "src/setup.ts",
         "src/specifications.ts",
         "src/storage.ts",
+        "src/tracker-auth.ts",
         "src/tracking.ts",
         "src/types.ts",
         "src/worktrees.ts",
@@ -558,30 +569,31 @@
         "tests/migration.test.ts",
         "tests/selector.test.ts",
         "tests/setup.test.ts",
+        "tests/tracker-auth.test.ts",
         "tests/tracking.test.ts",
         "tests/trust-foundations.test.ts",
         "tests/worktree-isolation.test.ts",
         "tsconfig.json"
       ],
-      "sourceDigest": "sha256:8f9a253350f3b5adb34750c53227e6b9c5a6ea5f5625ccf6a3d7c3f56bfa7152",
+      "sourceDigest": "sha256:d267ee68eb1ec9f869787635f5cccc45bd54c170f035bce0e6774c03078528ea",
       "digest": "sha256:62c1e429f938bf5a727c9e089eb965df0b29d2db55837334cad4cb68a75a8ab9",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/overview.md",
-      "generator": "empirical-0.24.1",
+      "generator": "empirical-0.23.0",
       "managed": false,
       "dependencies": [
         "README.md",
         "package.json"
       ],
-      "sourceDigest": "sha256:414d44585cff9ab5f3d068b6f69bfdba5cb66f70b8513c6fa58b3087e1457df3",
+      "sourceDigest": "sha256:4bc8f39a0db525320a951ddaba61015238ca901ac44abfa812a6467100285569",
       "digest": "sha256:30bc451fac5fa8e21662312c12f4ea57798c9fdaa6c3582bb9a069527e77e4c8",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/architecture.md",
-      "generator": "empirical-0.24.1",
+      "generator": "empirical-0.23.0",
       "managed": false,
       "dependencies": [
         "docs/architecture.md",
@@ -618,17 +630,18 @@
         "src/setup.ts",
         "src/specifications.ts",
         "src/storage.ts",
+        "src/tracker-auth.ts",
         "src/tracking.ts",
         "src/types.ts",
         "src/worktrees.ts"
       ],
-      "sourceDigest": "sha256:c28cb0dac7a210ae15b67a710b0cf995d862ed680b947433c7b041e0317e7cfe",
+      "sourceDigest": "sha256:45dae2fcbb9f408bdd49218221d41c1858df6200593be266978655c80ce1face",
       "digest": "sha256:8a3ce40862fa2601df89006351d195308b09680274472f9e2d1d8130c4db7b8b",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/commands.md",
-      "generator": "empirical-0.24.1",
+      "generator": "empirical-0.23.0",
       "managed": false,
       "dependencies": [
         ".github/workflows/ci.yml",
@@ -642,13 +655,13 @@
         "scripts/smoke-mcp.ts",
         "scripts/test-package.ts"
       ],
-      "sourceDigest": "sha256:2af6fd8a8bd5a4a0914b72420d85b3192aaa4ef1296b66f687893def6b0f7d24",
+      "sourceDigest": "sha256:72ebd6d96ebbf7736c45a9ac1df644e09c2826f85f749befb5bc49d0c4809bcf",
       "digest": "sha256:6582b97fdadb423928980f6a90300c1ab6bf17637880e37f1cffb3092a4d2638",
       "freshness": "fresh"
     },
     {
       "path": ".empirical/context/conventions.md",
-      "generator": "empirical-0.24.1",
+      "generator": "empirical-0.23.0",
       "managed": false,
       "dependencies": [
         "AGENTS.md",
@@ -663,5 +676,5 @@
     }
   ],
   "truncated": false,
-  "digest": "sha256:6f8a2430ec8a447fe3cfefb50271f58940eb70d6aac42f49c0454cfa8e6c7fd1"
+  "digest": "sha256:5537051dd1acffcf27ad3cd59b3a8402bf888689be48cb1ecdfda523bd367750"
 }

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "collected-47f3d83d8a6170727c6f1fd7",
+  "criteria": [
+    "AC-1",
+    "AC-10",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7",
+    "AC-8",
+    "AC-9"
+  ],
+  "evidenceKinds": [
+    "review"
+  ],
+  "summary": "Post-fix security and release review passed with no unresolved findings; resolved Linear OAuth, capability-ordering, custom-name, repository-boundary, and validation issues are documented.",
+  "passed": true,
+  "startedAt": "2026-08-19T23:11:50.768Z",
+  "completedAt": "2026-08-19T23:11:50.768Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "secure-tracker-auth",
+    "specRevision": 3,
+    "specDigest": "sha256:02059b9aff3bda9ca12013dbb7e30d0709cec82407db34813d014d596a55d50b",
+    "treeDigest": "sha256:da7507532206910148f94ede07b447cd41a08dd9107d48134ced5ac6a0ab7dc0",
+    "policyDigest": "sha256:d1f5cd886f30de09b672911041c00cda350042fe9d96e5595a6d9ca4be592e0c"
+  },
+  "digest": "sha256:29197f5867f6636e9ece4d747b9084d09ca3c87e2581fb2620a3c8b23b0c02cb",
+  "kind": "collected",
+  "collector": "Codex",
+  "artifacts": [
+    {
+      "path": ".empirical/specs/secure-tracker-auth/review.md",
+      "mediaType": "text/markdown",
+      "bytes": 4520,
+      "digest": "sha256:9289d31bd543da3573ac72a17e856dd63154d89f4c10ef24ccd9b361ab204d6c"
+    }
+  ]
+}

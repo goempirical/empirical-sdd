@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "feature": "secure-tracker-auth",
+  "claimId": "secure-tracker-auth-4c380a377bdc",
+  "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+  "baseCommit": "3ae6f58196c86f53c529d403e5945ddf7204ebed",
+  "baseTree": "2a3aa1b0532e5b1e73efb41d62e51b5b938fa4ad",
+  "featureTree": "sha256:da7507532206910148f94ede07b447cd41a08dd9107d48134ced5ac6a0ab7dc0",
+  "targetCommit": "3ae6f58196c86f53c529d403e5945ddf7204ebed",
+  "targetTree": "2a3aa1b0532e5b1e73efb41d62e51b5b938fa4ad",
+  "capabilityBaseDigests": {
+    "tracker-authentication": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "deltaDigest": "sha256:ed667fa5cbcd2f60617836da1bab83335e2dcfde071d6c951ff501e8c005a3ef",
+  "resultDigests": {
+    "tracker-authentication": "sha256:08e5c89ccefba0f274ff20f7212a1627b28e70ffff1b803730ade0d94d78135b"
+  },
+  "verificationReceiptDigests": [
+    "sha256:e605726bae4c3b166aff99ffc38b94b9e438b77db9f1e7c1837aaad329ebe6d7"
+  ],
+  "integratedAt": "2026-08-19T23:18:16.162Z",
+  "digest": "sha256:dfc9c48a5a0f3e204e268e69b89b791dc357448c10db95f48666fb3881a86b97"
+}

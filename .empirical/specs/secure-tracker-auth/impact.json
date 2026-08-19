@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "classification": "behavioral",
+  "capabilities": [
+    "tracker-authentication"
+  ],
+  "surfaces": [
+    "workflow"
+  ],
+  "regressionRationale": null,
+  "digest": "sha256:585675b3caeeceebdeea25e6d4aaee208661f31f36cb2b3fb1333bd58635b4e7"
+}
