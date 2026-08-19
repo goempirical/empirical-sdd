@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "sequence": 8,
+  "previousDigest": "sha256:c97b336c52ca3b09e2f97b0a9a2f906840b068236d9338a0bf7174d4e6605e51",
+  "actor": "Codex",
+  "type": "transition",
+  "summary": "Verified all ten acceptance criteria with the passing immutable 0.25.0 CI receipt: 252 tests, zero failures, 90.05% aggregate line coverage, successful bundled MCP/CLI smoke, clean package consumption, aligned release metadata, and clean diff hygiene.",
+  "createdAt": "2026-08-19T22:49:42.970Z",
+  "stateBeforeDigest": "sha256:69224c364c0be1590151516ae430d2cb58e610308409c882788a420ceb0f8c42",
+  "stateAfterDigest": "sha256:25887939c0a383af701ca754e536e876be6e8139cf0caa46466a8d242ccf1e67",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 8,
+    "activeFeature": "secure-tracker-auth",
+    "request": "Implement secure tracker authentication for Empirical: make OAuth the primary connection flow for Linear, GitHub, and Jira. When OAuth is unavailable, provide a safe provider-specific secret fallback; for Linear default to the environment name LINEAR_SECRET_KEY, show the exact host-side path or secure command where the user should configure it, and explicitly state that credentials must never be pasted into chat. Raw credentials must never enter LLM context, chat transcripts, MCP tool arguments/results, repository files, logs, shell history, or process arguments. Add capability negotiation and a fail-closed fallback for clients without secure elicitation, preserve secret-free Tracker Policy compatibility/migration, update CLI/MCP/setup UX, documentation, tests, changelog, and release metadata. Create/update the GitHub PR, pass CI, integrate it, and prepare the next empirical-sdd release.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "review",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Verified all ten acceptance criteria with the passing immutable 0.25.0 CI receipt: 252 tests, zero failures, 90.05% aggregate line coverage, successful bundled MCP/CLI smoke, clean package consumption, aligned release metadata, and clean diff hygiene.",
+    "implementationActor": "Codex",
+    "specDigest": "sha256:02059b9aff3bda9ca12013dbb7e30d0709cec82407db34813d014d596a55d50b",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:761b720fdfde31e4187fbb4ef7aca9ab0500484ff1c6a5364fd42273be3e2c36",
+    "impactDigest": "sha256:585675b3caeeceebdeea25e6d4aaee208661f31f36cb2b3fb1333bd58635b4e7",
+    "capabilityClaimId": "secure-tracker-auth-4c380a377bdc",
+    "authorizationDigest": "sha256:63290f3a5f03cb110e27b7d7f7355d4de37602e5abf8123e9fe94a0b5d58c713",
+    "evidence": [],
+    "evidenceReceiptIds": [
+      "executed-f7f94569e57eaef5c0a70588"
+    ],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": true,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "verified",
+      "reasons": {
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-19T22:49:42.970Z"
+  },
+  "digest": "sha256:fcbc330678c071c9edeb792a233e652220d0d9a20e3370fdd20f3f6c5a3c3182"
+}

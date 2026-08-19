@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "feature": "secure-tracker-auth",
+  "sourceMergeCommit": "83a85aad084fa7699b74c24faa23dfb8a8aac4be",
+  "integrationReceiptDigest": "sha256:dfc9c48a5a0f3e204e268e69b89b791dc357448c10db95f48666fb3881a86b97",
+  "digest": "sha256:e79b80d3bb4648290c3ef767a242cad1177e4bb951b10af84770f310663c75f4"
+}
