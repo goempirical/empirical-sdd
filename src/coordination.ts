@@ -74,6 +74,22 @@ export interface IntegrationReceipt {
   digest: string;
 }
 
+export interface NonBehavioralIntegrationReceipt {
+  schemaVersion: 1;
+  classification: "non-behavioral";
+  feature: string;
+  claimId: null;
+  repositoryId: string;
+  featureTree: string;
+  targetCommit: string;
+  targetTree: string;
+  verificationReceiptDigests: string[];
+  integratedAt: string;
+  digest: string;
+}
+
+export type StoredIntegrationReceipt = IntegrationReceipt | NonBehavioralIntegrationReceipt;
+
 interface IntegrationCandidate {
   capability: string;
   path: string;
@@ -84,6 +100,22 @@ interface IntegrationCandidate {
 
 const CAPABILITY_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const FEATURE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+const SHA256_DIGEST = /^sha256:[a-f0-9]{64}$/;
+const GIT_OBJECT = /^[a-f0-9]{40,64}$/;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+}
+
+function isStringRecord(value: unknown): value is Record<string, string> {
+  return isRecord(value) && Object.values(value).every((entry) => typeof entry === "string");
+}
+
+function isDigestArray(value: unknown): value is string[] {
+  return Array.isArray(value)
+    && value.length > 0
+    && value.every((entry) => typeof entry === "string" && SHA256_DIGEST.test(entry));
+}
 
 async function exists(path: string): Promise<boolean> {
   return stat(path).then(
@@ -720,35 +752,98 @@ export async function integrateCapabilities(input: {
 }
 
 export function verifyIntegrationReceipt(receipt: IntegrationReceipt): void {
+  const candidate: unknown = receipt;
+  if (!isRecord(candidate)) {
+    throw new Error("Integration receipt is incomplete.");
+  }
+  const feature = typeof candidate.feature === "string" ? candidate.feature : "unknown";
+  if (
+    candidate.schemaVersion !== 1
+    || "classification" in candidate
+    || !FEATURE_ID.test(feature)
+    || typeof candidate.claimId !== "string"
+    || !candidate.claimId.startsWith(`${feature}-`)
+    || typeof candidate.repositoryId !== "string"
+    || !SHA256_DIGEST.test(candidate.repositoryId)
+    || typeof candidate.baseCommit !== "string"
+    || !GIT_OBJECT.test(candidate.baseCommit)
+    || typeof candidate.baseTree !== "string"
+    || !GIT_OBJECT.test(candidate.baseTree)
+    || typeof candidate.featureTree !== "string"
+    || !SHA256_DIGEST.test(candidate.featureTree)
+    || typeof candidate.targetCommit !== "string"
+    || !GIT_OBJECT.test(candidate.targetCommit)
+    || typeof candidate.targetTree !== "string"
+    || !GIT_OBJECT.test(candidate.targetTree)
+    || typeof candidate.integratedAt !== "string"
+    || !Number.isFinite(Date.parse(candidate.integratedAt))
+    || !isStringRecord(candidate.capabilityBaseDigests)
+    || !isStringRecord(candidate.resultDigests)
+    || Object.keys(candidate.resultDigests).length === 0
+    || typeof candidate.deltaDigest !== "string"
+    || !isDigestArray(candidate.verificationReceiptDigests)
+    || typeof candidate.digest !== "string"
+  ) {
+    throw new Error(`Integration receipt for ${feature} is incomplete.`);
+  }
+  const { digest, ...body } = candidate;
+  if (digestJson(body) !== digest) {
+    throw new Error(`Integration receipt for ${feature} failed its digest check.`);
+  }
+  for (const value of [
+    candidate.featureTree,
+    candidate.deltaDigest,
+    ...Object.values(candidate.capabilityBaseDigests),
+    ...Object.values(candidate.resultDigests),
+    ...candidate.verificationReceiptDigests,
+  ]) {
+    if (!SHA256_DIGEST.test(value)) {
+      throw new Error(`Integration receipt for ${feature} has an invalid digest.`);
+    }
+  }
+}
+
+export function verifyStoredIntegrationReceipt(
+  receipt: unknown,
+): asserts receipt is StoredIntegrationReceipt {
+  if (!isRecord(receipt)) {
+    throw new Error("Integration receipt is incomplete.");
+  }
+  if (receipt.classification !== "non-behavioral") {
+    verifyIntegrationReceipt(receipt as unknown as IntegrationReceipt);
+    return;
+  }
+  const feature = typeof receipt.feature === "string" ? receipt.feature : "unknown";
+  const behavioralFields = [
+    "baseCommit",
+    "baseTree",
+    "capabilityBaseDigests",
+    "deltaDigest",
+    "resultDigests",
+  ];
   if (
     receipt.schemaVersion !== 1
-    || !FEATURE_ID.test(receipt.feature)
-    || !receipt.claimId.startsWith(`${receipt.feature}-`)
-    || !/^sha256:[a-f0-9]{64}$/.test(receipt.repositoryId)
-    || !/^[a-f0-9]{40,64}$/.test(receipt.baseCommit)
-    || !/^[a-f0-9]{40,64}$/.test(receipt.baseTree)
-    || !/^[a-f0-9]{40,64}$/.test(receipt.targetCommit)
-    || !/^[a-f0-9]{40,64}$/.test(receipt.targetTree)
+    || !FEATURE_ID.test(feature)
+    || receipt.claimId !== null
+    || typeof receipt.repositoryId !== "string"
+    || !SHA256_DIGEST.test(receipt.repositoryId)
+    || typeof receipt.featureTree !== "string"
+    || !SHA256_DIGEST.test(receipt.featureTree)
+    || typeof receipt.targetCommit !== "string"
+    || !GIT_OBJECT.test(receipt.targetCommit)
+    || typeof receipt.targetTree !== "string"
+    || !GIT_OBJECT.test(receipt.targetTree)
+    || !isDigestArray(receipt.verificationReceiptDigests)
+    || typeof receipt.integratedAt !== "string"
     || !Number.isFinite(Date.parse(receipt.integratedAt))
-    || Object.keys(receipt.resultDigests).length === 0
-    || receipt.verificationReceiptDigests.length === 0
+    || typeof receipt.digest !== "string"
+    || behavioralFields.some((field) => field in receipt)
   ) {
-    throw new Error(`Integration receipt for ${receipt.feature} is incomplete.`);
+    throw new Error(`Integration receipt for ${feature} is incomplete.`);
   }
   const { digest, ...body } = receipt;
   if (digestJson(body) !== digest) {
-    throw new Error(`Integration receipt for ${receipt.feature} failed its digest check.`);
-  }
-  for (const value of [
-    receipt.featureTree,
-    receipt.deltaDigest,
-    ...Object.values(receipt.capabilityBaseDigests),
-    ...Object.values(receipt.resultDigests),
-    ...receipt.verificationReceiptDigests,
-  ]) {
-    if (!/^sha256:[a-f0-9]{64}$/.test(value)) {
-      throw new Error(`Integration receipt for ${receipt.feature} has an invalid digest.`);
-    }
+    throw new Error(`Integration receipt for ${feature} failed its digest check.`);
   }
 }
 

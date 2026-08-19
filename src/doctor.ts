@@ -6,8 +6,7 @@ import { delimiter, isAbsolute, join, relative, resolve } from "node:path";
 import {
   inspectCapabilityClaims,
   resolveGitRepositoryIdentity,
-  verifyIntegrationReceipt,
-  type IntegrationReceipt,
+  verifyStoredIntegrationReceipt,
 } from "./coordination.js";
 import {
   verifyDeliveryReceipt,
@@ -765,7 +764,7 @@ async function inspectEvidenceAndDelivery(root: string, findings: DoctorFinding[
     const integrationPath = join(directory, "integration-receipt.json");
     if (await exists(integrationPath)) {
       try {
-        verifyIntegrationReceipt(await readJson<IntegrationReceipt>(integrationPath));
+        verifyStoredIntegrationReceipt(await readJson<unknown>(integrationPath));
       } catch (error) {
         findings.push(
           finding(
