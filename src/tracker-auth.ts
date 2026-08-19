@@ -1,7 +1,7 @@
 import { constants, type Stats } from "node:fs";
 import { lstat, open, realpath } from "node:fs/promises";
 import { homedir } from "node:os";
-import { isAbsolute, join, relative, resolve, sep, win32 } from "node:path";
+import { isAbsolute, join, posix, relative, resolve, sep, win32 } from "node:path";
 
 import { EmpiricalError } from "./errors.js";
 import type {
@@ -67,8 +67,10 @@ export function defaultTrackerSecretFilePath(dependencies: TrackerDependencies =
   }
   const home = dependencies.homeDirectory ?? nonEmpty(environment.HOME) ?? homedir();
   const configured = nonEmpty(environment.XDG_CONFIG_HOME);
-  const base = configured && isAbsolute(configured) ? configured : join(home, ".config");
-  return join(base, "empirical", "secrets.env");
+  const base = configured && posix.isAbsolute(configured)
+    ? configured
+    : posix.join(home, ".config");
+  return posix.join(base, "empirical", "secrets.env");
 }
 
 export function trackerAuthenticationGuidance(

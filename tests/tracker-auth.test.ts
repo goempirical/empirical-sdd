@@ -14,6 +14,7 @@ import {
 import type { TrackerDiscoveryInput, TrackerOAuthResolver } from "../src/types.js";
 
 const directories: string[] = [];
+const filePlatform = process.platform === "win32" ? "win32" : "posix";
 
 afterEach(async () => {
   await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })));
@@ -165,13 +166,13 @@ describe("secure tracker authentication", () => {
       env: { LINEAR_SECRET_KEY: "environment-token" },
       secretFilePath: path,
       repositoryRoot: root,
-      platform: "posix",
+      platform: filePlatform,
     })).toEqual({ provider: "linear", source: "environment", accessToken: "environment-token" });
     expect(await resolveTrackerAuthentication(linearInput, {
       env: {},
       secretFilePath: path,
       repositoryRoot: root,
-      platform: "posix",
+      platform: filePlatform,
     })).toEqual({ provider: "linear", source: "file", accessToken: "file-token" });
   });
 
@@ -186,14 +187,14 @@ describe("secure tracker authentication", () => {
       env: {},
       secretFilePath: path,
       repositoryRoot: root,
-      platform: "posix",
+      platform: filePlatform,
     })).toEqual({ provider: "jira", source: "file", email: "user@example.com", apiToken: "jira-token" });
 
     await expect(resolveTrackerAuthentication(jiraInput, {
       env: { JIRA_EMAIL: "user@example.com" },
       secretFilePath: path,
       repositoryRoot: root,
-      platform: "posix",
+      platform: filePlatform,
     })).rejects.toMatchObject({ code: "TRACKER_CREDENTIAL_INCOMPLETE" });
   });
 
@@ -267,7 +268,7 @@ describe("secure tracker authentication", () => {
       if (process.platform !== "win32") await chmod(path, 0o600);
       try {
         await resolveTrackerAuthentication(linearInput, {
-          env: {}, secretFilePath: path, repositoryRoot: root, platform: "posix",
+          env: {}, secretFilePath: path, repositoryRoot: root, platform: filePlatform,
         });
         throw new Error("expected file validation to fail");
       } catch (error) {

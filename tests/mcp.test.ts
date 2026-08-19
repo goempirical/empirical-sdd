@@ -699,7 +699,7 @@ test("form-only tracker setup fails closed with safe host-side recovery guidance
     expect(providerCalls).toBe(0);
     const content = JSON.stringify(result.content);
     expect(content).toContain("LINEAR_SECRET_KEY");
-    expect(content).toContain("empirical/secrets.env");
+    expect(content.replace(/\\+/g, "/").toLowerCase()).toContain("empirical/secrets.env");
     expect(content).toContain("Never paste credentials into chat");
   } finally {
     await client.close();
