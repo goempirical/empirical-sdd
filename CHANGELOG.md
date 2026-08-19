@@ -39,6 +39,9 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 - Made the shell-free GitHub delivery and publication runner reuse the host's
   existing `gh` configuration locator without persisting credentials or secret
   values in policy or runtime receipts.
+- Made sanitized HTTPS pushes use the host's authenticated `gh` store through
+  an ephemeral, push-only Git helper configuration without inheriting `HOME`,
+  exporting tokens, or changing persistent Git configuration.
 - Made Doctor report missing, drifted, or unsafe required project integrations
   whenever Schema 5 setup is complete, instead of incorrectly reporting the
   repository as activation-ready.

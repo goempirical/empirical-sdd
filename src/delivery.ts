@@ -132,21 +132,46 @@ export function githubCliConfigurationEnvironment(options: {
   return { GH_CONFIG_DIR: join(home, ".config", "gh") };
 }
 
+export function githubAuthenticationEnvironment(
+  argv: readonly string[],
+  options: {
+    env?: NodeJS.ProcessEnv;
+    platform?: NodeJS.Platform;
+    home?: string;
+  } = {},
+): Record<string, string> {
+  if (argv[0] === "gh") {
+    return githubCliConfigurationEnvironment(options);
+  }
+  if (argv[0] !== "git" || argv[1] !== "push") {
+    return {};
+  }
+  return {
+    ...githubCliConfigurationEnvironment(options),
+    GIT_TERMINAL_PROMPT: "0",
+    GIT_CONFIG_COUNT: "2",
+    GIT_CONFIG_KEY_0: "credential.https://github.com.helper",
+    GIT_CONFIG_VALUE_0: "",
+    GIT_CONFIG_KEY_1: "credential.https://github.com.helper",
+    GIT_CONFIG_VALUE_1: "!gh auth git-credential",
+  };
+}
+
 function defaultRunner(adapter?: ProcessAdapter): DeliveryRunner {
-  return (root, argv) =>
-    executeCommandCaptured(
+  return (root, argv) => {
+    const environment = githubAuthenticationEnvironment(argv);
+    return executeCommandCaptured(
       root,
       {
         argv,
         cwd: ".",
         timeoutMs: 120_000,
         maxOutputBytes: 524_288,
-        ...(argv[0] === "gh"
-          ? { environment: githubCliConfigurationEnvironment() }
-          : {}),
+        ...(Object.keys(environment).length > 0 ? { environment } : {}),
       },
       adapter,
     );
+  };
 }
 
 interface CommandContext {
