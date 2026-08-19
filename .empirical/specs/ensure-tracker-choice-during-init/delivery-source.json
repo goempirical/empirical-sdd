@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "feature": "ensure-tracker-choice-during-init",
+  "sourceMergeCommit": "c4f2c3ad1ac8b7e877c3d98aa7c560b33ba66dd9",
+  "integrationReceiptDigest": "sha256:b475b9a5fe3266269176cd5bf2948a1fb71cefbd129092055c4c3a1c95419404",
+  "digest": "sha256:7feeffacb04b2e57e08861a85305cd6cd9286497d5356e548312579a238c673a"
+}
