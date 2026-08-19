@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+  "feature": "deliver-0-24-release-readiness",
+  "targetBranch": "main",
+  "source": {
+    "number": 26,
+    "url": "https://github.com/goempirical/empirical-sdd/pull/26",
+    "state": "MERGED",
+    "mergeCommit": "f4d6c0385b082b870c54a0c9f0fb2ce0aea0c0ac",
+    "commit": "c7f02a22e09186fd2e08dd1fcb659989ac22c24d"
+  },
+  "evidence": {
+    "number": 27,
+    "url": "https://github.com/goempirical/empirical-sdd/pull/27",
+    "state": "MERGED",
+    "mergeCommit": "eaadbd57e3f7cef606cb65c76f394590dedf3a97",
+    "commit": "4a6ceea111158a6a1f2b96b16a3d8d88678a77ca"
+  },
+  "requiredChecks": [],
+  "commandReceiptDigests": [
+    "sha256:bc7a7ea0aae9ce6ef1de5c6fe218536c42b3315a98378a2709b9bbe322a9e09f",
+    "sha256:ea3486bc8393f98e8441a6d5b546b5c9f2d02f6c018435faf2b2f0c9b54e36fe",
+    "sha256:4979bd278f00acc12b77d03e02185c4c11ff9d7566b01088a1606fa7490fabaf",
+    "sha256:c0c611b944217301b592208cba9b6295df6ab677e819e8e060d687600ca88b89",
+    "sha256:3c65bc9574cf34c54ec827a7e76ff9f3964c3a2f5b3f02e2017b70af8a860254",
+    "sha256:2861b5067537055e35893685f7db380dbef1d883289916f32989e85c265dc9ed",
+    "sha256:b1c2447995a7ed1ec23f95fad1460d5d80f0e474f3a9f5dcf08fe9d0051ccb20",
+    "sha256:b94e7fd1b598bfe82f678357cc52f6dae17ccd8b4a2c7e6eda01fdade22a79d3",
+    "sha256:08c80fa085838bb4a04915e2e62f3ac780efbcc71513ff040565c2aa53cba3ed",
+    "sha256:0e7618224c28d8bd2916bbe0034f0cc2bbc64209a347503922fdd3be604f11bd",
+    "sha256:41171fd4d12d7ce2c1671e7c453d39c1bcd71f7bd84899c5744bbe61f0ff1c53",
+    "sha256:ab374bec6f43aff7a663d7168bc136e8e2246c9a418cdc3b4efc4b5709ab836d",
+    "sha256:ad9d8c1762fbe7dcbc88f9c3f4555081d57ce5adb409f20da3aebddec3d83e77",
+    "sha256:b5666cbff3bf148f74a89b3a2dfa1a96e6315ff9d02e4eb0cee79184623ff5e7",
+    "sha256:6c1e757bbff8f0ef1d0678376f8094ddbb63df90070d69596aa185e6225f4273",
+    "sha256:8cda1109f39b35cfc156de622b9c318a59b59f0192ebaabd1a2c84515925ccb8",
+    "sha256:cb4ab074baf69303c32a6c4761f366244e2dd1f5d8e455d671acaeda426cc64b",
+    "sha256:764cb2011a883a76c00c62fea981d2760a75389892e423a21e8b4a2b9abd5ed3",
+    "sha256:b2c836c4f152a5c632f542bffd2df1e8fdaf99a9973378e0f084b5ba38525f7a",
+    "sha256:30d769cacf17a4cad332492f8413450c739745c1e30296360141ea35b1b74c9e",
+    "sha256:f42d8aeb5ef895d6d8835f670fd3451eeb39227edac7ca1276e9522a4d506cdc",
+    "sha256:1b799c5155fc252d45297a33225350a6aa435d29ca33ca39196507b5087f0c27",
+    "sha256:30c4d7cfbc42161c1d34b162ab242645cede2c781eca31b0532c9acbf96f1f19",
+    "sha256:e59651946e46699137b72d22f3f8ed80a2e68d1c49afd1d6918836b2b638c4be",
+    "sha256:5d310fe9e51bb52cc09229bd7cb69af7a9465b0ba29de1fbebb391657dcccfca",
+    "sha256:b4a277aac48b6bca65dcd62f5c105e462033785b2bb41602d6de5866180a941b",
+    "sha256:2b6b7357f01653b5c6eeef01b0c3862375402e15934bd4cd97a41ad4d0bbcc79"
+  ],
+  "deliveredAt": "2026-08-19T14:06:54.182Z",
+  "digest": "sha256:944699c5867a39517639ab1d56900849bfd3e523a5f4068a3e0702e3868a51cc"
+}

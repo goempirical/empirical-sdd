@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "sequence": 10,
+  "previousDigest": "sha256:5ef803c71f0bb5cac716ed8da0d9c55b9d497e170fe2309248816ad265a679b6",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Integrated capability changes: autonomous-delivery",
+  "createdAt": "2026-08-19T14:15:34.247Z",
+  "stateBeforeDigest": "sha256:0f34b275e8ec7390ae5863dd4c5973ad97e03687025efc42f1c822262102ddee",
+  "stateAfterDigest": "sha256:e61231db26850143dea69459dca66d665136792a5ee421926e0e0b1423d7b7a6",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 10,
+    "activeFeature": "authenticate-sanitized-git-push",
+    "request": "Fix the live 0.24.0 release blocker discovered during protected delivery: the built-in sanitized HTTPS git push must authenticate through the host's existing GitHub CLI configuration using an ephemeral narrowly scoped Git credential-helper bridge, without inheriting HOME, reading or persisting tokens, changing persistent Git configuration, weakening exact argv, or affecting non-push commands. Add regression and live-boundary verification, deliver the fix and evidence through protected pull requests to main, and prepare but do not publish 0.24.0 or modify any VPS.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "deliver",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Integrated capability changes: autonomous-delivery",
+    "implementationActor": "agent",
+    "specDigest": "sha256:ad925b7aeedc618c4278b0435d01d7f0d3f91ef6b7ab90d9f3c6367d9eb66866",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:28ed68204351538dd78a5a610726f07fd77abefac95a2243ac8a678d2ee22deb",
+    "impactDigest": "sha256:da2820a25b29a5d4beaa8796344310b91cb9cc6d2f7e1080c8d34170b6a26b06",
+    "capabilityClaimId": "authenticate-sanitized-git-push-b24af25e7b8c",
+    "authorizationDigest": "sha256:51427a37da17c6b480b4e21ae0aade47343362cfe16e9f525e381f9ea2cab59f",
+    "evidence": [],
+    "evidenceReceiptIds": [
+      "executed-a263bb58c7e63d47d304a1a3",
+      "collected-f5d7bde70ee62a4eb36c4b69",
+      "collected-d13fb4be4a25aa556b99bde4"
+    ],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": true,
+      "integrated": true,
+      "delivered": false,
+      "published": false,
+      "highest": "integrated",
+      "reasons": {
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-19T14:15:34.247Z"
+  },
+  "digest": "sha256:ccc5318fe938f7f1160dcda738f15b5dba8ebdb0a5f6e092844b48ca0ca82088"
+}

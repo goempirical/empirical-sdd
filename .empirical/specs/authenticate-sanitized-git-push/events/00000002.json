@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "sequence": 2,
+  "previousDigest": "sha256:a82217fcf9a2f4e367be90195998de55ed77c1e609c91f5c77ed13ce4ebf58ef",
+  "actor": "empirical-yolo",
+  "type": "transition",
+  "summary": "Recorded standing authorization through delivered",
+  "createdAt": "2026-08-19T14:07:23.351Z",
+  "stateBeforeDigest": "sha256:e13a61c3adc5e274f05f6d589f27da514b4e03f052ee07005513f231f21812e4",
+  "stateAfterDigest": "sha256:bd4728e875f44335cc02fd994846f52f7ae50abbd3a61ce71455020f76b2e874",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 2,
+    "activeFeature": "authenticate-sanitized-git-push",
+    "request": "Fix the live 0.24.0 release blocker discovered during protected delivery: the built-in sanitized HTTPS git push must authenticate through the host's existing GitHub CLI configuration using an ephemeral narrowly scoped Git credential-helper bridge, without inheriting HOME, reading or persisting tokens, changing persistent Git configuration, weakening exact argv, or affecting non-push commands. Add regression and live-boundary verification, deliver the fix and evidence through protected pull requests to main, and prepare but do not publish 0.24.0 or modify any VPS.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "specify",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": null,
+    "implementationActor": null,
+    "specDigest": "sha256:cce626b7d26487f7621be40ad634926fa08109ff801a98725b1ad56d1d08c455",
+    "approvedSpecRevision": null,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": null,
+    "impactDigest": null,
+    "capabilityClaimId": null,
+    "authorizationDigest": "sha256:51427a37da17c6b480b4e21ae0aade47343362cfe16e9f525e381f9ea2cab59f",
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": false,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "none",
+      "reasons": {
+        "implemented": "implemented has not been proven by a durable receipt.",
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-19T14:07:23.351Z"
+  },
+  "digest": "sha256:f5ed10f32680ef5fa01b69ce739f426e0a88d3fffd53ea861816948e6206e5a6"
+}

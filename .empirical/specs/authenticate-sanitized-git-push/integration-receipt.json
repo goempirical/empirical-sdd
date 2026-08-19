@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "feature": "authenticate-sanitized-git-push",
+  "claimId": "authenticate-sanitized-git-push-b24af25e7b8c",
+  "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+  "baseCommit": "4a6ceea111158a6a1f2b96b16a3d8d88678a77ca",
+  "baseTree": "81261ec2fb7aaf795bc1c38ef596192a998af716",
+  "featureTree": "sha256:3fca85c1a58bc04a41a0b1e8ab8a5dad31ab8b10c3f0427e16c5aa1ca701ff16",
+  "targetCommit": "eaadbd57e3f7cef606cb65c76f394590dedf3a97",
+  "targetTree": "81261ec2fb7aaf795bc1c38ef596192a998af716",
+  "capabilityBaseDigests": {
+    "autonomous-delivery": "sha256:759613473db2a11caf0130c07d593e5e3c60f575556b3e416bd90418be143d40"
+  },
+  "deltaDigest": "sha256:a2825d944c16ab5997b52876be6db92df819a5abb1774aca872dca9511a9dd50",
+  "resultDigests": {
+    "autonomous-delivery": "sha256:801e58864632119bb7d7db7ce85c9739456df58eecc4ccb36e6ed7956358a172"
+  },
+  "verificationReceiptDigests": [
+    "sha256:983ec902a3e36a7249e4165feda311084f2d8eeeba9f17bce36f70b86e8cc817"
+  ],
+  "integratedAt": "2026-08-19T14:15:34.232Z",
+  "digest": "sha256:f7c442f4b5680e6f8cb7e03cda60d325695ee1f3e0797075c2d56e1c55b3bed4"
+}

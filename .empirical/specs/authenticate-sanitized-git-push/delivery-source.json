@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "feature": "authenticate-sanitized-git-push",
+  "sourceMergeCommit": "97f735ef651a519521b171aef0d6c2a56550f7f2",
+  "integrationReceiptDigest": "sha256:f7c442f4b5680e6f8cb7e03cda60d325695ee1f3e0797075c2d56e1c55b3bed4",
+  "digest": "sha256:e050e585eaedb3a633d8d01fd725ef0ca907e7edad5c2237af8465ed2e8fe4cc"
+}
