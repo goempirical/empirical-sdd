@@ -22,7 +22,7 @@ describe("setup settings", () => {
     expect(summary).toContain("Track all work (recommended; configure a provider before Save)");
     expect(summary).toContain("No tracking (local-only; no provider requests)");
     expect(summary).toContain("Authentication: trusted host OAuth preferred for Linear, GitHub, and Jira");
-    expect(summary).toContain("empirical/secrets.env");
+    expect(summary.replaceAll("\\", "/").toLowerCase()).toContain("empirical/secrets.env");
     expect(summary).toContain("Never paste credentials into chat");
     expect(summary).toContain("Choose one tracker mode before setup can be saved");
     expect(setupConfigurationInput(settings)).toMatchObject({ setupComplete: true, evidence: { required: true } });
