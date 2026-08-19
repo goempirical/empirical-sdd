@@ -41,16 +41,19 @@ the user does not need to mention Empirical or choose a profile.
 6. Show any worktree proposal exactly and wait for approval before calling the
    approved creation operation. Never stash, force, or replace selected work.
 7. Treat Empirical's local journal as authoritative. If .empirical/tracker.json
-   is absent, remain local-only and make no network requests. When the user asks
-   to enable a mirror, collect exactly one provider configuration for GitHub,
-   Linear, or Jira, persist only credential environment-variable names through
-   `empirical_tracker_configure`, and create or attach one ticket through
-   `empirical_tracker_bind`. Never replace an existing binding implicitly.
+   is absent or ticket behavior is off, remain local-only/off and make no
+   provider requests. In manual mode use `empirical_tracker_bind` only for the
+   user's explicit create or attach choice and never replace a binding
+   implicitly. In ensure mode, `empirical_tracker_sync` validates a referenced
+   ticket, reconciles the stable feature marker, or creates exactly once when no
+   unique ticket exists; ambiguity requires reconciliation and never a guess.
    After each local workflow mutation is durably committed, call
-   `empirical_tracker_sync`. A remote failure leaves local progress intact;
-   report local-only, synced, pending, or failed health and retry only the
-   durable pending projection. Tracker operations are granular MCP tools, not
-   additional skills or user commands.
+   `empirical_tracker_sync`. It publishes only configured milestone comments
+   and receipt-approved safe evidence, preserves user-authored descriptions,
+   and retries durable unacknowledged effects. A remote failure leaves local
+   progress intact; report local-only, off, synced, pending, or failed health.
+   Tracker operations are granular MCP tools, not additional skills or user
+   commands.
 8. Execute every returned action, create immutable evidence receipts with the
    configured commands or collected artifacts, complete its exact revision with
    receipt ids, consume the response as the next action, and integrate reviewed

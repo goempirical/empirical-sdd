@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 
 import { doctorRepository } from "../src/doctor.js";
+import { resolveGitRepositoryIdentity } from "../src/coordination.js";
 import { appendJournalEvent } from "../src/journal.js";
 import { migrateSchema4To5 } from "../src/migration.js";
 import { digestJson, sha256, type JsonValue } from "../src/protocol.js";
@@ -118,6 +119,58 @@ describe("read-only Doctor diagnostics", () => {
     );
     expect(await fileSnapshot(root)).toEqual(beforeFiles);
     expect(gitSnapshot(root)).toEqual(beforeGit);
+  });
+
+  test("validates classified non-behavioral integration receipts without applying behavioral claim rules", async () => {
+    const { root } = await fixture();
+    const identity = await resolveGitRepositoryIdentity(root);
+    const feature = "non-behavioral-doctor";
+    const directory = join(root, ".empirical", "specs", feature);
+    await mkdir(directory, { recursive: true });
+    const body = {
+      schemaVersion: 1 as const,
+      classification: "non-behavioral" as const,
+      feature,
+      claimId: null,
+      repositoryId: identity.repositoryId,
+      featureTree: sha256("feature-tree"),
+      targetCommit: identity.headCommit,
+      targetTree: identity.headTree,
+      verificationReceiptDigests: [sha256("independent-verification")],
+      integratedAt: "2026-08-19T10:00:00.000Z",
+    };
+    const path = join(directory, "integration-receipt.json");
+    await writeFile(
+      path,
+      `${JSON.stringify({ ...body, digest: digestJson(body) }, null, 2)}\n`,
+      "utf8",
+    );
+    const beforeValid = await fileSnapshot(root);
+
+    const valid = await doctorRepository(root);
+
+    expect(valid.findings.some((entry) =>
+      entry.code === "INTEGRATION_RECEIPT_INVALID" && entry.scope === `integration:${feature}`
+    )).toBe(false);
+    expect(await fileSnapshot(root)).toEqual(beforeValid);
+
+    const mixedBody = { ...body, baseCommit: identity.headCommit };
+    await writeFile(
+      path,
+      `${JSON.stringify({ ...mixedBody, digest: digestJson(mixedBody) }, null, 2)}\n`,
+      "utf8",
+    );
+    const beforeMixed = await fileSnapshot(root);
+
+    const mixed = await doctorRepository(root);
+
+    expect(mixed.findings).toContainEqual(expect.objectContaining({
+      code: "INTEGRATION_RECEIPT_INVALID",
+      severity: "error",
+      scope: `integration:${feature}`,
+      message: expect.stringContaining("incomplete"),
+    }));
+    expect(await fileSnapshot(root)).toEqual(beforeMixed);
   });
 
   test("detects completed repositories with missing integrations and verifies explicit repair", async () => {

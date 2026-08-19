@@ -34,6 +34,11 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ### Fixed
 
+- Made Doctor validate both behavioral and non-behavioral integration receipts
+  without falsely treating a valid null capability claim as corruption.
+- Made the shell-free GitHub delivery and publication runner reuse the host's
+  existing `gh` configuration locator without persisting credentials or secret
+  values in policy or runtime receipts.
 - Made Doctor report missing, drifted, or unsafe required project integrations
   whenever Schema 5 setup is complete, instead of incorrectly reporting the
   repository as activation-ready.

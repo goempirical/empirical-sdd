@@ -1,9 +1,12 @@
 import { describe, expect, test } from "bun:test";
+import { join } from "node:path";
 
 import {
   assertSafeDeliveryArgv,
   deliverToGitHub,
   executePublicationPlan,
+  githubCliConfigurationEnvironment,
+  inspectPublication,
   localOnlyYoloAuthorization,
   planPublication,
   publicationRequestDigest,
@@ -14,7 +17,11 @@ import {
   type PullRequestFact,
 } from "../src/delivery.js";
 import { createAuthorization, sha256 } from "../src/protocol.js";
-import type { CapturedRuntimeResult } from "../src/runtime.js";
+import type {
+  CapturedRuntimeResult,
+  ProcessAdapter,
+  ProcessOutcome,
+} from "../src/runtime.js";
 
 const sourceCommit = "1".repeat(40);
 const evidenceCommit = "2".repeat(40);
@@ -43,6 +50,18 @@ function captured(stdout = "", exitCode = 0, stderr = ""): CapturedRuntimeResult
       startedAt: "2026-08-03T10:00:00.000Z",
       completedAt: "2026-08-03T10:00:00.001Z",
     },
+  };
+}
+
+function processOutcome(stdout = "", exitCode = 0, stderr = ""): ProcessOutcome {
+  return {
+    exitCode,
+    signal: null,
+    timedOut: false,
+    stdout: Buffer.from(stdout),
+    stderr: Buffer.from(stderr),
+    stdoutTruncated: false,
+    stderrTruncated: false,
   };
 }
 
@@ -437,6 +456,100 @@ describe("bounded GitHub delivery", () => {
     expect(() =>
       assertSafeDeliveryArgv(["gh", "pr", "merge", "1", "--merge"]),
     ).not.toThrow();
+  });
+});
+
+describe("GitHub CLI authentication boundary", () => {
+  test("resolves the documented configuration-directory precedence without token access", () => {
+    expect(githubCliConfigurationEnvironment({
+      env: { GH_CONFIG_DIR: " /explicit/gh " },
+      platform: "linux",
+      home: "/home/tester",
+    })).toEqual({ GH_CONFIG_DIR: "/explicit/gh" });
+    expect(githubCliConfigurationEnvironment({
+      env: { XDG_CONFIG_HOME: "/xdg" },
+      platform: "linux",
+      home: "/home/tester",
+    })).toEqual({ GH_CONFIG_DIR: join("/xdg", "gh") });
+    expect(githubCliConfigurationEnvironment({
+      env: { APPDATA: "C:/Users/tester/AppData/Roaming" },
+      platform: "win32",
+      home: "C:/Users/tester",
+    })).toEqual({
+      GH_CONFIG_DIR: join("C:/Users/tester/AppData/Roaming", "GitHub CLI"),
+    });
+    expect(githubCliConfigurationEnvironment({
+      env: {},
+      platform: "linux",
+      home: "/home/tester",
+    })).toEqual({ GH_CONFIG_DIR: join("/home/tester", ".config", "gh") });
+    expect(() => githubCliConfigurationEnvironment({
+      env: {},
+      platform: "linux",
+      home: " ",
+    })).toThrow("operating-system home");
+  });
+
+  test("passes only the non-secret configuration locator to built-in gh commands", async () => {
+    const invocations: Parameters<ProcessAdapter>[0][] = [];
+    const adapter: ProcessAdapter = async (invocation) => {
+      invocations.push(invocation);
+      if (invocation.executable === "git") return processOutcome("");
+      if (invocation.executable === "gh") {
+        return processOutcome("", 1, "release not found (404)");
+      }
+      if (invocation.executable === "npm" && invocation.args.includes("dist-tags")) {
+        return processOutcome('{"latest":"0.23.0"}\n');
+      }
+      if (invocation.executable === "npm") {
+        return processOutcome("", 1, "npm error E404 version not found");
+      }
+      return processOutcome("", 1, "unexpected executable");
+    };
+    const configDirectory = join("/private", "host-gh-config");
+    const previous = process.env.GH_CONFIG_DIR;
+    process.env.GH_CONFIG_DIR = configDirectory;
+    try {
+      const inspection = await inspectPublication({
+        root: process.cwd(),
+        packageName: "empirical-sdd",
+        version: "0.24.0",
+        distTag: "latest",
+        processAdapter: adapter,
+      });
+      const gh = invocations.find((entry) => entry.executable === "gh");
+      expect(gh?.env.GH_CONFIG_DIR).toBe(configDirectory);
+      expect(gh?.env.HOME).toBeUndefined();
+      expect(gh?.env.GH_TOKEN).toBeUndefined();
+      expect(gh?.env.GITHUB_TOKEN).toBeUndefined();
+      expect(invocations.filter((entry) => entry.executable !== "gh").every(
+        (entry) => entry.env.GH_CONFIG_DIR === undefined,
+      )).toBe(true);
+      expect(JSON.stringify(inspection)).not.toContain(configDirectory);
+      expect(inspection.commandReceiptDigests).toHaveLength(4);
+    } finally {
+      if (previous === undefined) delete process.env.GH_CONFIG_DIR;
+      else process.env.GH_CONFIG_DIR = previous;
+    }
+  });
+
+  test("reports an unusable stored login without credential fallback", async () => {
+    const adapter: ProcessAdapter = async (invocation) => {
+      if (invocation.executable === "git") return processOutcome("");
+      if (invocation.executable === "gh") {
+        expect(invocation.env.GH_CONFIG_DIR).toBeTruthy();
+        expect(invocation.env.HOME).toBeUndefined();
+        return processOutcome("", 1, "You are not logged into any GitHub hosts.");
+      }
+      return processOutcome("", 1, "must stop before npm inspection");
+    };
+    await expect(inspectPublication({
+      root: process.cwd(),
+      packageName: "empirical-sdd",
+      version: "0.24.0",
+      distTag: "latest",
+      processAdapter: adapter,
+    })).rejects.toThrow("Could not inspect GitHub release state");
   });
 });
 

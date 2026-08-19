@@ -9,7 +9,8 @@ import {
   type CapturedRuntimeResult,
   type ProcessAdapter,
 } from "./runtime.js";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { homedir } from "node:os";
+import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
 export interface CommitPlan {
   branch: string;
@@ -109,6 +110,28 @@ export function assertSafeDeliveryArgv(argv: readonly string[]): void {
   }
 }
 
+export function githubCliConfigurationEnvironment(options: {
+  env?: NodeJS.ProcessEnv;
+  platform?: NodeJS.Platform;
+  home?: string;
+} = {}): { GH_CONFIG_DIR: string } {
+  const env = options.env ?? process.env;
+  const platform = options.platform ?? process.platform;
+  const home = options.home ?? homedir();
+  const explicit = env.GH_CONFIG_DIR?.trim();
+  if (explicit) return { GH_CONFIG_DIR: explicit };
+  const xdg = env.XDG_CONFIG_HOME?.trim();
+  if (xdg) return { GH_CONFIG_DIR: join(xdg, "gh") };
+  const appData = (env.APPDATA ?? env.AppData)?.trim();
+  if (platform === "win32" && appData) {
+    return { GH_CONFIG_DIR: join(appData, "GitHub CLI") };
+  }
+  if (!home.trim()) {
+    throw new Error("GitHub CLI configuration requires an operating-system home directory.");
+  }
+  return { GH_CONFIG_DIR: join(home, ".config", "gh") };
+}
+
 function defaultRunner(adapter?: ProcessAdapter): DeliveryRunner {
   return (root, argv) =>
     executeCommandCaptured(
@@ -118,6 +141,9 @@ function defaultRunner(adapter?: ProcessAdapter): DeliveryRunner {
         cwd: ".",
         timeoutMs: 120_000,
         maxOutputBytes: 524_288,
+        ...(argv[0] === "gh"
+          ? { environment: githubCliConfigurationEnvironment() }
+          : {}),
       },
       adapter,
     );
