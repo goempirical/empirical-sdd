@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "mode": "yolo",
+  "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+  "feature": "authenticate-sanitized-git-push",
+  "requestDigest": "sha256:eb9d3f357da3307998b26bf54f2820d6e30a6c77bc466dbce582674c20cf74eb",
+  "ceiling": "delivered",
+  "targetBranch": "main",
+  "allowExternalAgent": false,
+  "createdAt": "2026-08-19T14:07:23.346Z",
+  "expiresAt": null,
+  "digest": "sha256:51427a37da17c6b480b4e21ae0aade47343362cfe16e9f525e381f9ea2cab59f"
+}

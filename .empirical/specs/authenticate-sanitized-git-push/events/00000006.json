@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "sequence": 6,
+  "previousDigest": "sha256:10f2322d90db743be00eb3840577b111fc0fe4af8c7671cd5671792b3c7faa0b",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Implemented push-only gh authentication with process-scoped Git config, GH_CONFIG_DIR, and GIT_TERMINAL_PROMPT=0. Direct gh and non-push environments remain isolated; no HOME/token/config write exists. Typecheck and 17 focused delivery tests pass, and a production-function dry run authenticated while the remote probe ref stayed absent and all persistent Git config digests stayed stable.",
+  "createdAt": "2026-08-19T14:12:00.719Z",
+  "stateBeforeDigest": "sha256:f8ac5b12e9c722c8837d698829be1d6f90351d5282dffd5ec734f2020fc30f41",
+  "stateAfterDigest": "sha256:17bf7a18f363267e69317adad395180df7d3cda57d331190b353de7daa2ddf49",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 6,
+    "activeFeature": "authenticate-sanitized-git-push",
+    "request": "Fix the live 0.24.0 release blocker discovered during protected delivery: the built-in sanitized HTTPS git push must authenticate through the host's existing GitHub CLI configuration using an ephemeral narrowly scoped Git credential-helper bridge, without inheriting HOME, reading or persisting tokens, changing persistent Git configuration, weakening exact argv, or affecting non-push commands. Add regression and live-boundary verification, deliver the fix and evidence through protected pull requests to main, and prepare but do not publish 0.24.0 or modify any VPS.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "context",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Implemented push-only gh authentication with process-scoped Git config, GH_CONFIG_DIR, and GIT_TERMINAL_PROMPT=0. Direct gh and non-push environments remain isolated; no HOME/token/config write exists. Typecheck and 17 focused delivery tests pass, and a production-function dry run authenticated while the remote probe ref stayed absent and all persistent Git config digests stayed stable.",
+    "implementationActor": "agent",
+    "specDigest": "sha256:ad925b7aeedc618c4278b0435d01d7f0d3f91ef6b7ab90d9f3c6367d9eb66866",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:28ed68204351538dd78a5a610726f07fd77abefac95a2243ac8a678d2ee22deb",
+    "impactDigest": "sha256:da2820a25b29a5d4beaa8796344310b91cb9cc6d2f7e1080c8d34170b6a26b06",
+    "capabilityClaimId": "authenticate-sanitized-git-push-b24af25e7b8c",
+    "authorizationDigest": "sha256:51427a37da17c6b480b4e21ae0aade47343362cfe16e9f525e381f9ea2cab59f",
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "implemented",
+      "reasons": {
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-19T14:12:00.719Z"
+  },
+  "digest": "sha256:983234bc678d51e55b0d272a89097903753719a01850c1ab0fe48252752ae93a"
+}

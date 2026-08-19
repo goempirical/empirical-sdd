@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "id": "executed-a263bb58c7e63d47d304a1a3",
+  "criteria": [
+    "AC-1",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7"
+  ],
+  "evidenceKinds": [
+    "test"
+  ],
+  "summary": "Clean release CI verifies the exact gh-backed push environment, command isolation, value-free receipts, truthful failures, package 0.24.0 consistency, and all existing delivery behavior.",
+  "passed": true,
+  "startedAt": "2026-08-19T14:12:53.833Z",
+  "completedAt": "2026-08-19T14:13:36.999Z",
+  "provenance": {
+    "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+    "feature": "authenticate-sanitized-git-push",
+    "specRevision": 3,
+    "specDigest": "sha256:ad925b7aeedc618c4278b0435d01d7f0d3f91ef6b7ab90d9f3c6367d9eb66866",
+    "treeDigest": "sha256:3fca85c1a58bc04a41a0b1e8ab8a5dad31ab8b10c3f0427e16c5aa1ca701ff16",
+    "policyDigest": "sha256:d1f5cd886f30de09b672911041c00cda350042fe9d96e5595a6d9ca4be592e0c"
+  },
+  "digest": "sha256:debf2565712cc3ade23c3f7a5fffd829c80e90342288282135b12406092ecfa5",
+  "kind": "executed",
+  "command": {
+    "argv": [
+      "bun",
+      "run",
+      "ci"
+    ],
+    "cwd": ".",
+    "timeoutMs": 900000,
+    "maxOutputBytes": 4194304,
+    "environmentKeys": [
+      "PATH"
+    ]
+  },
+  "result": {
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "stdoutDigest": "sha256:09a68ccfa63b379b50eb2ff25cf89be1155f0e53acee5200edd19d970f0c56ac",
+    "stderrDigest": "sha256:186539e6b8ec04bfea181a1dc97c59ca883eb0030b458263e6264bd7b9620e8c",
+    "stdoutTail": "bun test v1.3.14 (0d9b296a)\nbun test v1.3.14 (0d9b296a)\nCoverage gate: 90.12% lines, 92.69% functions across 31 modules.\nBundled 0.24 Init-skill, tracker, uninstall, receipt, routing, YOLO, worktree, CLI, and MCP smoke passed.\n\nadded 94 packages in 2s\nClean package consumer passed for empirical-sdd 0.24.0.\nConsistency gate: Empirical 0.24.0, Schema 5, 1 skill, 37 operations.\n",
+    "stderrTail": "acking > phase and stop conditions map to the normalized progress model [0.10ms]\n(pass) external ticket tracking > missing credentials fail before transport and persist only the environment name [12.10ms]\n(pass) external ticket tracking > status distinguishes synchronized, unresolved replacement, and target-drift records [18.08ms]\n(pass) external ticket tracking > status reports prepared no-binding work and rejects its later target drift [18.89ms]\n(pass) external ticket tracking > rate limits and malformed provider responses remain retryable local failures [17.17ms]\n(pass) external ticket tracking > Linear create binds, projects, survives a later local commit, and resynchronizes [31.72ms]\n(pass) external ticket tracking > Linear migrates one legacy projection and recovery block without exposing machine metadata [49.03ms]\n(pass) external ticket tracking > GitHub create keeps exactly one machine-owned marker in the project comment [13.42ms]\n(pass) external ticket tracking > GitHub attachment adopts an existing Projects v2 item, upserts one comment, and moves Status [12.78ms]\n(pass) external ticket tracking > Jira attachment writes the issue property and selects a transition by destination status [14.20ms]\n(pass) external ticket tracking > provider failure is redacted and cannot roll back the committed workflow [24.53ms]\n(pass) external ticket tracking > bind input is a strict runtime discriminated union before pending mutation [12.73ms]\n(pass) external ticket tracking > all uncertain create responses become durable ambiguity after dispatch [52.31ms]\n(pass) external ticket tracking > sync retries a durable no-binding attach intent [15.11ms]\n(pass) external ticket tracking > a projection failure after create keeps the durable binding and is not ambiguous [16.72ms]\n(pass) external ticket tracking > same-provider target drift fails closed while state-map drift forces a request [18.59ms]\n(pass) external ticket tracking > Linear and Jira attachments reject tickets outside the configured target [28.24ms]\n(pass) external ticket tracking > provider update identity cannot replace the durable binding [30.98ms]\n(pass) external ticket tracking > opaque credentials from injected EmpiricalError transports are exactly redacted [14.72ms]\n(pass) external ticket tracking > quoted or surrounded GitHub markers are not treated as machine-owned comments [13.53ms]\n(pass) external ticket tracking > GitHub sync revalidates issue ownership and ignores forged persisted mutation ids [24.56ms]\n(pass) external ticket tracking > provider URL parsing accepts valid URLs longer than remote identifiers [13.54ms]\n(pass) external ticket tracking > malformed GitHub project pagination fails before adding an item [12.01ms]\n(pass) external ticket tracking > a malformed GitHub create response reconciles its exact marker without a second create [23.10ms]\n(pass) external ticket tracking > zero, duplicate, and malformed-pagination reconciliation results fail closed [40.83ms]\n(pass) external ticket tracking > a prepared create safely dispatches once after credentials become available [13.06ms]\n(pass) external ticket tracking > explicit replace can supersede a provably undispatched pending create on a new target [18.64ms]\n(pass) external ticket tracking > manual attach resolves an ambiguous create only with its exact marker and preserves evidence on mismatch [17.42ms]\n(pass) external ticket tracking > same-ticket replacement is associated with its new attempt and stays stable across revisions [26.98ms]\n(pass) external ticket tracking > an ambiguous create is not repeated without explicit confirmation [13.64ms]\n----------------------------|---------|---------|-------------------\nFile                        | % Funcs | % Lines | Uncovered Line #s\n----------------------------|---------|---------|-------------------\nAll files                   |   91.83 |   92.39 |\n src/agent-catalog.ts       |   90.48 |   96.65 | 242,252,283-288\n src/agents.ts              |   81.82 |   96.83 | 99-101\n src/branding.ts            |  100.00 |  100.00 | \n src/checkouts.ts           |   95.00 |   93.20 | 51,70,99,103,116,127-128\n src/coordination.ts        |   90.36 |   88.59 | 125,155-156,168,177-178,182-183,194,201,215,218,223,227,232,298-302,324,327,340-341,347-348,357-358,364-365,369,394,399,452,469-470,505-527,535,542,574-575,588,618,632-633,661,740-741,747,757,791,801,810\n src/core.ts                |   88.41 |   89.23 | 333-336,345-365,560-563,882-891,1453-1599,1780-1832,1897-1942,2783-2785,2898-2905,3068-3069,3120-3124,3205-3207\n src/decisions.ts           |   94.74 |   90.91 | 47,72-73,109-113,116-119\n src/delivery.ts            |   95.45 |   94.15 | 74,80,109,192-194,210,224-225,238-239,266,270,313,390,405,458-459,467-468,471,476,522,525,548-549,555,571,575,663-664,746,757,809-811,822,874-875,896,917,931,949,961,965,969,993-994\n src/discovery.ts           |   96.77 |   88.79 | 159,165,168,174-175,181-182,210-213,223,238,258-261,264-267,301-303,338-342,350-353,397,426,429,433\n src/doctor.ts              |   97.96 |   84.70 | 65,100-101,233-241,338-345,368,389-419,436-444,489-497,606-615,636-644,703-711,718-724,730-736\n src/errors.ts              |   50.00 |   88.89 | \n src/evidence.ts            |   90.00 |   93.47 | 35,114,130,138,183-187,191-195,230\n src/integrations.ts        |   98.94 |   94.89 | 391,574,578,583,596,657,675-676,761-764,779-780,785-786,814-815,818-829,846,874,891,913-914\n src/journal.ts             |   97.30 |   91.27 | 64,70,76,92,97,123,146,162,165,168,171,178,182,199,208-209,213-214,247-248,280,287,296,346-347,351,362-363,401,405,413,418,426,454\n src/knowledge-templates.ts |  100.00 |  100.00 | \n src/knowledge.ts           |   92.19 |   96.90 | 217,227-228,322,388,414-415,483-486,492-495\n src/lifecycle.ts           |   80.00 |   94.29 | 46-47\n src/migration-scratch.ts   |  100.00 |  100.00 | \n src/migration.ts           |   95.89 |   91.02 | 71,79-80,89,126-128,137-138,142-143,153,171,209,223,233,245-246,257-258,272-273,312-315,458,489-502,525,585-586,612,671,679,689-690,715,722,744,800,803-804,810,822-826,885-886,897-900,919-920,925-927\n src/operations.ts          |   83.33 |   94.53 | 119,128,137,141-143\n src/policy.ts              |  100.00 |   93.33 | 32,45-47,60,64\n src/protocol.ts            |   93.33 |   96.36 | 83,109,189-193,252,256,259,448,451,454\n src/routing.ts             |  100.00 |   96.18 | 76,105-107\n src/runtime.ts             |   93.75 |   95.63 | 84,136-139,180,209\n src/selector.ts            |   96.15 |   80.08 | 89,93,200-245\n src/setup.ts               |   66.67 |   83.33 | 24-28,43,46,59,102-103,110-111,115,119-123\n src/specifications.ts      |   95.12 |   86.93 | 51,85,93,103,121-124,148-151,162-163,169-170,174-175,192-194,200,241-247,266,270,294-305,355-356\n src/storage.ts             |   90.13 |   91.64 | 91,446-457,490,522,696-697,768-818,830-834,839,895-896\n src/tracking.ts            |   92.95 |   87.89 | 395-399,404-407,448-452,515-518,533-536,543-546,567,601-605,718-722,726-729,735-738,746,750,755,758,762,766,813-823,827-842,1020,1025,1065-1066,1111-1113,1127-1128,1130-1131,1135-1147,1155,1215,1280,1284-1288,1294-1295,1441-1463,1468-1492,1588-1589,1612,1615-1626,1644-1662,1821-1835,1865,1900-1901,1937-1939,1975,1980,1999-2007,2015,2019,2024,2028,2068-2069,2293,2299,2305-2306,2334,2341,2348-2350,2386,2393,2447,2516,2532-2562,2585,2641,2675,2720-2723,2771-2773,2862-2868,2941,2961,2979,2985,3006-3014,3022,3063-3064,3255,3267,3273,3299,3304,3313,3327-3328,3408,3591-3592,3604,3627-3639,3719,3766,3774-3775,3805,3808-3809,3813-3815,3818-3857,3899-3900,3938-3940,3943-3991,4010-4026,4249,4252,4256,4262,4276-4280,4302,4305,4308,4311,4316,4340,4344,4403-4407,4472,4477,4537,4557,4565,4577-4578,4590,4599\n src/types.ts               |  100.00 |  100.00 | \n src/worktrees.ts           |  100.00 |   84.48 | 83,95-98,107,115-118,127-133,140,147,150,156,164,167,170,180,188\n----------------------------|---------|---------|-------------------\n\n 238 pass\n 0 fail\n 1948 expect() calls\nRan 238 tests across 21 files. [18.11s]\n$ bun run build && bun run scripts/smoke-mcp.ts\n$ bun run scripts/build.ts\n$ bun run scripts/test-package.ts\n$ bun run scripts/check-consistency.ts\n",
+    "stdoutTruncated": false,
+    "stderrTruncated": false
+  }
+}

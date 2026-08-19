@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "sequence": 3,
+  "previousDigest": "sha256:f5ed10f32680ef5fa01b69ce739f426e0a88d3fffd53ea861816948e6206e5a6",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Specified seven observable criteria for ephemeral gh-backed HTTPS push authentication, strict command scoping, no secret or persistent configuration, truthful failure, live dry-run proof, full CI, protected delivery, and release non-mutation; declared the autonomous-delivery delta.",
+  "createdAt": "2026-08-19T14:08:19.073Z",
+  "stateBeforeDigest": "sha256:bd4728e875f44335cc02fd994846f52f7ae50abbd3a61ce71455020f76b2e874",
+  "stateAfterDigest": "sha256:27273929ce9de897f503850a6dbf87fd1942706fab6889c9ac3cee15b49eed50",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 3,
+    "activeFeature": "authenticate-sanitized-git-push",
+    "request": "Fix the live 0.24.0 release blocker discovered during protected delivery: the built-in sanitized HTTPS git push must authenticate through the host's existing GitHub CLI configuration using an ephemeral narrowly scoped Git credential-helper bridge, without inheriting HOME, reading or persisting tokens, changing persistent Git configuration, weakening exact argv, or affecting non-push commands. Add regression and live-boundary verification, deliver the fix and evidence through protected pull requests to main, and prepare but do not publish 0.24.0 or modify any VPS.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "design",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Specified seven observable criteria for ephemeral gh-backed HTTPS push authentication, strict command scoping, no secret or persistent configuration, truthful failure, live dry-run proof, full CI, protected delivery, and release non-mutation; declared the autonomous-delivery delta.",
+    "implementationActor": null,
+    "specDigest": "sha256:ad925b7aeedc618c4278b0435d01d7f0d3f91ef6b7ab90d9f3c6367d9eb66866",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:28ed68204351538dd78a5a610726f07fd77abefac95a2243ac8a678d2ee22deb",
+    "impactDigest": "sha256:da2820a25b29a5d4beaa8796344310b91cb9cc6d2f7e1080c8d34170b6a26b06",
+    "capabilityClaimId": "authenticate-sanitized-git-push-b24af25e7b8c",
+    "authorizationDigest": "sha256:51427a37da17c6b480b4e21ae0aade47343362cfe16e9f525e381f9ea2cab59f",
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": false,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "none",
+      "reasons": {
+        "implemented": "implemented has not been proven by a durable receipt.",
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-19T14:08:19.073Z"
+  },
+  "digest": "sha256:aa3a8411a385f3e8a073a16fb2026a7d1eef434a0f82e8fe7cde3cf97a671408"
+}

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generator": "empirical-0.24.0",
-  "sourceDigest": "sha256:e9b9714cb919d998aa142e946fc7a613c3b4c95db87f41c2e86ececda6bc80ae",
+  "sourceDigest": "sha256:6596c33582fc36657e142886ea474fdf2cfc4e85ac70b8100a0fd3274fed10a9",
   "files": [
     {
       "path": ".agents/skills/empirical/SKILL.md",
@@ -55,8 +55,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 4533,
-      "digest": "sha256:bfa9b472be85612563a02d65ee664439059ddb5497f2762ab3ea9acf35cfe21f"
+      "size": 4751,
+      "digest": "sha256:40e3fa7a1d3a7ec29524888c2548a6c85f6d6773ab0bce13273cb9e4d0cba6ff"
     },
     {
       "path": "CLAUDE.md",
@@ -220,8 +220,8 @@
     },
     {
       "path": "src/delivery.ts",
-      "size": 35314,
-      "digest": "sha256:e1e7410e0af0e53e1970f852fb9e53e851753f2a556b612fa7ef13f1688f749b"
+      "size": 36043,
+      "digest": "sha256:103e618c4fada2af609502c3f2bfddc9ef8ceabfcb2585ba2ae0c79ea822bb0c"
     },
     {
       "path": "src/demo-integration-repair.ts",
@@ -385,8 +385,8 @@
     },
     {
       "path": "tests/delivery.test.ts",
-      "size": 25385,
-      "digest": "sha256:89d4999cddea6f9a597eaa6af990ee2846704676591682337402198c2e53e9e2"
+      "size": 28090,
+      "digest": "sha256:eb62092e3bec922ecb334fa608826ba606f5a88779477393e0467bb2aa1f2e1f"
     },
     {
       "path": "tests/discovery.test.ts",
@@ -563,7 +563,7 @@
         "tests/worktree-isolation.test.ts",
         "tsconfig.json"
       ],
-      "sourceDigest": "sha256:e9b9714cb919d998aa142e946fc7a613c3b4c95db87f41c2e86ececda6bc80ae",
+      "sourceDigest": "sha256:6596c33582fc36657e142886ea474fdf2cfc4e85ac70b8100a0fd3274fed10a9",
       "digest": "sha256:62c1e429f938bf5a727c9e089eb965df0b29d2db55837334cad4cb68a75a8ab9",
       "freshness": "fresh"
     },
@@ -622,7 +622,7 @@
         "src/types.ts",
         "src/worktrees.ts"
       ],
-      "sourceDigest": "sha256:7ca50ec44ddf187915c24d45a8a85069701bc55449c31c7f7518ef6d2996957b",
+      "sourceDigest": "sha256:82be4f1358aed2cffc12f2407154c431d66b3260e33be7f28f3c9a17b022acc8",
       "digest": "sha256:8a3ce40862fa2601df89006351d195308b09680274472f9e2d1d8130c4db7b8b",
       "freshness": "fresh"
     },
@@ -663,5 +663,5 @@
     }
   ],
   "truncated": false,
-  "digest": "sha256:c5578009c631b14f55e5bd88968c3ce744b72f536ab576f2d2e34c780335109d"
+  "digest": "sha256:c90549faa8203e6f93a25b73b5ee33d0d330f3960a1d30f6b160aad16989ace2"
 }
