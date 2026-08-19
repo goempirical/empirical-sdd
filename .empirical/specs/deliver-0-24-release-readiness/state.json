@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 5,
+  "revision": 9,
+  "activeFeature": "deliver-0-24-release-readiness",
+  "request": "Deliver the already integrated harden-0-24-release-readiness source changes and Empirical evidence through protected GitHub pull requests to main, merge only after required checks pass, reconcile durable delivery receipts, and prepare but do not execute the exact immutable empirical-sdd 0.24.0 publication target. Do not create a tag, GitHub Release, npm version or dist-tag change, and do not modify any VPS.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "yolo",
+  "phase": "deliver",
+  "status": "waiting",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: autonomous-delivery",
+  "implementationActor": "agent",
+  "specDigest": "sha256:674a403fb4f744ebaf0a1decd93f8659ba8d4f8837a5bef7c363d99f4e682f49",
+  "approvedSpecRevision": 3,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:d77259dc84c9dd0a566329b6bd2f899f89bb9bfdfe6d4740b9feb54a4e46890d",
+  "impactDigest": "sha256:da2820a25b29a5d4beaa8796344310b91cb9cc6d2f7e1080c8d34170b6a26b06",
+  "capabilityClaimId": "deliver-0-24-release-readiness-b24af25e7b8c",
+  "authorizationDigest": "sha256:f8b19f4ee82070ba2910e0979034defb921d8b5e9c53c09dcee51a5cb1075a21",
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-e2117b21bd1333610145663c",
+    "collected-3f4e922cb7c3ff0056ef9d6b"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-19T14:01:53.090Z"
+}

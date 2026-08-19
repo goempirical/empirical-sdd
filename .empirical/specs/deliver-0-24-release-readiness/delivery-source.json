@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "feature": "deliver-0-24-release-readiness",
+  "sourceMergeCommit": "f4d6c0385b082b870c54a0c9f0fb2ce0aea0c0ac",
+  "integrationReceiptDigest": "sha256:40795393b36afd3226d52f4026d79d144b2f16e1b0d90ca5b935c7627614fee4",
+  "digest": "sha256:0361746d8e6a5429f395063a5540e866b1deb3bc64e2f83ec7df62719cd4ae3e"
+}

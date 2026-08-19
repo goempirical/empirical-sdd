@@ -35,25 +35,27 @@ integration receipt before reaching integrated completion. Capability base and
 replay digests MUST canonicalize Markdown line endings so LF and CRLF forms of
 the same requirement are equivalent while actual text changes remain conflicts.
 Projection writes MUST be atomic; any failure restores every touched capability
-and preserves the same resumable revision. Non-behavioral changes record an
-empty integrated projection with their regression receipt.
+and preserves the same resumable revision. Non-behavioral changes MUST record an
+empty integrated projection with their regression receipt. Doctor MUST validate
+each integration receipt against its declared classification: behavioral
+receipts require a capability claim and replay fields, while non-behavioral
+receipts require a null claim and their independent validation fields. Doctor
+MUST report malformed or tampered receipts without mutating them and MUST NOT
+apply behavioral-only string operations to a valid null claim.
 
-#### Scenario: Replay and integration succeed across checkout conventions
+#### Scenario: Doctor inspects a non-behavioral integration receipt
 
-- **WHEN** the validated source and target contain the same touched requirement with different LF or CRLF line endings
-- **THEN** Empirical accepts the requirement as unchanged and replays the delta
-- **AND** the integration receipt remains digest-bound to the canonical result
+- **WHEN** an independently verified non-behavioral change stores a valid
+  digest-bound receipt whose `claimId` is null
+- **THEN** Doctor accepts the receipt without an exception or invalid-receipt finding
+- **AND** the receipt and repository remain byte-for-byte unchanged
 
-#### Scenario: Projection partially fails
+#### Scenario: Doctor inspects an inconsistent classified receipt
 
-- **WHEN** any capability cannot be committed or verified
-- **THEN** Empirical restores every capability already touched
-- **AND** the workflow remains resumable without claiming integration
-
-#### Scenario: A touched requirement changes semantically
-
-- **WHEN** the target changes the actual text of a touched requirement after its base is captured
-- **THEN** Empirical rejects replay as a capability integration conflict
+- **WHEN** a receipt is malformed, tampered, or mixes behavioral and
+  non-behavioral fields
+- **THEN** Doctor reports `INTEGRATION_RECEIPT_INVALID`
+- **AND** it does not rewrite or delete the receipt
 
 ### Requirement: Capability delta operations are safe and repeatable
 

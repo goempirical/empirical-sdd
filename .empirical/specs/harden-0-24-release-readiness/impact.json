@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "classification": "behavioral",
+  "capabilities": [
+    "agent-integrations",
+    "autonomous-delivery",
+    "living-specifications"
+  ],
+  "surfaces": [
+    "workflow"
+  ],
+  "regressionRationale": null,
+  "digest": "sha256:f447e6660c7d69914fe65d030cf37be18bee9ef67aa0879f27a6a34a19eca87b"
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "mode": "yolo",
+  "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+  "feature": "deliver-0-24-release-readiness",
+  "requestDigest": "sha256:2dfdbfa5a6eb34aeb0905db1cc0f12ecfe02854b4f422a116af00b512136021e",
+  "ceiling": "delivered",
+  "targetBranch": "main",
+  "allowExternalAgent": false,
+  "createdAt": "2026-08-19T13:56:29.036Z",
+  "expiresAt": null,
+  "digest": "sha256:f8b19f4ee82070ba2910e0979034defb921d8b5e9c53c09dcee51a5cb1075a21"
+}
