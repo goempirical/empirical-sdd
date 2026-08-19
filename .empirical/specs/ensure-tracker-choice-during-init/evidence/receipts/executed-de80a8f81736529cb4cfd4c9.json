@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "id": "executed-de80a8f81736529cb4cfd4c9",
+  "criteria": [
+    "AC-1",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7"
+  ],
+  "evidenceKinds": [
+    "review",
+    "test"
+  ],
+  "summary": "Full bounded release CI verifies mandatory tracker choice, Track all ensure semantics, durable provider-free opt-out, repair preservation, generated Init guidance, interactive confirmation, package integrity, and Schema 5 compatibility.",
+  "passed": false,
+  "startedAt": "2026-08-19T19:44:25.484Z",
+  "completedAt": "2026-08-19T19:48:19.804Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "ensure-tracker-choice-during-init",
+    "specRevision": 3,
+    "specDigest": "sha256:019753fa8562bf2502acb193a34d490fa659f5cf2a4e6cd7669e58741c11e784",
+    "treeDigest": "sha256:2fc824b427e3e31c2dc02f65286817edb1e8966b5a6d9f2c50755ae030360ac5",
+    "policyDigest": "sha256:d1f5cd886f30de09b672911041c00cda350042fe9d96e5595a6d9ca4be592e0c"
+  },
+  "digest": "sha256:e466b8752c6252b4c40e733b0987cd25892d3668d2892921a94148fcaaadca0d",
+  "kind": "executed",
+  "command": {
+    "argv": [
+      "bun",
+      "run",
+      "ci"
+    ],
+    "cwd": ".",
+    "timeoutMs": 900000,
+    "maxOutputBytes": 4194304,
+    "environmentKeys": [
+      "NO_COLOR",
+      "PATH",
+      "TMPDIR"
+    ]
+  },
+  "result": {
+    "exitCode": 1,
+    "signal": null,
+    "timedOut": false,
+    "stdoutDigest": "sha256:b8b75eea49f6aad813217387e127f648c8ee41a9e33fc6ad414b1d592819c027",
+    "stderrDigest": "sha256:83ccb9fd2ee40f762b530c137c23b19699dfad8c5f3c880467f3f73aa9694611",
+    "stdoutTail": "bun test v1.3.14 (0d9b296a) 4x PARALLEL\nbun test v1.3.14 (0d9b296a) 4x PARALLEL\nCoverage gate: 87.76% lines, 90.10% functions across 31 modules.\n",
+    "stderrTail": "without changing it [3314.89ms]\n\ntests/worktree-isolation.test.ts:\n(pass) Git worktree isolation > approval becomes stale when the base or active feature changes [8558.94ms]\n\ntests/doctor.test.ts:\n(pass) read-only Doctor diagnostics > reports legacy policy, stale knowledge, locks, and corrupt receipts together [2589.94ms]\n\ntests/worktree-isolation.test.ts:\n(pass) Git worktree isolation > isolation can be explicitly disabled [2467.47ms]\n\ntests/doctor.test.ts:\n(pass) read-only Doctor diagnostics > reports the shared coordination lock without removing it [2596.08ms]\n(pass) read-only Doctor diagnostics > rejects unsupported and malformed schema or Policy-v2 documents [841.38ms]\n(pass) read-only Doctor diagnostics > flags terminal history without compaction and mismatched projections [3172.30ms]\n\ntests/integrations.test.ts:\n(pass) agent integrations > every registry operation and public subcommand has no-write usable help [47841.64ms]\n(pass) agent integrations > version aliases remain exact and unbranded [2753.60ms]\n(pass) agent integrations > public workflow verbs are rejected before project discovery [8655.84ms]\n(pass) agent integrations > non-interactive install requires an explicit selection [2172.75ms]\n(pass) agent integrations > non-interactive uninstall refuses before mutation without --yes [1904.05ms]\n(pass) agent integrations > confirmed uninstall works outside a repository with JSON and human reports [3874.79ms]\n(pass) agent integrations > repeatable agent flags install the exact selection [1105.41ms]\n(pass) agent integrations > yes mode preserves detected agents without prompting [1014.81ms]\n(pass) agent integrations > yes mode reuses a remembered broad selection without detecting it [2446.22ms]\n----------------------------|---------|---------|-------------------\nFile                        | % Funcs | % Lines | Uncovered Line #s\n----------------------------|---------|---------|-------------------\n src/agent-catalog.ts       |   90.48 |   96.65 | 242,252,283-288\n src/agents.ts              |   81.82 |   93.13 | 99-101,106-110,168\n src/branding.ts            |  100.00 |  100.00 | \n src/checkouts.ts           |   95.00 |   93.20 | 51,70,99,103,116,127-128\n src/coordination.ts        |   86.59 |   86.09 | 125-126,138,151,155-156,168,177-178,180,182-184,194,201,215,218,223,227,232,301,304,324,327,340-341,347-348,357-358,364-365,369,394,399,407,424-426,443-447,452,469-470,505-527,535,542,574-575,588,605-611,618,632-633,661,740-741,744,747,750,757,791,801,810,846\n src/core.ts                |   71.11 |   85.96 | 172-173,189-190,254-255,316,325-326,329-330,333-336,338-339,345-365,367-368,375-376,380-381,384-385,404-405,408-409,416-417,447-448,519,531,554-555,560-563,565-566,572-573,622-623,641-642,671-672,698-699,788-789,796-797,829,870,882-891,950-952,957-961,984-985,1023,1054-1056,1079-1080,1255-1256,1315,1331,1373,1391-1392,1453-1599,1601-1602,1695-1696,1725,1753-1754,1760-1761,1780-1832,1834-1835,1895,1897-1942,1954,1961-1962,1983-1984,2012-2013,2483-2485,2487-2489,2491-2493,2783-2785,2898-2905,2954,3068-3069,3098,3118,3120-3124,3158,3167,3196,3205-3207\n src/decisions.ts           |   94.74 |   90.91 | 47,72-73,109-113,116-119\n src/delivery.ts            |   95.45 |   88.65 | 74,80,109,114-116,138-140,192-194,210,224-225,238-239,266,270,313,338,390,405,458-459,467-468,471,476,517,522,525,548-549,555,571,575,663-664,715-720,726-733,746,757,789-792,809-811,822,824,848,874-875,886-891,896,917,921,931,937,949,951,961,965,969,993-994,999-1009,1031,1057-1060\n src/discovery.ts           |   96.77 |   86.49 | 159,165,168,174-175,181-182,194,196-197,210-213,223,238,258-261,264-267,301-303,338-342,350-353,355,372,397,409-412,426,429,433,437\n src/doctor.ts              |   97.96 |   83.00 | 65-66,97-98,100-101,153,233-241,338-345,347,368,387,389-420,436-444,489-497,562,606-615,633,636-644,654,665,703-711,713,718-724,730-736,757,778,794\n src/errors.ts              |   50.00 |   88.89 | 13\n src/evidence.ts            |   90.00 |   87.74 | 35,45-49,114,120-127,130,138,175,183-187,189,191-196,230,234\n src/integrations.ts        |   98.94 |   93.39 | 308,327,399,407,434,482,582,586,591,593,604,665-666,683-684,769-772,787-788,790,793-794,822-823,826-837,854,882,884,899,901,912,921-922\n src/journal.ts             |   94.59 |   87.98 | 64,70,76,92,97,123,146,162,165,168,171,178,182,199,208-209,213-214,243,247-248,280,287,296,346-347,351,362-363,395,401,405,407,410,413,418,420,426,428-429,454-457,463-467,473\n src/knowledge-templates.ts |  100.00 |  100.00 | \n src/knowledge.ts           |   92.19 |   96.90 | 217,227-228,322,388,414-415,483-486,492-495\n src/lifecycle.ts           |   80.00 |   94.29 | 46-47\n src/migration-scratch.ts   |  100.00 |   82.35 | 5-7\n src/migration.ts           |   95.89 |   89.24 | 71,79-80,89-90,102,126-128,137-138,140,142-144,153,171,173,209,222-223,225,233,245-246,257-258,272-273,312-315,397,439,458,489-502,525,585-586,612,630,671,679,684,688-690,715,722,744,800,803-804,810,822-826,828,885-886,897-900,902,904,919-920,922,925-927\n src/operations.ts          |   83.33 |   92.37 | 119,128,137,141-143,155-157,168\n src/policy.ts              |  100.00 |   89.91 | 32,45-47,60,64,76,107-110\n src/protocol.ts            |   93.33 |   96.36 | 83,109,189-193,252,256,259,448,451,454,457\n src/routing.ts             |  100.00 |   96.18 | 76,105-107,113\n src/runtime.ts             |   93.75 |   95.63 | 84,136-139,180,209,217\n src/selector.ts            |   96.15 |   80.08 | 89,93,200-245\n src/setup.ts               |   92.31 |   90.84 | 25-29,44,47,60,80-81,142,162\n src/specifications.ts      |   95.12 |   85.47 | 51,85,93,103,121-124,148-151,162-163,169-170,174-175,192-194,196,200,241-247,266,270,288,294-306,308,310,355-356,370,374\n src/storage.ts             |   87.25 |   89.96 | 91,178-180,261-262,357-358,386-387,446-457,474-475,480-481,485-486,490,497-498,522,696-697,768-818,830-834,839,895-896\n src/tracking.ts            |   92.64 |   85.17 | 406-410,412,415-418,445,459-463,534-537,552-555,562-565,586,620-624,626,737-741,743,745-748,754-757,765,769,774,777,781,785,832-842,846-861,1039,1044,1084-1085,1099-1100,1119,1130-1133,1135,1146-1147,1149-1150,1152,1154-1167,1174,1176,1206-1207,1219,1234,1261,1299,1303-1307,1309,1313-1314,1316,1341,1360,1378,1390,1451,1460-1482,1487-1511,1539,1607-1608,1631,1634-1645,1663-1681,1716,1772-1775,1784-1788,1812-1813,1840-1854,1884,1905-1906,1919-1920,1927-1928,1956-1958,1994,1999,2018-2026,2034,2038,2043,2047,2087-2088,2232-2235,2269,2272-2276,2312,2318,2324-2325,2338-2346,2353,2360,2367-2369,2405,2412,2427-2428,2466,2491-2492,2535,2551-2581,2604,2660,2694,2723-2732,2739-2742,2790-2792,2801-2838,2881-2887,2960,2980,2998,3004,3025-3033,3041,3076,3082-3083,3142,3150,3274,3286,3292,3318,3323,3332,3346-3347,3427,3610-3611,3623,3646-3658,3738,3785,3793-3794,3809-3814,3824,3827-3828,3832-3834,3837-3876,3918-3919,3934-3939,3957-3959,3962-4010,4029-4045,4268,4271,4275,4281,4295-4299,4305,4321,4324,4327,4330,4335,4359,4363,4422-4426,4491,4496,4499,4536,4556,4576,4584,4596-4597,4609,4611,4618,4626\n src/types.ts               |  100.00 |  100.00 | \n src/worktrees.ts           |  100.00 |   84.48 | 83,95-98,107,115-118,127-133,140,147,150,156,164,167,170,180,188,209\nAll files                   |   91.79 |   90.69 |\n----------------------------|---------|---------|-------------------\n\n 240 pass\n 0 fail\n 1971 expect() calls\nRan 240 tests across 21 files. [148.36s]\n71 | if (functionRate < 90) failures.push(`aggregate functions ${functionRate.toFixed(2)}% < 90%`);\n72 | if (files.size === 0) failures.push(\"coverage report contains no src/*.ts modules\");\n73 | \n74 | console.log(`Coverage gate: ${lineRate.toFixed(2)}% lines, ${functionRate.toFixed(2)}% functions across ${files.size} modules.`);\n75 | if (failures.length > 0) {\n76 |   throw new Error(`Coverage thresholds failed:\\n- ${failures.join(\"\\n- \")}`);\n                 ^\nerror: Coverage thresholds failed:\n- aggregate lines 87.76% < 90%\n      at /Users/mateocerquetella/Developer/projects/empirical-sdd-init-tracker-onboarding/scripts/check-coverage.ts:76:13\n\nBun v1.3.14 (macOS x64)\nerror: script \"test:coverage\" exited with code 1\nerror: script \"ci\" exited with code 1\n",
+    "stdoutTruncated": false,
+    "stderrTruncated": false
+  }
+}

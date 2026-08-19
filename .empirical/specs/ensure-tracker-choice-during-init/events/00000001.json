@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "sequence": 1,
+  "previousDigest": "sha256:a6b61592b58c7ae5fb61eb4d0b5374118b2652dbaa17a80cc7d981616d57e361",
+  "actor": "empirical-start",
+  "type": "transition",
+  "summary": "Started ensure-tracker-choice-during-init",
+  "createdAt": "2026-08-19T18:53:14.612Z",
+  "stateBeforeDigest": "sha256:74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+  "stateAfterDigest": "sha256:c4aa9ab847e1909b3e656193cfc46406a281f223ceedfab89360c9d212f8a46d",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 1,
+    "activeFeature": "ensure-tracker-choice-during-init",
+    "request": "Fix empirical-init so initialization inspects existing tracker configuration and, when none exists, asks during setup with Track all work as the recommended default and No tracking as an explicit choice; preserve existing tracker configuration during repair, persist the confirmed choice safely, add regression coverage, merge the fix through a PR, and publish the next patch release.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "normal",
+    "phase": "specify",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": null,
+    "implementationActor": null,
+    "specDigest": "sha256:ef86b81662b8452846791412dce1288d30358c20a722892ea2fa7fe0a5fee6c7",
+    "approvedSpecRevision": null,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": null,
+    "impactDigest": null,
+    "capabilityClaimId": null,
+    "authorizationDigest": null,
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": false,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "none",
+      "reasons": {
+        "implemented": "implemented has not been proven by a durable receipt.",
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-19T18:53:14.612Z"
+  },
+  "digest": "sha256:12e97583c454e295f2091bacbf5e9631a372c05546d831b1df8d9bf72a023e5a"
+}

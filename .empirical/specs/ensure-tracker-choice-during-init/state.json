@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 5,
+  "revision": 10,
+  "activeFeature": "ensure-tracker-choice-during-init",
+  "request": "Fix empirical-init so initialization inspects existing tracker configuration and, when none exists, asks during setup with Track all work as the recommended default and No tracking as an explicit choice; preserve existing tracker configuration during repair, persist the confirmed choice safely, add regression coverage, merge the fix through a PR, and publish the next patch release.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "yolo",
+  "phase": "deliver",
+  "status": "waiting",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: external-ticket-tracking",
+  "implementationActor": "agent",
+  "specDigest": "sha256:019753fa8562bf2502acb193a34d490fa659f5cf2a4e6cd7669e58741c11e784",
+  "approvedSpecRevision": 3,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:00eedeeb813f9a4743ad6af4ba3f198d4917bf2542980a14070dbae71c9f15e1",
+  "impactDigest": "sha256:df45bd06635a015c149817a6947b4b2b5124999fef4a81592452d0a8517299ac",
+  "capabilityClaimId": "ensure-tracker-choice-during-init-39e3e20d3e7e",
+  "authorizationDigest": "sha256:83acb093a0787b72683e926df4599d5b74b17dbd25c439cf08c697344267203c",
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-7dd37d4d2b5440634af2d0b8"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-19T20:15:46.581Z"
+}

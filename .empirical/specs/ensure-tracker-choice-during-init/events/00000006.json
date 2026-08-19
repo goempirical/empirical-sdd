@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "sequence": 6,
+  "previousDigest": "sha256:f4bb545b955746bb094336bddc068bb4255e26d4c23d195c225d219d845d34cf",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Implemented mandatory tracker onboarding with an explicit durable No tracking state, protected repair semantics, generated Init guidance, documentation, 0.24.1 release metadata, and focused regression coverage.",
+  "createdAt": "2026-08-19T19:17:25.950Z",
+  "stateBeforeDigest": "sha256:a6a52ae487f98dee3560b29e101d1717f5f13ee5cb677cef81ba5cedf994543c",
+  "stateAfterDigest": "sha256:867224336dbf53238e2e448115e73ba3af44a399b19b40d87803923783118e24",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 6,
+    "activeFeature": "ensure-tracker-choice-during-init",
+    "request": "Fix empirical-init so initialization inspects existing tracker configuration and, when none exists, asks during setup with Track all work as the recommended default and No tracking as an explicit choice; preserve existing tracker configuration during repair, persist the confirmed choice safely, add regression coverage, merge the fix through a PR, and publish the next patch release.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "context",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Implemented mandatory tracker onboarding with an explicit durable No tracking state, protected repair semantics, generated Init guidance, documentation, 0.24.1 release metadata, and focused regression coverage.",
+    "implementationActor": "agent",
+    "specDigest": "sha256:019753fa8562bf2502acb193a34d490fa659f5cf2a4e6cd7669e58741c11e784",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:00eedeeb813f9a4743ad6af4ba3f198d4917bf2542980a14070dbae71c9f15e1",
+    "impactDigest": "sha256:df45bd06635a015c149817a6947b4b2b5124999fef4a81592452d0a8517299ac",
+    "capabilityClaimId": "ensure-tracker-choice-during-init-39e3e20d3e7e",
+    "authorizationDigest": "sha256:83acb093a0787b72683e926df4599d5b74b17dbd25c439cf08c697344267203c",
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "implemented",
+      "reasons": {
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-19T19:17:25.950Z"
+  },
+  "digest": "sha256:f6159e6a8f972085927ccdaca391b38b0565c46bdbbaf621ebefaac19b10ae35"
+}
