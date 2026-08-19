@@ -19,7 +19,46 @@ describe("setup settings", () => {
     expect(summary).toContain("Path: ../{repo}-{feature}");
     expect(summary).toContain("Branch: {type}/{feature}");
     expect(summary).toContain("Require reviewable decision records for Complex work");
+    expect(summary).toContain("Track all work (recommended; configure a provider before Save)");
+    expect(summary).toContain("No tracking (local-only; no provider requests)");
+    expect(summary).toContain("Choose one tracker mode before setup can be saved");
     expect(setupConfigurationInput(settings)).toMatchObject({ setupComplete: true, evidence: { required: true } });
+  });
+
+  test("distinguishes an explicit no-tracking choice from missing tracker setup", () => {
+    const settings = recommendedSetupSettings();
+    const disabled = renderSetupSummary(settings, {
+      current: true,
+      trackerSetup: { mode: "disabled", policy: null },
+    });
+    expect(disabled).toContain("● No tracking (local-only; no provider requests) · current");
+    expect(disabled).not.toContain("Choose one tracker mode");
+
+    const configured = renderSetupSummary(settings, {
+      current: true,
+      trackerSetup: {
+        mode: "configured",
+        policy: {
+          schemaVersion: 2,
+          provider: "linear",
+          target: { teamId: "team-1", projectId: null },
+          credentialEnv: { apiKey: "LINEAR_API_KEY" },
+          states: {
+            specification: "todo",
+            planned: "todo",
+            "in-progress": "doing",
+            verification: "review",
+            review: "review",
+            blocked: "blocked",
+            done: "done",
+          },
+          ticket: "ensure",
+          visibility: "milestones",
+        },
+      },
+    });
+    expect(configured).toContain("Track all work · Linear · tickets ensure");
+    expect(configured).toContain("Credential source: LINEAR_API_KEY (environment names only)");
   });
 
   test("explains inactive UI sub-policies without erasing them", () => {

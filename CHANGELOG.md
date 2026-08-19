@@ -8,6 +8,18 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ## [Unreleased]
 
+## [0.24.1] - 2026-08-19
+
+### Fixed
+
+- Made first-run Init and repairs with no prior tracker decision require an
+  explicit choice between the recommended `Track all work` flow and `No
+  tracking` before setup can be saved.
+- Persisted `No tracking` as a strict provider-free setup record so later
+  repairs preserve the confirmed choice without provider or ticket requests.
+- Bounded release-test file parallelism so process-heavy CLI coverage remains
+  deterministic on high-core hosts while retaining per-test hang detection.
+
 ## [0.24.0] - 2026-08-18
 
 ### Added
@@ -109,7 +121,8 @@ Published through GitHub Actions trusted publishing with npm provenance.
 
 - Prepared and released package version `0.20.2`.
 
-[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.24.0...HEAD
+[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.24.1...HEAD
+[0.24.1]: https://github.com/goempirical/empirical-sdd/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/goempirical/empirical-sdd/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/goempirical/empirical-sdd/compare/v0.22.0...v0.23.0
 [0.22.0]: https://github.com/goempirical/empirical-sdd/compare/v0.20.4...v0.22.0

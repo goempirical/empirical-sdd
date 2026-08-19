@@ -117,10 +117,12 @@ removal, and a second refresh whose report has empty `stale`, `missing`, and
 
 ## External tracker projection
 
-Tracker Policy is an optional sidecar to Schema 5. Its absence preserves
-existing repositories exactly and means `local-only`; it does not trigger a
-workflow schema migration. Both strict versions choose one GitHub, Linear, or
-Jira target, store the complete normalized `specification`, `planned`,
+Tracker setup is an optional sidecar to Schema 5. An absent file means no setup
+choice has been recorded and retains historical `local-only` runtime behavior;
+the strict `{ "schemaVersion": 1, "mode": "disabled" }` record means the user
+explicitly chose No tracking. Neither state triggers a workflow schema
+migration or provider access. Tracker Policy v1/v2 records choose one GitHub,
+Linear, or Jira target, store the complete normalized `specification`, `planned`,
 `in-progress`, `verification`, `review`, `blocked`, and `done` map, and
 reference credentials by environment-variable name only. Credential names use
 the strict uppercase runtime grammar; the host injects nonblank values with
@@ -184,7 +186,7 @@ bounded credential-safe failure context without contacting the provider.
 ```text
 .empirical/config.json                         # Schema 5
 .empirical/policy.json                         # Policy v2
-.empirical/tracker.json                        # optional Tracker Policy v1 or v2
+.empirical/tracker.json                        # disabled setup record or Tracker Policy v1/v2
 .empirical/context/manifest.json               # Manifest v2
 .empirical/capabilities/<capability>/spec.md
 .empirical/specs/<feature>/state.json

@@ -138,7 +138,7 @@ The product MUST expose the example behavior.
 
 describe("Empirical 0.24 Schema-5 core", () => {
   test("exports one product/schema version and parses stable criteria", () => {
-    expect(PRODUCT_VERSION).toBe("0.24.0");
+    expect(PRODUCT_VERSION).toBe("0.24.1");
     expect(SCHEMA_VERSION).toBe(5);
     expect(parseCriteria("<!--\n- [ ] [AC-X] Example only\n-->\n")).toEqual([]);
     expect(parseCriteria("- [ ] [AC-1] The result is returned\n  without losing context.\n"))

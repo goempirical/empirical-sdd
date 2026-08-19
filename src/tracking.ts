@@ -1,7 +1,7 @@
 import { Buffer } from "node:buffer";
 import { execFile } from "node:child_process";
 import { randomUUID } from "node:crypto";
-import { lstat, readFile, realpath, rm } from "node:fs/promises";
+import { lstat, readFile, realpath } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
 
 import { z } from "zod";
@@ -59,6 +59,7 @@ import type {
 
 export const TRACKER_SCHEMA_VERSION = 2 as const;
 export const TRACKER_LEGACY_SCHEMA_VERSION = 1 as const;
+export const DISABLED_TRACKER_SETUP = { schemaVersion: 1, mode: "disabled" } as const;
 const TRACKER_TIMEOUT_MS = 30_000;
 const TRACKER_MAX_RESPONSE_BYTES = 1_048_576;
 const TRACKER_ERROR_LIMIT = 500;
@@ -202,6 +203,16 @@ export const trackerSetupChangeSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("disabled") }).strict(),
   z.object({ mode: z.literal("apply"), policy: trackerPolicySchema }).strict(),
 ]);
+
+const disabledTrackerSetupSchema = z.object({
+  schemaVersion: z.literal(1),
+  mode: z.literal("disabled"),
+}).strict();
+
+export type TrackerSetupState =
+  | { mode: "unconfigured"; policy: null }
+  | { mode: "disabled"; policy: null }
+  | { mode: "configured"; policy: TrackerPolicy };
 
 const trackerProjectionBaseSchema = {
   feature: z.string().regex(/^[a-z0-9][a-z0-9-]{0,79}$/),
@@ -473,10 +484,18 @@ export function effectiveTrackerPolicy(policy: TrackerPolicy): EffectiveTrackerP
 }
 
 export async function loadTrackerPolicy(root: string): Promise<TrackerPolicy | null> {
+  return (await loadTrackerSetupState(root)).policy;
+}
+
+export async function loadTrackerSetupState(root: string): Promise<TrackerSetupState> {
   const path = trackerPolicyPath(root);
   await assertPlainTrackerPath(root, path);
-  if (!(await isFile(path))) return null;
-  return parseTrackerPolicy(await readJson<unknown>(path, "INVALID_TRACKER_POLICY"));
+  if (!(await isFile(path))) return { mode: "unconfigured", policy: null };
+  const persisted = await readJson<unknown>(path, "INVALID_TRACKER_POLICY");
+  if (disabledTrackerSetupSchema.safeParse(persisted).success) {
+    return { mode: "disabled", policy: null };
+  }
+  return { mode: "configured", policy: parseTrackerPolicy(persisted) };
 }
 
 export async function configureTrackerPolicy(
@@ -487,7 +506,7 @@ export async function configureTrackerPolicy(
   const path = trackerPolicyPath(root);
   await assertPlainTrackerPath(root, path);
   if (value === null) {
-    await rm(path, { force: true });
+    await writeJsonAtomic(path, DISABLED_TRACKER_SETUP);
     return null;
   }
   const policy = parseTrackerPolicy(value);

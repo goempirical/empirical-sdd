@@ -75,13 +75,16 @@ explicitly effectful and retain their own safety gates.
 
 ## External ticket mirror
 
-Tracking is opt-in. With no `.empirical/tracker.json`, status is `local-only`
-and tracker operations perform no network requests. Policy v2 with `ticket:
+With no `.empirical/tracker.json`, tracker setup is unconfigured while status
+remains `local-only` and tracker operations perform no network requests. The
+strict provider-free disabled record represents an explicit No tracking choice
+with the same runtime behavior. Policy v2 with `ticket:
 "off"` reports `off` and also branches before credential resolution or provider
 access. `empirical_tracker_configure` accepts a strict Tracker Policy v1 or v2
-document, or `null` to disable tracking.
+document, or `null` to persist No tracking.
 
-Setup uses the same contract in every client:
+User-facing Init first requires Track all work (recommended) or No tracking
+when no prior choice exists. Setup then uses the same contract in every client:
 
 1. Call `empirical_tracker_discover` with a provider and credential
    environment-variable names. Jira also needs its credential-free Cloud site

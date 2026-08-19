@@ -8,7 +8,9 @@ import { EmpiricalError } from "../src/errors.js";
 import { digestJson } from "../src/protocol.js";
 import {
   createTrackerProjection,
+  DISABLED_TRACKER_SETUP,
   discoverTracker,
+  loadTrackerSetupState,
   parseTrackerPolicy,
   previewTrackerPolicy,
   proposeTrackerStateMapping,
@@ -911,7 +913,23 @@ describe("external ticket tracking", () => {
         },
       },
     });
-    expect(await Bun.file(policyPath).exists()).toBe(false);
+    expect(JSON.parse(await readFile(policyPath, "utf8"))).toEqual(DISABLED_TRACKER_SETUP);
+    expect(await loadTrackerSetupState(root)).toEqual({ mode: "disabled", policy: null });
+    expect(requests).toBe(0);
+
+    const disabledBefore = await readFile(policyPath, "utf8");
+    await EmpiricalProject.initialize(root, {
+      integrations: false,
+      setupComplete: true,
+      tracker: { mode: "preserve" },
+      trackerDependencies: {
+        transport: async () => {
+          requests += 1;
+          return json(500, {});
+        },
+      },
+    });
+    expect(await readFile(policyPath, "utf8")).toBe(disabledBefore);
     expect(requests).toBe(0);
   });
 

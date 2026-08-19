@@ -51,13 +51,14 @@ import {
 import { ProjectStore } from "./storage.js";
 import {
   discoverTracker,
-  loadTrackerPolicy,
+  loadTrackerSetupState,
   parseTrackerBindInput,
   parseTrackerDiscoveryInput,
   parseTrackerSetupChange,
   previewTrackerPolicy,
   proposeTrackerStateMapping,
   suggestTrackerStateMapping,
+  type TrackerSetupState,
 } from "./tracking.js";
 import { detectBase } from "./worktrees.js";
 import {
@@ -229,6 +230,7 @@ async function main(): Promise<void> {
       const trackerInput = trackerInputPath
         ? parseTrackerSetupChange(await readJsonPath<unknown>(trackerInputPath, "init tracker"))
         : undefined;
+      const trackerSetup = await loadTrackerSetupState(context.root);
       const interactive = !context.json
         && !defaults
         && !configuration.explicit
@@ -238,9 +240,14 @@ async function main(): Promise<void> {
         ? await interactiveConfiguration(
           context.root,
           existingConfiguration ? await new ProjectStore(context.root).loadConfig() : null,
-          existingConfiguration ? await loadTrackerPolicy(context.root) : null,
+          trackerSetup,
         )
-        : { configuration: configuration.input, tracker: trackerInput };
+        : {
+            configuration: configuration.input,
+            tracker: trackerInput ?? (trackerSetup.mode === "unconfigured"
+              ? { mode: "disabled" as const }
+              : { mode: "preserve" as const }),
+          };
       const initialized = await EmpiricalProject.initialize(context.root, {
         ...(profile ? { profile } : {}),
         integrations,
@@ -249,12 +256,12 @@ async function main(): Promise<void> {
         setupComplete: true,
       });
       const config = await initialized.project.config();
-      const tracker = await initialized.project.trackerPolicy();
+      const effectiveTrackerSetup = await loadTrackerSetupState(context.root);
       emit(
         { state: initialized.state, config, integrations: initialized.integrations, next: await initialized.project.next() },
         context.json,
         () => renderIntegrationReport(`Empirical ${PRODUCT_VERSION} is ready in ${initialized.project.store.root}.`, initialized.integrations)
-          + `\n\n${renderSetupSummary(setupSettingsFromConfig(config), { current: true, tracker })}`,
+          + `\n\n${renderSetupSummary(setupSettingsFromConfig(config), { current: true, trackerSetup: effectiveTrackerSetup })}`,
       );
       return;
     }
@@ -280,7 +287,7 @@ async function main(): Promise<void> {
         : configuration.explicit
             ? { configuration: { ...configuration.input, setupComplete: true }, tracker: undefined }
           : (forceInteractive || Boolean(process.stdin.isTTY && process.stdout.isTTY)) && !context.json
-            ? await interactiveConfiguration(project.store.root, current, await project.trackerPolicy())
+            ? await interactiveConfiguration(project.store.root, current, await loadTrackerSetupState(project.store.root))
             : (() => { throw new EmpiricalError("CONFIG_REQUIRED", "Use configuration flags, --defaults, or an interactive terminal"); })();
       if (setup.tracker?.mode === "apply") await project.previewTracker(setup.tracker.policy);
       const config = await project.configure(setup.configuration);
@@ -807,7 +814,7 @@ interface InteractiveSetupChoice {
 async function interactiveConfiguration(
   root: string,
   current: Awaited<ReturnType<EmpiricalProject["config"]>> | null,
-  currentTracker: TrackerPolicy | null,
+  currentTrackerSetup: TrackerSetupState,
 ): Promise<InteractiveSetupChoice> {
   const prompt = new LinePrompter();
   let settings = current ? setupSettingsFromConfig(current) : recommendedSetupSettings();
@@ -818,7 +825,7 @@ async function interactiveConfiguration(
   console.log(`\n${renderSetupSummary(settings, {
     current: Boolean(current),
     ...(resolvedBase ? { resolvedBase } : {}),
-    tracker: currentTracker,
+    trackerSetup: currentTrackerSetup,
   })}`);
   try {
     const primary = current ? "keep" : "apply";
@@ -835,25 +842,32 @@ async function interactiveConfiguration(
     );
     if (["cancel", "x", "q"].includes(firstChoice)) throw setupCancelled();
     if (firstChoice === primary || firstChoice === (current ? "k" : "a")) {
-      return { configuration: setupConfigurationInput(settings), tracker: { mode: "preserve" } };
-    }
-    if (firstChoice === "tracker" || firstChoice === "t") {
-      const tracker = await interactiveTrackerSetup(prompt, currentTracker);
-      const previewPolicy = tracker.mode === "apply" ? tracker.policy : null;
+      if (currentTrackerSetup.mode !== "unconfigured") {
+        return { configuration: setupConfigurationInput(settings), tracker: { mode: "preserve" } };
+      }
+      const tracker = await interactiveTrackerSetup(prompt, currentTrackerSetup);
       console.log(`\n${renderSetupSummary(settings, {
         current: false,
         effective: true,
         ...(resolvedBase ? { resolvedBase } : {}),
-        tracker: previewPolicy,
+        trackerSetup: effectiveTrackerSetupState(currentTrackerSetup, tracker),
       })}`);
-      console.log("\n◇ Save this effective tracker setup?");
-      console.log("│  ● Save (default)");
-      console.log("│  ○ Cancel");
-      const choice = await askEnumDefault(prompt, "Choice [save]: ", "save", new Set(["save", "s", "cancel", "x", "q"]));
-      if (["cancel", "x", "q"].includes(choice)) throw setupCancelled();
+      await confirmSetupSave(prompt, "Save this complete setup?");
+      return { configuration: setupConfigurationInput(settings), tracker };
+    }
+    if (firstChoice === "tracker" || firstChoice === "t") {
+      const tracker = await interactiveTrackerSetup(prompt, currentTrackerSetup);
+      console.log(`\n${renderSetupSummary(settings, {
+        current: false,
+        effective: true,
+        ...(resolvedBase ? { resolvedBase } : {}),
+        trackerSetup: effectiveTrackerSetupState(currentTrackerSetup, tracker),
+      })}`);
+      await confirmSetupSave(prompt, "Save this effective tracker setup?");
       return { configuration: setupConfigurationInput(settings), tracker };
     }
 
+    let customizedTracker: TrackerSetupChange | undefined;
     while (true) {
       settings = await customizeSetup(prompt, settings);
       try {
@@ -862,11 +876,15 @@ async function interactiveConfiguration(
         console.log(`\n! ${asErrorMessage(error)}\nPlease review the setup sections again.`);
         continue;
       }
+      if (!customizedTracker && currentTrackerSetup.mode === "unconfigured") {
+        customizedTracker = await interactiveTrackerSetup(prompt, currentTrackerSetup);
+      }
+      const tracker = customizedTracker ?? { mode: "preserve" as const };
       console.log(`\n${renderSetupSummary(settings, {
         current: false,
         effective: true,
         ...(resolvedBase ? { resolvedBase } : {}),
-        tracker: currentTracker,
+        trackerSetup: effectiveTrackerSetupState(currentTrackerSetup, tracker),
       })}`);
       console.log("\n◇ Save these effective settings?");
       console.log("│  ● Save (default)");
@@ -879,7 +897,7 @@ async function interactiveConfiguration(
         new Set(["save", "s", "edit", "e", "cancel", "x", "q"]),
       );
       if (finalChoice === "save" || finalChoice === "s") {
-        return { configuration: setupConfigurationInput(settings), tracker: { mode: "preserve" } };
+        return { configuration: setupConfigurationInput(settings), tracker };
       }
       if (["cancel", "x", "q"].includes(finalChoice)) throw setupCancelled();
     }
@@ -890,20 +908,48 @@ async function interactiveConfiguration(
 
 async function interactiveTrackerSetup(
   prompt: LinePrompter,
-  current: TrackerPolicy | null,
+  current: TrackerSetupState,
 ): Promise<TrackerSetupChange> {
   console.log("\n◆ Tracker · discover accessible targets; credential values stay in the host environment.");
-  if (current) console.log("│  preserve (default) · disable · linear · github · jira");
-  else console.log("│  local (default) · linear · github · jira");
-  const fallback = current ? "preserve" : "local";
-  const provider = await askEnumDefault(
-    prompt,
-    `Tracker [${fallback}]: `,
-    fallback,
-    new Set(["preserve", "p", "disable", "disabled", "off", "local", "linear", "github", "jira"]),
-  );
-  if (provider === "preserve" || provider === "p") return { mode: "preserve" };
-  if (["disable", "disabled", "off", "local"].includes(provider)) return { mode: "disabled" };
+  let trackAll = false;
+  let provider: string;
+  if (current.mode === "unconfigured") {
+    console.log("│  ● Track all work (recommended default)");
+    console.log("│  ○ No tracking");
+    const choice = await askEnumDefault(
+      prompt,
+      "Tracker [track-all]: ",
+      "track-all",
+      new Set(["track-all", "track", "all", "t", "no-tracking", "no", "none", "off", "local"]),
+    );
+    if (["no-tracking", "no", "none", "off", "local"].includes(choice)) return { mode: "disabled" };
+    trackAll = true;
+    console.log("│  Choose a provider for Track all work: linear · github · jira");
+    provider = await askEnumRequired(
+      prompt,
+      "Provider (linear/github/jira): ",
+      new Set(["linear", "github", "jira"]),
+    );
+  } else {
+    if (current.mode === "configured") console.log("│  preserve (default) · disable · track-all · linear · github · jira");
+    else console.log("│  preserve (default) · track-all · linear · github · jira");
+    provider = await askEnumDefault(
+      prompt,
+      "Tracker [preserve]: ",
+      "preserve",
+      new Set(["preserve", "p", "disable", "disabled", "off", "local", "track-all", "track", "all", "t", "linear", "github", "jira"]),
+    );
+    if (provider === "preserve" || provider === "p") return { mode: "preserve" };
+    if (["disable", "disabled", "off", "local"].includes(provider)) return { mode: "disabled" };
+    if (["track-all", "track", "all", "t"].includes(provider)) {
+      trackAll = true;
+      provider = await askEnumRequired(
+        prompt,
+        "Provider (linear/github/jira): ",
+        new Set(["linear", "github", "jira"]),
+      );
+    }
+  }
 
   let discovery: TrackerDiscovery;
   let credentialEnv: TrackerPolicy["credentialEnv"];
@@ -928,12 +974,15 @@ async function interactiveTrackerSetup(
   const scoped = scopedTrackerDiscovery(discovery, policyTarget.stateParent);
   const suggested = suggestTrackerStateMapping(scoped);
   const states = await editTrackerMapping(prompt, scoped, suggested);
-  const ticket = await askEnumDefault(
-    prompt,
-    "Ticket behavior [ensure] (off/manual/ensure): ",
-    "ensure",
-    new Set(["off", "manual", "ensure"]),
-  ) as "off" | "manual" | "ensure";
+  const ticket = trackAll
+    ? "ensure" as const
+    : await askEnumDefault(
+      prompt,
+      "Ticket behavior [ensure] (off/manual/ensure): ",
+      "ensure",
+      new Set(["off", "manual", "ensure"]),
+    ) as "off" | "manual" | "ensure";
+  if (trackAll) console.log("│  Ticket behavior: ensure (Track all work)");
   const visibility = await askEnumDefault(
     prompt,
     "Progress visibility [milestones] (blockers-final/milestones/revisions): ",
@@ -1143,6 +1192,40 @@ async function askEnumDefault(
     if (allowed.has(answer)) return answer;
     console.log(`! Choose one of: ${[...allowed].join(", ")}.`);
   }
+}
+
+async function askEnumRequired(
+  prompt: LinePrompter,
+  question: string,
+  allowed: Set<string>,
+): Promise<string> {
+  while (true) {
+    const answer = (await prompt.ask(question)).toLowerCase();
+    if (allowed.has(answer)) return answer;
+    console.log(`! Choose one of: ${[...allowed].join(", ")}.`);
+  }
+}
+
+function effectiveTrackerSetupState(
+  current: TrackerSetupState,
+  change: TrackerSetupChange,
+): TrackerSetupState {
+  if (change.mode === "preserve") return current;
+  if (change.mode === "disabled") return { mode: "disabled", policy: null };
+  return { mode: "configured", policy: change.policy };
+}
+
+async function confirmSetupSave(prompt: LinePrompter, question: string): Promise<void> {
+  console.log(`\n◇ ${question}`);
+  console.log("│  ● Save (default)");
+  console.log("│  ○ Cancel");
+  const choice = await askEnumDefault(
+    prompt,
+    "Choice [save]: ",
+    "save",
+    new Set(["save", "s", "cancel", "x", "q"]),
+  );
+  if (["cancel", "x", "q"].includes(choice)) throw setupCancelled();
 }
 
 function setupCancelled(): EmpiricalError {

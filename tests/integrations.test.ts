@@ -244,6 +244,13 @@ describe("agent integrations", () => {
       }
     }
 
+    const initSkill = await readFile(join(home, ".codex", "skills", "empirical-init", "SKILL.md"), "utf8");
+    expect(initSkill).toContain("`Track all work` as the recommended");
+    expect(initSkill).toContain("`No tracking` as the explicit alternative");
+    expect(initSkill).toContain("MUST NOT bypass that choice");
+    expect(initSkill).toContain("ticket behavior `ensure`");
+    expect(initSkill).toContain("strict provider-free disabled setup record");
+
     const repeated = await installGlobalAgentSkills(home, { all: true, pathValue: "" });
     expect(repeated.created).toEqual([]);
     expect(repeated.updated).toEqual([]);
@@ -523,8 +530,8 @@ describe("agent integrations", () => {
       expect(result.status).toBe(0);
       expect(result.stderr).toBe("");
       expect(result.stdout).toContain("╭───╯    ╰───╮");
-      expect(result.stdout.match(/empirical v0\.24\.0/g)).toHaveLength(1);
-      expect(result.stdout.indexOf("empirical v0.24.0")).toBeLessThan(result.stdout.indexOf("Lifecycle:"));
+      expect(result.stdout.match(/empirical v0\.24\.1/g)).toHaveLength(1);
+      expect(result.stdout.indexOf("empirical v0.24.1")).toBeLessThan(result.stdout.indexOf("Lifecycle:"));
       expect(result.stdout).not.toContain("\u001b[");
       expect(result.stdout).toContain("empirical install");
       expect(result.stdout).toContain("empirical update");
@@ -572,7 +579,7 @@ describe("agent integrations", () => {
     for (const alias of ["version", "--version", "-v"]) {
       const result = spawnSync(process.execPath, [cli, alias], { encoding: "utf8" });
       expect(result.status).toBe(0);
-      expect(result.stdout).toBe("0.24.0\n");
+      expect(result.stdout).toBe("0.24.1\n");
       expect(result.stderr).toBe("");
     }
   });
