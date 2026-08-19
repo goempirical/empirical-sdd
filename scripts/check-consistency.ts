@@ -33,7 +33,7 @@ if (JSON.stringify(EMPIRICAL_AGENT_SKILL_NAMES) !== JSON.stringify(SKILLS.map((s
 if (EMPIRICAL_AGENT_SKILL_NAMES[0] !== "empirical-init") {
   throw new Error("the sole global workflow skill must be empirical-init");
 }
-for (const required of ["CHANGELOG.md", "docs/versioning.md"]) {
+for (const required of ["CHANGELOG.md", "docs/mcp.md", "docs/protocol.md", "docs/security.md", "docs/versioning.md"]) {
   if (!packageJson.files?.includes(required)) throw new Error(`package files omit ${required}`);
 }
 if (!packageJson.scripts?.ci?.includes("git diff --check")) {

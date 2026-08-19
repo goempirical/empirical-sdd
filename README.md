@@ -4,7 +4,7 @@ Agent-neutral, resumable spec-driven development for coding agents. Empirical
 turns an ordinary change request into a deterministic workflow with durable
 state, reviewable evidence, and safe Git integration.
 
-> Empirical 0.24 is alpha software. It requires Node.js 22 or newer.
+> Empirical 0.25 is alpha software. It requires Node.js 22 or newer.
 
 ## Install
 
@@ -46,13 +46,34 @@ verified, integrated, delivered, or published.
 it recommends **Track all work** and requires choosing that or **No tracking**
 before setup can be saved. Track all selects Linear, GitHub Projects, or Jira;
 No tracking persists a provider-free choice and makes no provider requests.
-Empirical reads
-credential values only from the environment-variable names you provide,
-discovers accessible targets and workflow states, proposes all seven semantic
-mappings, and shows the complete secret-free policy before saving. Ambiguous
-state suggestions require an explicit choice; simple boards may intentionally
-reuse one provider state for several phases. Repair preserves an existing
-tracker policy or explicit No tracking choice unless you change it.
+
+Authentication starts with OAuth when a trusted host supplies a connection.
+MCP clients may open that connection only through explicitly negotiated
+URL-mode elicitation; Empirical never requests a credential through a form,
+tool argument, tool result, assistant message, or repository file. The default
+standalone CLI has no hosted OAuth broker and truthfully proceeds to the
+host-only fallback.
+
+> **Never paste credentials into chat.** If OAuth is unavailable, edit the
+> secrets file directly on the host: `${XDG_CONFIG_HOME:-$HOME/.config}/empirical/secrets.env`
+> on POSIX or `%APPDATA%\Empirical\secrets.env` on Windows. Do not put a
+> credential value in a shell command, process argument, tool call, or
+> repository `.env` file.
+
+New setup uses `LINEAR_SECRET_KEY` for Linear, `GITHUB_TOKEN` for GitHub, and
+both `JIRA_EMAIL` and `JIRA_API_TOKEN` for Jira. The file must be a regular,
+non-symbolic-link file outside the repository and, on POSIX, owner-only (for
+example mode `0600`). Runtime precedence is connected host OAuth, then a
+complete injected environment set, then the checked host file. Existing
+Tracker Policy v1/v2 names—including `LINEAR_API_KEY` and custom names—remain
+valid and are never rewritten automatically.
+
+After authentication, Empirical discovers accessible targets and workflow
+states, proposes all seven semantic mappings, and shows the complete
+secret-free policy before saving. Ambiguous state suggestions require an
+explicit choice; simple boards may intentionally reuse one provider state for
+several phases. Repair preserves an existing tracker policy or explicit No
+tracking choice unless you change it.
 
 Tracker Policy v2 supports `off`, `manual`, and `ensure` ticket behavior plus
 blockers/final, phase-milestone, or every-revision progress comments. `ensure`

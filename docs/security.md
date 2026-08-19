@@ -25,18 +25,39 @@ untrusted.
   secret-like, binary, and oversized paths. It stores fingerprints, not a
   remote semantic index. Stale generated pages are not silently retrieved.
 - Tracker Policy v1/v2 stores only provider target IDs, normalized status IDs,
-  behavior/visibility choices, and
-  credential environment-variable names matching
-  `^(?=.{2,64}$)[A-Z][A-Z0-9]*_[A-Z0-9_]+$`. Runtime values are never
-  serialized. The host must inject the named nonblank values into the Empirical
-  process and grant only the provider permissions needed to
-  discover/read/create/update/comment on the exact configured ticket target and,
-  for Jira evidence, add attachments. Provider requests use fixed HTTPS
-  endpoints, bounded timeouts and responses, complete bounded pagination,
-  checksummed target-bound feature state, stable create markers, and
-  deterministic per-effect keys. Discovery catalogs are ephemeral and preview
-  validates target access before persistence. Off/disabled branches occur before
-  credential resolution.
+  behavior/visibility choices, and credential environment-variable names
+  matching `^(?=.{2,64}$)[A-Z][A-Z0-9]*_[A-Z0-9_]+$`. Runtime authentication
+  is selected outside policy in strict order: a trusted host OAuth resolver, a
+  complete injected environment set, then a permission-checked host secrets
+  file. OAuth registration, callbacks, refresh, revocation, and encrypted token
+  custody remain host responsibilities. Resolver failures are replaced with
+  stable diagnostics, returned credential shapes are strictly validated, and
+  ephemeral values are added to transport redaction without serialization.
+- An OAuth handoff is a secret-free HTTPS URL, bounded opaque elicitation ID,
+  provider, and short message. MCP sends it only when the connected client
+  explicitly declares `elicitation.url`. Form-only, legacy-empty, absent, or
+  failed elicitation support receives no request and falls back out of band.
+  Form schemas, tool arguments/results, assistant text, and chat are never
+  credential channels.
+- The fallback file is
+  `${XDG_CONFIG_HOME:-$HOME/.config}/empirical/secrets.env` on POSIX or
+  `%APPDATA%\Empirical\secrets.env` on Windows. Empirical never creates it or
+  mutates `process.env`. The reader rejects final symbolic links, non-regular
+  files, repository-contained paths (including resolved aliases), files over
+  64 KiB, malformed or duplicate assignments, partial provider identities, and
+  group/world POSIX permission bits. Explicit test environments do not trigger
+  implicit reads of a developer's home file.
+- GitHub and Linear OAuth tokens use Bearer authorization at their fixed API
+  endpoints; Linear personal API-key fallback retains its required raw
+  `Authorization` value. Jira OAuth requires a validated Cloud ID and
+  Bearer authorization at
+  `https://api.atlassian.com/ex/jira/{cloudId}`; Jira email/API-token fallback
+  retains Basic authorization against the configured tenant origin. Provider
+  requests use fixed HTTPS boundaries, bounded timeouts and responses, complete
+  bounded pagination, checksummed target-bound feature state, stable create
+  markers, and deterministic per-effect keys. Discovery catalogs are ephemeral
+  and preview validates target access before persistence. Off/disabled branches
+  occur before authentication resolution.
 - Tracker evidence is selected only through receipt IDs already committed in
   local workflow state. Receipt and file digests, repository containment,
   regular-file/non-symlink identity, secret-like names, media allowlists, count,
@@ -75,8 +96,12 @@ untrusted.
 - Decision files reject hidden-reasoning, prompt-transcript, credential, and
   secret sections. Explain exposes deterministic state-machine rationale only.
 
-Do not place secrets in requests, Socratic answers, specifications, decisions,
-evidence summaries, screenshots, tracker configuration, or delivery inputs.
-Tracker credential fields contain environment-variable names, never values.
+Do not place secrets in requests, chat, Socratic answers, specifications,
+decisions, evidence summaries, screenshots, tracker configuration, tool input,
+tool output, commands, shell history, process arguments, or delivery inputs.
+**Never paste credentials into chat.** Tracker credential fields contain
+environment-variable names, never values. New defaults are
+`LINEAR_SECRET_KEY`, `GITHUB_TOKEN`, and the Jira pair `JIRA_EMAIL` plus
+`JIRA_API_TOKEN`; historical or custom valid names remain supported.
 `.empirical/` is committed project data; Git-common-dir claim records are local
 coordination metadata.

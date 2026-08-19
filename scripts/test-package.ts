@@ -53,6 +53,9 @@ try {
     "dist/integrations.d.ts",
     "dist/demo-integration-repair.js",
     "CHANGELOG.md",
+    "docs/mcp.md",
+    "docs/protocol.md",
+    "docs/security.md",
     "docs/versioning.md",
   ]) {
     if (!paths.has(required)) throw new Error(`Packed package omitted ${required}`);
@@ -80,7 +83,7 @@ import { canonicalJson } from "empirical-sdd/protocol";
 import { createMcpServer } from "empirical-sdd/mcp";
 import { EMPIRICAL_AGENT_SKILL_NAMES, inspectProjectIntegrations, uninstallGlobalAgentSkills } from "empirical-sdd/integrations";
 
-if (typeof EmpiricalProject !== "function" || PRODUCT_VERSION !== "0.24.1" || SCHEMA_VERSION !== 5) throw new Error("root export mismatch");
+if (typeof EmpiricalProject !== "function" || PRODUCT_VERSION !== "0.25.0" || SCHEMA_VERSION !== 5) throw new Error("root export mismatch");
 if (canonicalJson({ b: 2, a: 1 }) !== '{"a":1,"b":2}') throw new Error("protocol export mismatch");
 if (typeof createMcpServer !== "function") throw new Error("MCP export mismatch");
 if (EMPIRICAL_AGENT_SKILL_NAMES.length !== 1 || EMPIRICAL_AGENT_SKILL_NAMES[0] !== "empirical-init" || typeof inspectProjectIntegrations !== "function" || typeof uninstallGlobalAgentSkills !== "function") throw new Error("integration export mismatch");
@@ -122,9 +125,9 @@ if (!blocked) throw new Error("internal package subpath was exported");
 
   await writeFile(
     join(consumer, "types.ts"),
-    `import { EmpiricalProject, type UninstallReport, type WorkflowState } from "empirical-sdd";
+    `import { EmpiricalProject, defaultTrackerSecretFilePath, type TrackerOAuthResolver, type UninstallReport, type WorkflowState } from "empirical-sdd";
 import { type EvidenceReceipt } from "empirical-sdd/protocol";
-import { createMcpServer } from "empirical-sdd/mcp";
+import { createMcpServer, type EmpiricalMcpServerOptions } from "empirical-sdd/mcp";
 import { inspectProjectIntegrations, uninstallGlobalAgentSkills, type EmpiricalAgentSkillName, type ProjectIntegrationInspection } from "empirical-sdd/integrations";
 // @ts-expect-error package internals are intentionally unavailable
 import { ProjectStore } from "empirical-sdd/storage";
@@ -134,7 +137,9 @@ const receipt = null as unknown as EvidenceReceipt;
 const skill = null as unknown as EmpiricalAgentSkillName;
 const inspection = null as unknown as ProjectIntegrationInspection;
 const uninstall = null as unknown as UninstallReport;
-void state; void receipt; void skill; void inspection; void uninstall; void inspectProjectIntegrations; void uninstallGlobalAgentSkills; void ProjectStore;
+const resolver = null as unknown as TrackerOAuthResolver;
+const mcpOptions: EmpiricalMcpServerOptions = { trackerDependencies: { oauthResolver: resolver } };
+void state; void receipt; void skill; void inspection; void uninstall; void resolver; void mcpOptions; void defaultTrackerSecretFilePath; void inspectProjectIntegrations; void uninstallGlobalAgentSkills; void ProjectStore;
 `,
     "utf8",
   );

@@ -1,6 +1,6 @@
 {
   "name": "empirical-sdd",
-  "version": "0.24.1",
+  "version": "0.25.0",
   "description": "Agent-neutral, resumable spec-driven development for every terminal-capable coding agent",
   "type": "module",
   "bin": {
@@ -28,6 +28,9 @@
     "dist",
     "README.md",
     "CHANGELOG.md",
+    "docs/mcp.md",
+    "docs/protocol.md",
+    "docs/security.md",
     "docs/versioning.md",
     "LICENSE"
   ],
@@ -37,14 +40,14 @@
   "scripts": {
     "build": "bun run scripts/build.ts",
     "check": "tsc -p tsconfig.json --noEmit",
-    "test": "bun test --timeout 120000 --parallel=4",
+    "test": "bun test --timeout 120000 --parallel=1",
     "test:coverage": "bun test --timeout 120000 --parallel=1 --coverage --coverage-reporter=lcov --coverage-reporter=text && bun run scripts/check-coverage.ts coverage/lcov.info",
     "test:dist": "bun run build && bun run scripts/smoke-mcp.ts",
     "prepack": "bun run build",
     "test:package": "bun run scripts/test-package.ts",
     "test:consistency": "bun run scripts/check-consistency.ts",
     "demo:integration-repair": "node dist/demo-integration-repair.js",
-    "ci": "bun run check && bun run test && bun run test:coverage && bun run test:dist && bun run test:package && bun run test:consistency && git diff --check"
+    "ci": "bun run check && bun run test:coverage && bun run test:dist && bun run test:package && bun run test:consistency && git diff --check"
   },
   "keywords": [
     "agents",

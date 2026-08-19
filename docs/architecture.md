@@ -1,6 +1,6 @@
 # Architecture
 
-Empirical 0.24 is a TypeScript library, Node.js CLI, stdio MCP server, one
+Empirical 0.25 is a TypeScript library, Node.js CLI, stdio MCP server, one
 explicit global Init skill, and a repository-local automatic workflow over one
 Schema 5 model.
 
@@ -99,6 +99,15 @@ acknowledged deterministic effects before advancing the binding. Policy v2
 Linear updates never include description content. Binding target drift,
 incomplete pagination, marker ambiguity, or unsafe evidence fails closed;
 provider failure cannot roll back, demote, or block the local state machine.
+
+Authentication remains outside that durable projection. A trusted host OAuth
+resolver provides an ephemeral typed credential and, when needed, a validated
+secret-free URL handoff. MCP uses the handoff only for explicitly negotiated
+URL-mode elicitation. Resolution then falls back atomically to injected host
+environment values and a guarded per-user secrets file; none of those values
+enter policy, workflow state, tool results, or chat. Jira's typed request
+context keeps OAuth Bearer/cloud API traffic distinct from tenant-origin Basic
+fallback traffic across every adapter path.
 
 ## Delivery and publication
 

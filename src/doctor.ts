@@ -22,6 +22,7 @@ import {
   migrationScratchKind,
 } from "./migration-scratch.js";
 import { inspectTrackerRecords, loadTrackerPolicy, trackerStatus } from "./tracking.js";
+import { resolveTrackerAuthentication, trackerAuthenticationGuidance } from "./tracker-auth.js";
 import type { WorkflowState } from "./types.js";
 
 export type DoctorSeverity = "ok" | "warning" | "error";
@@ -355,17 +356,25 @@ async function inspectTracker(root: string, findings: DoctorFinding[]): Promise<
   }
   if (policy) {
     const credentialNames = Object.values(policy.credentialEnv);
-    const missing = credentialNames.filter((name) => !(process.env[name]?.trim()));
+    const guidance = trackerAuthenticationGuidance(policy, { repositoryRoot: root });
+    let authenticationAvailable = false;
+    let authenticationFailure: string | null = null;
+    try {
+      await resolveTrackerAuthentication(policy, { repositoryRoot: root });
+      authenticationAvailable = true;
+    } catch (error) {
+      authenticationFailure = error instanceof Error ? error.message : guidance.message;
+    }
     findings.push(finding(
-      missing.length > 0 ? "warning" : "ok",
-      missing.length > 0 ? "TRACKER_CREDENTIALS_MISSING" : "TRACKER_READY",
+      authenticationAvailable ? "ok" : "warning",
+      authenticationAvailable ? "TRACKER_READY" : "TRACKER_CREDENTIALS_MISSING",
       "tracker",
-      missing.length > 0
-        ? `${policy.provider} tracking is configured, but credential environment variables are missing: ${missing.join(", ")}.`
-        : `${policy.provider} tracking is configured and its credential environment variables are present.`,
-      missing.length > 0
-        ? "Provide the named variables through the host secret store; never write credential values to .empirical/."
-        : null,
+      authenticationAvailable
+        ? `${policy.provider} tracking is configured and host fallback authentication is available; trusted host OAuth remains preferred.`
+        : `${policy.provider} tracking is configured, but authentication is unavailable for ${credentialNames.join(", ")}. ${authenticationFailure}`,
+      authenticationAvailable
+        ? null
+        : `Configure the named values directly at ${guidance.secretFilePath}. ${guidance.warning}; never write credential values to .empirical/.`,
     ));
   }
   let inspected = 0;

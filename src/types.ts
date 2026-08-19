@@ -433,10 +433,89 @@ export interface TrackerHttpResponse {
 
 export type TrackerTransport = (request: TrackerHttpRequest) => Promise<TrackerHttpResponse>;
 
+/** Secret-free context supplied to a trusted host OAuth broker. */
+export type TrackerOAuthRequest =
+  | { provider: "github" }
+  | { provider: "linear" }
+  | { provider: "jira"; siteUrl: string };
+
+/**
+ * An out-of-band authorization handoff. This descriptor must never contain a
+ * provider credential; the tracker runtime validates it before use.
+ */
+export interface TrackerOAuthAuthorization {
+  provider: TrackerProvider;
+  elicitationId: string;
+  message: string;
+  url: string;
+}
+
+/** Ephemeral credentials returned only by a trusted host OAuth broker. */
+export type TrackerOAuthCredential =
+  | { provider: "github"; accessToken: string }
+  | { provider: "linear"; accessToken: string }
+  | { provider: "jira"; accessToken: string; cloudId: string };
+
+/**
+ * Host-owned OAuth boundary. Registration, callbacks, refresh, revocation,
+ * and encrypted token custody remain outside Empirical.
+ */
+export interface TrackerOAuthResolver {
+  authorize?(request: TrackerOAuthRequest): Promise<TrackerOAuthAuthorization | null>;
+  resolve(request: TrackerOAuthRequest): Promise<TrackerOAuthCredential | null>;
+}
+
+export type TrackerAuthenticationSource = "oauth" | "environment" | "file";
+
+/** Ephemeral runtime authentication. Values must never be serialized. */
+export type ResolvedTrackerAuthentication =
+  | {
+      provider: "github";
+      source: TrackerAuthenticationSource;
+      accessToken: string;
+    }
+  | {
+      provider: "linear";
+      source: TrackerAuthenticationSource;
+      accessToken: string;
+    }
+  | {
+      provider: "jira";
+      source: "oauth";
+      accessToken: string;
+      cloudId: string;
+    }
+  | {
+      provider: "jira";
+      source: "environment" | "file";
+      email: string;
+      apiToken: string;
+    };
+
+export interface TrackerAuthenticationGuidance {
+  provider: TrackerProvider;
+  oauthPreferred: true;
+  credentialNames: string[];
+  secretFilePath: string;
+  warning: "Never paste credentials into chat";
+  message: string;
+}
+
 export interface TrackerDependencies {
   transport?: TrackerTransport;
   env?: Readonly<Record<string, string | undefined>>;
   now?: () => Date;
+  oauthResolver?: TrackerOAuthResolver;
+  /** Explicit trusted-host override; also keeps tests independent of user files. */
+  secretFilePath?: string;
+  /** Repository boundary used to reject repository-contained secret files. */
+  repositoryRoot?: string;
+  /** Deterministic platform override for embeddings and tests. */
+  platform?: "posix" | "win32";
+  /** Deterministic home-directory override for embeddings and tests. */
+  homeDirectory?: string;
+  /** Development-only allowance for loopback HTTP authorization URLs. */
+  allowInsecureOAuthLoopback?: boolean;
 }
 
 export interface TrackerBindResult {

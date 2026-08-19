@@ -7,6 +7,7 @@ import { join, relative, resolve } from "node:path";
 import { z } from "zod";
 
 import { EmpiricalError } from "./errors.js";
+import { resolveTrackerAuthentication } from "./tracker-auth.js";
 import {
   digestJson,
   evidenceReceiptSchema,
@@ -48,6 +49,7 @@ import type {
   TrackerProgressVisibility,
   TrackerProjection,
   TrackerProvider,
+  ResolvedTrackerAuthentication,
   TrackerStateMap,
   TrackerStatus,
   TrackerSetupChange,
@@ -421,8 +423,9 @@ export function parseTrackerDiscoveryInput(value: unknown): TrackerDiscoveryInpu
 }
 
 export function parseTrackerBindInput(value: unknown): TrackerBindInput {
+  let parsed: TrackerBindInput;
   try {
-    return trackerBindInputSchema.parse(value) as TrackerBindInput;
+    parsed = trackerBindInputSchema.parse(value) as TrackerBindInput;
   } catch (error) {
     throw new EmpiricalError(
       "INVALID_TRACKER_BIND_INPUT",
@@ -430,6 +433,13 @@ export function parseTrackerBindInput(value: unknown): TrackerBindInput {
       error,
     );
   }
+  if (containsSecretLikeValue(parsed)) {
+    throw new EmpiricalError(
+      "INVALID_TRACKER_BIND_INPUT",
+      "Tracker bind input contains a secret-like value; credentials are never valid tool input",
+    );
+  }
+  return parsed;
 }
 
 export function parseTrackerPolicy(value: unknown): TrackerPolicy {
@@ -522,27 +532,12 @@ export async function discoverTracker(
   dependencies: TrackerDependencies = {},
 ): Promise<TrackerDiscovery> {
   const input = parseTrackerDiscoveryInput(value);
-  const environment = dependencies.env ?? process.env;
-  const credentialNames = input.provider === "github"
-    ? [input.credentialEnv.token]
-    : input.provider === "linear"
-      ? [input.credentialEnv.apiKey]
-      : [input.credentialEnv.email, input.credentialEnv.apiToken];
-  const credentials = credentialNames.map((name) => {
-    const credential = environment[name]?.trim();
-    if (!credential) {
-      throw new EmpiricalError(
-        "TRACKER_CREDENTIAL_MISSING",
-        `Required tracker environment variable ${name} is not set`,
-      );
-    }
-    return credential;
-  });
+  const authentication = await resolveTrackerAuthentication(input, dependencies);
   const resources = input.provider === "linear"
-    ? await discoverLinearResources(credentials[0]!, dependencies)
+    ? await discoverLinearResources(linearAuthorizationFor(authentication), dependencies)
     : input.provider === "github"
-      ? await discoverGitHubResources(credentials[0]!, dependencies)
-      : await discoverJiraResources(input.target.siteUrl, credentials[0]!, credentials[1]!, dependencies);
+      ? await discoverGitHubResources(accessTokenFor(authentication, "github"), dependencies)
+      : await discoverJiraResources(input.target.siteUrl, authentication, dependencies);
   const unique = new Map<string, TrackerDiscoveryResource>();
   for (const resource of resources) {
     validateDiscoveryResource(resource);
@@ -1076,9 +1071,9 @@ export async function bindTracker(
       : durablePending;
     if (previousPending) assertPendingScope(policy, previousPending);
     const intent = trackerBindIntent(feature, input);
-    let credentials: string[];
+    let credentials: ResolvedTrackerAuthentication;
     try {
-      credentials = resolveCredentials(policy, dependencies.env ?? process.env);
+      credentials = await resolveTrackerAuthentication(policy, withTrackerRepositoryRoot(dependencies, root));
     } catch (error) {
       if (recoverAmbiguousByAttach && durablePending) {
         const recorded = await persistFailure(root, durablePending, error, dependencies);
@@ -1307,9 +1302,9 @@ export async function synchronizeTracker(
           tracker: failedStatus(state.revision, policy.provider, null, null, failureFrom(error, dependencies), previousPending.projection.revision),
         };
       }
-      let credentials: string[];
+      let credentials: ResolvedTrackerAuthentication;
       try {
-        credentials = resolveCredentials(policy, dependencies.env ?? process.env);
+        credentials = await resolveTrackerAuthentication(policy, withTrackerRepositoryRoot(dependencies, root));
       } catch (error) {
         const recorded = await persistFailure(root, previousPending, error, dependencies);
         return { binding: null, projection, tracker: failedStatus(state.revision, policy.provider, null, null, recorded.failure, projection.revision) };
@@ -1424,7 +1419,7 @@ export async function synchronizeTracker(
     const intent = previousPending?.intent ?? { mode: "attach", ticket: binding.remoteKey };
     const pending = await persistPending(root, policy, projection, intent, previousPending, dependencies);
     try {
-      const credentials = resolveCredentials(policy, dependencies.env ?? process.env);
+      const credentials = await resolveTrackerAuthentication(policy, withTrackerRepositoryRoot(dependencies, root));
       return await synchronizeBound(
         root,
         state,
@@ -1478,7 +1473,7 @@ export const defaultTrackerTransport: TrackerTransport = async (
     return { status: response.status, body: new TextDecoder().decode(bytes) };
   } catch (error) {
     if (error instanceof EmpiricalError) throw error;
-    throw new EmpiricalError("TRACKER_TRANSPORT_FAILED", "Tracker request did not return a response", error);
+    throw new EmpiricalError("TRACKER_TRANSPORT_FAILED", "Tracker request did not return a response");
   } finally {
     clearTimeout(timeout);
   }
@@ -1518,7 +1513,7 @@ async function synchronizeBound(
   policy: TrackerPolicy,
   binding: TrackerBinding,
   pending: TrackerPendingRecord,
-  credentials: string[],
+  credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<TrackerSyncResult> {
   let activePending = pending;
@@ -1596,47 +1591,48 @@ async function createRemoteTicket(
   projection: TrackerProjection,
   intent: Extract<TrackerBindIntent, { mode: "create" }>,
   idempotencyKey: string,
-  credentials: string[],
+  credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
   if (policy.provider === "github") {
-    return createGitHubTicket(policy, intent, idempotencyKey, credentials[0]!, dependencies);
+    return createGitHubTicket(policy, intent, idempotencyKey, accessTokenFor(credentials, "github"), dependencies);
   }
   if (policy.provider === "linear") {
-    return createLinearTicket(policy, projection, intent, idempotencyKey, credentials[0]!, dependencies);
+    return createLinearTicket(policy, projection, intent, idempotencyKey, linearAuthorizationFor(credentials), dependencies);
   }
-  return createJiraTicket(policy, projection, intent, idempotencyKey, credentials[0]!, credentials[1]!, dependencies);
+  return createJiraTicket(policy, projection, intent, idempotencyKey, credentials, dependencies);
 }
 
 async function attachRemoteTicket(
   policy: TrackerPolicy,
   ticket: string,
-  credentials: string[],
+  credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
   if (!REMOTE_ID.test(ticket)) throw new EmpiricalError("INVALID_TRACKER_TICKET", "Tracker ticket id or key is invalid");
-  if (policy.provider === "github") return attachGitHubTicket(policy, ticket, credentials[0]!, dependencies);
-  if (policy.provider === "linear") return attachLinearTicket(policy, ticket, credentials[0]!, dependencies);
-  return attachJiraTicket(policy, ticket, credentials[0]!, credentials[1]!, dependencies);
+  if (policy.provider === "github") return attachGitHubTicket(policy, ticket, accessTokenFor(credentials, "github"), dependencies);
+  if (policy.provider === "linear") return attachLinearTicket(policy, ticket, linearAuthorizationFor(credentials), dependencies);
+  return attachJiraTicket(policy, ticket, credentials, dependencies);
 }
 
 async function attachAmbiguousCreate(
   policy: TrackerPolicy,
   ticket: string,
   pending: TrackerPendingRecord,
-  credentials: string[],
+  credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
   if (pending.intent.mode !== "create" || !pending.intent.dispatched) {
     throw new EmpiricalError("INVALID_TRACKER_PENDING", "Ambiguous attach recovery requires a dispatched create intent");
   }
   if (policy.provider === "github") {
+    const token = accessTokenFor(credentials, "github");
     if (!/^\d+$/.test(ticket)) throw new EmpiricalError("INVALID_TRACKER_TICKET", "GitHub attachment requires an issue number");
     const value = await requestJson(dependencies, {
       method: "GET",
       url: `https://api.github.com/repos/${encodeURIComponent(policy.target.owner)}/${encodeURIComponent(policy.target.repository)}/issues/${ticket}`,
-      headers: githubHeaders(credentials[0]!),
-    }, [200], [credentials[0]!]);
+      headers: githubHeaders(token),
+    }, [200], [token]);
     const issue = record(value, "GitHub ambiguous create issue");
     const remote = parseGitHubIssue(policy, issue);
     if (remote.remoteKey !== ticket || !hasExactCreateMarker(issue.body, pending.intent, pending.idempotencyKey)) {
@@ -1645,10 +1641,11 @@ async function attachAmbiguousCreate(
     return remote;
   }
   if (policy.provider === "linear") {
+    const accessToken = linearAuthorizationFor(credentials);
     const data = await linearGraphql(
       `query Issue($id: String!) { issue(id: $id) { id identifier url description team { id } project { id } } }`,
       { id: ticket },
-      credentials[0]!,
+      accessToken,
       dependencies,
     );
     const issue = record(data.issue, "Linear ambiguous create issue");
@@ -1661,11 +1658,12 @@ async function attachAmbiguousCreate(
     }
     return remote;
   }
+  const jira = jiraRequestContext(policy.target.siteUrl, credentials);
   const value = await requestJson(dependencies, {
     method: "GET",
-    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(ticket)}?fields=status,project,issuetype&properties=empirical-sdd`,
-    headers: jiraHeaders(credentials[0]!, credentials[1]!),
-  }, [200], credentials);
+    url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(ticket)}?fields=status,project,issuetype&properties=empirical-sdd`,
+    headers: jira.headers,
+  }, [200], jira.secrets);
   const issue = record(value, "Jira ambiguous create issue");
   const remote = parseJiraIssue(policy, issue, true);
   const properties = record(issue.properties ?? {}, "Jira ambiguous create properties");
@@ -1685,12 +1683,12 @@ async function projectRemoteTicket(
   policy: TrackerPolicy,
   binding: TrackerBinding,
   projection: TrackerProjection,
-  credentials: string[],
+  credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
-  if (policy.provider === "github") return syncGitHubTicket(policy, binding, projection, credentials[0]!, dependencies);
-  if (policy.provider === "linear") return syncLinearTicket(policy, binding, projection, credentials[0]!, dependencies);
-  return syncJiraTicket(policy, binding, projection, credentials[0]!, credentials[1]!, dependencies);
+  if (policy.provider === "github") return syncGitHubTicket(policy, binding, projection, accessTokenFor(credentials, "github"), dependencies);
+  if (policy.provider === "linear") return syncLinearTicket(policy, binding, projection, linearAuthorizationFor(credentials), dependencies);
+  return syncJiraTicket(policy, binding, projection, credentials, dependencies);
 }
 
 async function projectRemoteTicketV2(
@@ -1698,7 +1696,7 @@ async function projectRemoteTicketV2(
   policy: TrackerPolicy,
   binding: TrackerBinding,
   pending: TrackerPendingRecord,
-  credentials: string[],
+  credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<{ remote: RemoteTicket; pending: TrackerPendingRecord }> {
   let activePending = pending;
@@ -1758,11 +1756,11 @@ async function transitionRemoteTicketV2(
   policy: TrackerPolicy,
   binding: TrackerBinding,
   projection: TrackerProjection,
-  credentials: string[],
+  credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
   if (policy.provider === "github") {
-    const token = credentials[0]!;
+    const token = accessTokenFor(credentials, "github");
     const current = await attachGitHubTicket(policy, binding.remoteKey, token, dependencies);
     assertRemoteIdentity(binding, current);
     let projectItemId = await findGitHubProjectItem(policy, binding.remoteId, token, dependencies);
@@ -1799,10 +1797,11 @@ async function transitionRemoteTicketV2(
     return { ...binding, projectItemId };
   }
   if (policy.provider === "linear") {
+    const accessToken = linearAuthorizationFor(credentials);
     const current = await linearGraphql(
       `query Issue($id: String!) { issue(id: $id) { id identifier url team { id } project { id } } }`,
       { id: binding.remoteId },
-      credentials[0]!,
+      accessToken,
       dependencies,
     );
     const currentTicket = parseLinearIssue(policy, current.issue);
@@ -1812,46 +1811,45 @@ async function transitionRemoteTicketV2(
         issueUpdate(id: $id, input: $input) { success issue { id identifier url team { id } project { id } } }
       }`,
       { id: binding.remoteId, input: { stateId: policy.states[projection.progress] } },
-      credentials[0]!,
+      accessToken,
       dependencies,
     );
     const update = record(updated.issueUpdate, "Linear issueUpdate");
     if (update.success !== true) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Linear did not confirm issue update");
     return parseLinearIssue(policy, update.issue);
   }
-  const email = credentials[0]!;
-  const apiToken = credentials[1]!;
+  const jira = jiraRequestContext(policy.target.siteUrl, credentials);
   const issue = await requestJson(dependencies, {
     method: "GET",
-    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}?fields=status,project,issuetype`,
-    headers: jiraHeaders(email, apiToken),
-  }, [200], [email, apiToken]);
+    url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}?fields=status,project,issuetype`,
+    headers: jira.headers,
+  }, [200], jira.secrets);
   const issueRecord = record(issue, "Jira issue");
   const currentTicket = parseJiraIssue(policy, issueRecord, true);
   assertRemoteIdentity(binding, currentTicket);
   await requestJson(dependencies, {
     method: "PUT",
-    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/properties/empirical-sdd`,
-    headers: jiraHeaders(email, apiToken),
+    url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/properties/empirical-sdd`,
+    headers: jira.headers,
     body: JSON.stringify({ projection }),
-  }, [200, 201, 204], [email, apiToken]);
+  }, [200, 201, 204], jira.secrets);
   const desired = policy.states[projection.progress];
   if (nestedOptionalString(issueRecord, ["fields", "status", "id"]) !== desired) {
     const available = record(await requestJson(dependencies, {
       method: "GET",
-      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/transitions`,
-      headers: jiraHeaders(email, apiToken),
-    }, [200], [email, apiToken]), "Jira transitions");
+      url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/transitions`,
+      headers: jira.headers,
+    }, [200], jira.secrets), "Jira transitions");
     if (!Array.isArray(available.transitions)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira transitions are missing");
     const selected = available.transitions.map((entry) => record(entry, "Jira transition"))
       .find((entry) => nestedOptionalString(entry, ["to", "id"]) === desired);
     if (!selected) throw new EmpiricalError("TRACKER_STATE_UNAVAILABLE", `Jira exposes no transition to configured status ${desired}`);
     await requestJson(dependencies, {
       method: "POST",
-      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/transitions`,
-      headers: jiraHeaders(email, apiToken),
+      url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/transitions`,
+      headers: jira.headers,
       body: JSON.stringify({ transition: { id: requiredString(selected, "id", "Jira transition id") } }),
-    }, [204], [email, apiToken]);
+    }, [204], jira.secrets);
   }
   return { ...binding, url: `${jiraOrigin(policy)}/browse/${encodeURIComponent(binding.remoteKey)}` };
 }
@@ -1861,11 +1859,11 @@ async function publishRemoteMilestone(
   binding: TrackerBinding,
   body: string,
   marker: string,
-  credentials: string[],
+  credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<string> {
   if (policy.provider === "github") {
-    const token = credentials[0]!;
+    const token = accessTokenFor(credentials, "github");
     const found: string[] = [];
     let complete = false;
     for (let page = 1; page <= TRACKER_DISCOVERY_LIMIT; page += 1) {
@@ -1895,6 +1893,7 @@ async function publishRemoteMilestone(
     return String(requiredNumber(created, "id", "GitHub milestone comment id"));
   }
   if (policy.provider === "linear") {
+    const accessToken = linearAuthorizationFor(credentials);
     let after: string | null = null;
     const cursors = new Set<string>();
     const found: string[] = [];
@@ -1905,7 +1904,7 @@ async function publishRemoteMilestone(
           issue(id: $id) { comments(first: 100, after: $after) { nodes { id body } pageInfo { hasNextPage endCursor } } }
         }`,
         { id: binding.remoteId, after },
-        credentials[0]!,
+        accessToken,
         dependencies,
       );
       const issue = record(data.issue, "Linear milestone issue");
@@ -1927,24 +1926,23 @@ async function publishRemoteMilestone(
         commentCreate(input: $input) { success comment { id body } }
       }`,
       { input: { issueId: binding.remoteId, body } },
-      credentials[0]!,
+      accessToken,
       dependencies,
     );
     const create = record(data.commentCreate, "Linear commentCreate");
     if (create.success !== true) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Linear did not confirm milestone comment creation");
     return requiredString(record(create.comment, "Linear milestone comment"), "id", "Linear milestone comment id");
   }
-  const email = credentials[0]!;
-  const apiToken = credentials[1]!;
+  const jira = jiraRequestContext(policy.target.siteUrl, credentials);
   let startAt = 0;
   const found: string[] = [];
   let complete = false;
   for (let page = 0; page < TRACKER_DISCOVERY_LIMIT; page += 1) {
     const response = record(await requestJson(dependencies, {
       method: "GET",
-      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/comment?startAt=${startAt}&maxResults=100`,
-      headers: jiraHeaders(email, apiToken),
-    }, [200], [email, apiToken]), "Jira milestone comments");
+      url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/comment?startAt=${startAt}&maxResults=100`,
+      headers: jira.headers,
+    }, [200], jira.secrets), "Jira milestone comments");
     if (!Array.isArray(response.comments)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira milestone comments are malformed");
     const matches = response.comments.map((entry) => record(entry, "Jira milestone comment"))
       .filter((comment) => JSON.stringify(comment.body ?? {}).includes(marker));
@@ -1962,10 +1960,10 @@ async function publishRemoteMilestone(
   if (found[0]) return found[0];
   const created = record(await requestJson(dependencies, {
     method: "POST",
-    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/comment`,
-    headers: jiraHeaders(email, apiToken),
+    url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/comment`,
+    headers: jira.headers,
     body: JSON.stringify({ body: jiraAdf(body), properties: [{ key: "empirical-sdd-effect", value: marker }] }),
-  }, [201], [email, apiToken]), "Jira milestone comment");
+  }, [201], jira.secrets), "Jira milestone comment");
   return requiredString(created, "id", "Jira milestone comment id");
 }
 
@@ -1975,19 +1973,18 @@ async function publishRemoteArtifact(
   binding: TrackerBinding,
   artifact: TrackerArtifact,
   effectKey: string,
-  credentials: string[],
+  credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<string | null> {
   if (artifact.url) return artifact.url;
   if (policy.provider !== "jira") return null;
-  const email = credentials[0]!;
-  const apiToken = credentials[1]!;
+  const jira = jiraRequestContext(policy.target.siteUrl, credentials);
   const filename = trackerArtifactFilename(artifact, effectKey);
   const issue = record(await requestJson(dependencies, {
     method: "GET",
-    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}?fields=attachment,project,issuetype`,
-    headers: jiraHeaders(email, apiToken),
-  }, [200], [email, apiToken]), "Jira artifact issue");
+    url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}?fields=attachment,project,issuetype`,
+    headers: jira.headers,
+  }, [200], jira.secrets), "Jira artifact issue");
   assertRemoteIdentity(binding, parseJiraIssue(policy, issue, true));
   const fields = record(issue.fields, "Jira artifact fields");
   if (!Array.isArray(fields.attachment)) {
@@ -2006,14 +2003,14 @@ async function publishRemoteArtifact(
   const multipart = trackerArtifactMultipart(filename, artifact.mediaType, bytes, effectKey);
   const response = await requestJson(dependencies, {
     method: "POST",
-    url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/attachments`,
+    url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/attachments`,
     headers: {
-      ...jiraHeaders(email, apiToken),
+      ...jira.headers,
       "Content-Type": multipart.contentType,
       "X-Atlassian-Token": "no-check",
     },
     body: multipart.body,
-  }, [200, 201], [email, apiToken]);
+  }, [200, 201], jira.secrets);
   if (!Array.isArray(response)) {
     throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira attachment upload response is malformed");
   }
@@ -2419,7 +2416,7 @@ async function createLinearTicket(
   projection: TrackerProjection,
   intent: Extract<TrackerBindIntent, { mode: "create" }>,
   idempotencyKey: string,
-  apiKey: string,
+  authorization: string,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
   const data = await linearGraphql(
@@ -2441,7 +2438,7 @@ async function createLinearTicket(
         stateId: policy.states[projection.progress],
       },
     },
-    apiKey,
+    authorization,
     dependencies,
   );
   const create = record(data.issueCreate, "Linear issueCreate");
@@ -2452,13 +2449,13 @@ async function createLinearTicket(
 async function attachLinearTicket(
   policy: LinearTrackerPolicy,
   ticket: string,
-  apiKey: string,
+  authorization: string,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
   const data = await linearGraphql(
     `query Issue($id: String!) { issue(id: $id) { id identifier url team { id } project { id } } }`,
     { id: ticket },
-    apiKey,
+    authorization,
     dependencies,
   );
   const parsed = parseLinearIssue(policy, data.issue);
@@ -2472,13 +2469,13 @@ async function syncLinearTicket(
   policy: LinearTrackerPolicy,
   binding: TrackerBinding,
   projection: TrackerProjection,
-  apiKey: string,
+  authorization: string,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
   const current = await linearGraphql(
     `query Issue($id: String!) { issue(id: $id) { id identifier url description team { id } project { id } } }`,
     { id: binding.remoteId },
-    apiKey,
+    authorization,
     dependencies,
   );
   const issue = record(current.issue, "Linear issue");
@@ -2497,7 +2494,7 @@ async function syncLinearTicket(
         stateId: policy.states[projection.progress],
       },
     },
-    apiKey,
+    authorization,
     dependencies,
   );
   const update = record(updated.issueUpdate, "Linear issueUpdate");
@@ -2508,19 +2505,22 @@ async function syncLinearTicket(
 async function linearGraphql(
   query: string,
   variables: Record<string, unknown>,
-  apiKey: string,
+  authorization: string,
   dependencies: TrackerDependencies,
 ): Promise<Record<string, unknown>> {
+  const secrets = authorization.startsWith("Bearer ")
+    ? [authorization, authorization.slice("Bearer ".length)]
+    : [authorization];
   const response = await requestJson(
     dependencies,
     {
       method: "POST",
       url: "https://api.linear.app/graphql",
-      headers: { Authorization: apiKey, "Content-Type": "application/json" },
+      headers: { Authorization: authorization, "Content-Type": "application/json" },
       body: JSON.stringify({ query, variables }),
     },
     [200],
-    [apiKey],
+    secrets,
   );
   return graphqlData(response, "Linear");
 }
@@ -2553,16 +2553,16 @@ async function createJiraTicket(
   projection: TrackerProjection,
   intent: Extract<TrackerBindIntent, { mode: "create" }>,
   idempotencyKey: string,
-  email: string,
-  apiToken: string,
+  authentication: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
+  const jira = jiraRequestContext(policy.target.siteUrl, authentication);
   const issue = await requestJson(
     dependencies,
     {
       method: "POST",
-      url: `${jiraOrigin(policy)}/rest/api/3/issue`,
-      headers: jiraHeaders(email, apiToken),
+      url: `${jira.apiOrigin}/rest/api/3/issue`,
+      headers: jira.headers,
       body: JSON.stringify({
         fields: {
           project: { key: policy.target.projectKey },
@@ -2577,7 +2577,7 @@ async function createJiraTicket(
       }),
     },
     [201],
-    [email, apiToken],
+    jira.secrets,
   );
   return parseJiraIssue(policy, issue);
 }
@@ -2585,19 +2585,19 @@ async function createJiraTicket(
 async function attachJiraTicket(
   policy: JiraTrackerPolicy,
   ticket: string,
-  email: string,
-  apiToken: string,
+  authentication: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
+  const jira = jiraRequestContext(policy.target.siteUrl, authentication);
   const issue = await requestJson(
     dependencies,
     {
       method: "GET",
-      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(ticket)}?fields=status,project,issuetype`,
-      headers: jiraHeaders(email, apiToken),
+      url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(ticket)}?fields=status,project,issuetype`,
+      headers: jira.headers,
     },
     [200],
-    [email, apiToken],
+    jira.secrets,
   );
   const parsed = parseJiraIssue(policy, issue, true);
   if (ticket !== parsed.remoteId && ticket !== parsed.remoteKey) {
@@ -2610,19 +2610,19 @@ async function syncJiraTicket(
   policy: JiraTrackerPolicy,
   binding: TrackerBinding,
   projection: TrackerProjection,
-  email: string,
-  apiToken: string,
+  authentication: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket> {
+  const jira = jiraRequestContext(policy.target.siteUrl, authentication);
   const issue = await requestJson(
     dependencies,
     {
       method: "GET",
-      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}?fields=status,project,issuetype`,
-      headers: jiraHeaders(email, apiToken),
+      url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}?fields=status,project,issuetype`,
+      headers: jira.headers,
     },
     [200],
-    [email, apiToken],
+    jira.secrets,
   );
   const issueRecord = record(issue, "Jira issue");
   const currentTicket = parseJiraIssue(policy, issueRecord, true);
@@ -2631,12 +2631,12 @@ async function syncJiraTicket(
     dependencies,
     {
       method: "PUT",
-      url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/properties/empirical-sdd`,
-      headers: jiraHeaders(email, apiToken),
+      url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/properties/empirical-sdd`,
+      headers: jira.headers,
       body: JSON.stringify(projection),
     },
     [200, 201, 204],
-    [email, apiToken],
+    jira.secrets,
   );
   const desired = policy.states[projection.progress];
   const currentStatus = nestedOptionalString(issueRecord, ["fields", "status", "id"]);
@@ -2645,11 +2645,11 @@ async function syncJiraTicket(
       dependencies,
       {
         method: "GET",
-        url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/transitions`,
-        headers: jiraHeaders(email, apiToken),
+        url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/transitions`,
+        headers: jira.headers,
       },
       [200],
-      [email, apiToken],
+      jira.secrets,
     );
     const transitions = record(available, "Jira transitions").transitions;
     if (!Array.isArray(transitions)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira transitions are missing");
@@ -2663,22 +2663,49 @@ async function syncJiraTicket(
       dependencies,
       {
         method: "POST",
-        url: `${jiraOrigin(policy)}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/transitions`,
-        headers: jiraHeaders(email, apiToken),
+        url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/transitions`,
+        headers: jira.headers,
         body: JSON.stringify({ transition: { id: requiredString(selected, "id", "Jira transition id") } }),
       },
       [204],
-      [email, apiToken],
+      jira.secrets,
     );
   }
   return { ...binding, url: `${jiraOrigin(policy)}/browse/${encodeURIComponent(binding.remoteKey)}` };
 }
 
-function jiraHeaders(email: string, apiToken: string): Record<string, string> {
+interface JiraRequestContext {
+  apiOrigin: string;
+  headers: Record<string, string>;
+  secrets: string[];
+}
+
+function jiraRequestContext(
+  siteUrl: string,
+  authentication: ResolvedTrackerAuthentication,
+): JiraRequestContext {
+  if (authentication.provider !== "jira") {
+    throw new EmpiricalError("TRACKER_AUTH_PROVIDER_MISMATCH", "Resolved tracker authentication belongs to a different provider");
+  }
+  if (authentication.source === "oauth") {
+    return {
+      apiOrigin: `https://api.atlassian.com/ex/jira/${encodeURIComponent(authentication.cloudId)}`,
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${authentication.accessToken}`,
+        "Content-Type": "application/json",
+      },
+      secrets: [authentication.accessToken],
+    };
+  }
   return {
-    Accept: "application/json",
-    Authorization: `Basic ${Buffer.from(`${email}:${apiToken}`, "utf8").toString("base64")}`,
-    "Content-Type": "application/json",
+    apiOrigin: new URL(siteUrl).origin,
+    headers: {
+      Accept: "application/json",
+      Authorization: `Basic ${Buffer.from(`${authentication.email}:${authentication.apiToken}`, "utf8").toString("base64")}`,
+      "Content-Type": "application/json",
+    },
+    secrets: [authentication.email, authentication.apiToken],
   };
 }
 
@@ -2711,7 +2738,7 @@ function parseJiraIssue(policy: JiraTrackerPolicy, value: unknown, requireTarget
 }
 
 async function discoverLinearResources(
-  apiKey: string,
+  authorization: string,
   dependencies: TrackerDependencies,
 ): Promise<TrackerDiscoveryResource[]> {
   const resources: TrackerDiscoveryResource[] = [];
@@ -2731,7 +2758,7 @@ async function discoverLinearResources(
         }
       }`,
       { after },
-      apiKey,
+      authorization,
       dependencies,
     );
     const organizationValue = data.organization
@@ -2937,11 +2964,11 @@ function addGitHubProjects(
 
 async function discoverJiraResources(
   siteUrl: string,
-  email: string,
-  apiToken: string,
+  authentication: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<TrackerDiscoveryResource[]> {
   const origin = new URL(siteUrl).origin;
+  const jira = jiraRequestContext(siteUrl, authentication);
   const resources: TrackerDiscoveryResource[] = [discoveryResource({
     kind: "workspace",
     id: origin,
@@ -2953,9 +2980,9 @@ async function discoverJiraResources(
   for (let page = 0; page < TRACKER_DISCOVERY_LIMIT; page += 1) {
     const response = record(await requestJson(dependencies, {
       method: "GET",
-      url: `${origin}/rest/api/3/project/search?startAt=${startAt}&maxResults=50&orderBy=name`,
-      headers: jiraHeaders(email, apiToken),
-    }, [200], [email, apiToken]), "Jira project discovery");
+      url: `${jira.apiOrigin}/rest/api/3/project/search?startAt=${startAt}&maxResults=50&orderBy=name`,
+      headers: jira.headers,
+    }, [200], jira.secrets), "Jira project discovery");
     if (!Array.isArray(response.values)) {
       throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira project discovery values are malformed");
     }
@@ -2973,9 +3000,9 @@ async function discoverJiraResources(
       }));
       const issueTypesValue = await requestJson(dependencies, {
         method: "GET",
-        url: `${origin}/rest/api/3/issuetype/project?projectId=${encodeURIComponent(projectId)}`,
-        headers: jiraHeaders(email, apiToken),
-      }, [200], [email, apiToken]);
+        url: `${jira.apiOrigin}/rest/api/3/issuetype/project?projectId=${encodeURIComponent(projectId)}`,
+        headers: jira.headers,
+      }, [200], jira.secrets);
       if (!Array.isArray(issueTypesValue)) {
         throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira issue-type discovery is malformed");
       }
@@ -2991,9 +3018,9 @@ async function discoverJiraResources(
       });
       const statusesValue = await requestJson(dependencies, {
         method: "GET",
-        url: `${origin}/rest/api/3/project/${encodeURIComponent(projectKey)}/statuses`,
-        headers: jiraHeaders(email, apiToken),
-      }, [200], [email, apiToken]);
+        url: `${jira.apiOrigin}/rest/api/3/project/${encodeURIComponent(projectKey)}/statuses`,
+        headers: jira.headers,
+      }, [200], jira.secrets);
       if (!Array.isArray(statusesValue)) {
         throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira status discovery is malformed");
       }
@@ -3034,9 +3061,9 @@ async function discoverJiraResources(
   }
   const fieldsValue = await requestJson(dependencies, {
     method: "GET",
-    url: `${origin}/rest/api/3/field`,
-    headers: jiraHeaders(email, apiToken),
-  }, [200], [email, apiToken]);
+    url: `${jira.apiOrigin}/rest/api/3/field`,
+    headers: jira.headers,
+  }, [200], jira.secrets);
   if (!Array.isArray(fieldsValue)) {
     throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira field discovery is malformed");
   }
@@ -3072,7 +3099,7 @@ async function requestJson(
     if (error instanceof EmpiricalError) {
       throw new EmpiricalError(error.code, safeDiagnostic(error.message, secrets));
     }
-    throw new EmpiricalError("TRACKER_TRANSPORT_FAILED", "Tracker request did not return a response", error);
+    throw new EmpiricalError("TRACKER_TRANSPORT_FAILED", "Tracker request did not return a response");
   }
   if (
     typeof response !== "object"
@@ -3107,22 +3134,27 @@ function graphqlData(value: unknown, provider: string): Record<string, unknown> 
   return record(response.data, `${provider} GraphQL data`);
 }
 
-function resolveCredentials(
-  policy: TrackerPolicy,
-  environment: Readonly<Record<string, string | undefined>>,
-): string[] {
-  const names = policy.provider === "github"
-    ? [policy.credentialEnv.token]
-    : policy.provider === "linear"
-      ? [policy.credentialEnv.apiKey]
-      : [policy.credentialEnv.email, policy.credentialEnv.apiToken];
-  return names.map((name) => {
-    const value = environment[name]?.trim();
-    if (!value) {
-      throw new EmpiricalError("TRACKER_CREDENTIAL_MISSING", `Required tracker environment variable ${name} is not set`);
-    }
-    return value;
-  });
+function accessTokenFor(
+  authentication: ResolvedTrackerAuthentication,
+  provider: "github",
+): string {
+  if (authentication.provider !== provider) {
+    throw new EmpiricalError("TRACKER_AUTH_PROVIDER_MISMATCH", "Resolved tracker authentication belongs to a different provider");
+  }
+  return authentication.accessToken;
+}
+
+function linearAuthorizationFor(authentication: ResolvedTrackerAuthentication): string {
+  if (authentication.provider !== "linear") {
+    throw new EmpiricalError("TRACKER_AUTH_PROVIDER_MISMATCH", "Resolved tracker authentication belongs to a different provider");
+  }
+  return authentication.source === "oauth"
+    ? `Bearer ${authentication.accessToken}`
+    : authentication.accessToken;
+}
+
+function withTrackerRepositoryRoot(dependencies: TrackerDependencies, root: string): TrackerDependencies {
+  return { ...dependencies, repositoryRoot: root };
 }
 
 async function persistPending(
@@ -3731,17 +3763,17 @@ function jiraAdf(description: string): Record<string, unknown> {
 async function reconcileCreate(
   policy: TrackerPolicy,
   pending: TrackerPendingRecord,
-  credentials: string[],
+  credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket | null> {
   if (pending.intent.mode !== "create") {
     throw new EmpiricalError("INVALID_TRACKER_PENDING", "Create reconciliation requires a durable create intent");
   }
   const matches = policy.provider === "github"
-    ? await reconcileGitHubCreate(policy, pending, credentials[0]!, dependencies)
+    ? await reconcileGitHubCreate(policy, pending, accessTokenFor(credentials, "github"), dependencies)
     : policy.provider === "linear"
-      ? await reconcileLinearCreate(policy, pending, credentials[0]!, dependencies)
-      : await reconcileJiraCreate(policy, pending, credentials[0]!, credentials[1]!, dependencies);
+      ? await reconcileLinearCreate(policy, pending, linearAuthorizationFor(credentials), dependencies)
+      : await reconcileJiraCreate(policy, pending, credentials, dependencies);
   if (matches.length > 1) {
     throw new EmpiricalError("TRACKER_CREATE_COLLISION", "Multiple provider tickets contain the exact Empirical create marker");
   }
@@ -3751,14 +3783,14 @@ async function reconcileCreate(
 async function reconcileFeatureMarker(
   policy: TrackerPolicy,
   marker: string,
-  credentials: string[],
+  credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket | null> {
   const matches = policy.provider === "github"
-    ? await findGitHubFeatureMarkers(policy, marker, credentials[0]!, dependencies)
+    ? await findGitHubFeatureMarkers(policy, marker, accessTokenFor(credentials, "github"), dependencies)
     : policy.provider === "linear"
-      ? await findLinearFeatureMarkers(policy, marker, credentials[0]!, dependencies)
-      : await findJiraFeatureMarkers(policy, marker, credentials[0]!, credentials[1]!, dependencies);
+      ? await findLinearFeatureMarkers(policy, marker, linearAuthorizationFor(credentials), dependencies)
+      : await findJiraFeatureMarkers(policy, marker, credentials, dependencies);
   if (matches.length > 1) {
     throw new EmpiricalError(
       "TRACKER_BIND_AMBIGUOUS",
@@ -3797,7 +3829,7 @@ async function findGitHubFeatureMarkers(
 async function findLinearFeatureMarkers(
   policy: LinearTrackerPolicy,
   marker: string,
-  apiKey: string,
+  authorization: string,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket[]> {
   const matches: RemoteTicket[] = [];
@@ -3813,7 +3845,7 @@ async function findLinearFeatureMarkers(
         }
       }`,
       { team: policy.target.teamId, marker, after },
-      apiKey,
+      authorization,
       dependencies,
     );
     const issues = connection(data.issues, "Linear feature-marker issues");
@@ -3837,18 +3869,18 @@ async function findLinearFeatureMarkers(
 async function findJiraFeatureMarkers(
   policy: JiraTrackerPolicy,
   marker: string,
-  email: string,
-  apiToken: string,
+  authentication: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket[]> {
+  const jira = jiraRequestContext(policy.target.siteUrl, authentication);
   const matches: RemoteTicket[] = [];
   let nextPageToken: string | null = null;
   const cursors = new Set<string>();
   for (let page = 0; page < TRACKER_DISCOVERY_LIMIT; page += 1) {
     const response = record(await requestJson(dependencies, {
       method: "POST",
-      url: `${jiraOrigin(policy)}/rest/api/3/search/jql`,
-      headers: jiraHeaders(email, apiToken),
+      url: `${jira.apiOrigin}/rest/api/3/search/jql`,
+      headers: jira.headers,
       body: JSON.stringify({
         jql: `project = ${policy.target.projectKey} ORDER BY created DESC`,
         maxResults: 100,
@@ -3856,7 +3888,7 @@ async function findJiraFeatureMarkers(
         fields: ["status", "project", "issuetype"],
         properties: ["empirical-sdd"],
       }),
-    }, [200], [email, apiToken]), "Jira feature-marker lookup");
+    }, [200], jira.secrets), "Jira feature-marker lookup");
     if (Array.isArray(response.warnings) && response.warnings.length > 0) {
       throw new EmpiricalError("TRACKER_RECONCILIATION_INCOMPLETE", "Jira reported incomplete feature-marker results");
     }
@@ -3922,7 +3954,7 @@ async function reconcileGitHubCreate(
 async function reconcileLinearCreate(
   policy: LinearTrackerPolicy,
   pending: TrackerPendingRecord,
-  apiKey: string,
+  authorization: string,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket[]> {
   if (pending.intent.mode !== "create") return [];
@@ -3938,7 +3970,7 @@ async function reconcileLinearCreate(
         }
       }`,
       { team: policy.target.teamId, marker: pending.idempotencyKey, after },
-      apiKey,
+      authorization,
       dependencies,
     );
     const connection = record(data.issues, "Linear reconciliation issues");
@@ -3962,18 +3994,18 @@ async function reconcileLinearCreate(
 async function reconcileJiraCreate(
   policy: JiraTrackerPolicy,
   pending: TrackerPendingRecord,
-  email: string,
-  apiToken: string,
+  authentication: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<RemoteTicket[]> {
   if (pending.intent.mode !== "create") return [];
+  const jira = jiraRequestContext(policy.target.siteUrl, authentication);
   const matches: RemoteTicket[] = [];
   let nextPageToken: string | null = null;
   for (let page = 0; page < 100; page += 1) {
     const response = await requestJson(dependencies, {
       method: "POST",
-      url: `${jiraOrigin(policy)}/rest/api/3/search/jql`,
-      headers: jiraHeaders(email, apiToken),
+      url: `${jira.apiOrigin}/rest/api/3/search/jql`,
+      headers: jira.headers,
       body: JSON.stringify({
         jql: `project = ${policy.target.projectKey} ORDER BY created DESC`,
         maxResults: 100,
@@ -3981,7 +4013,7 @@ async function reconcileJiraCreate(
         fields: ["status", "project", "issuetype"],
         properties: ["empirical-sdd"],
       }),
-    }, [200], [email, apiToken]);
+    }, [200], jira.secrets);
     const result = record(response, "Jira reconciliation response");
     if (result.warnings !== undefined) {
       if (!Array.isArray(result.warnings) || result.warnings.some((warning) => typeof warning !== "string")) {

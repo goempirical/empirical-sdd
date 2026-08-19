@@ -396,7 +396,7 @@ export class ProjectStore {
     if (rawVersion !== SCHEMA_VERSION) {
       throw new EmpiricalError(
         "MIGRATION_REQUIRED",
-        `Schema ${rawVersion} is unsupported; Empirical 0.24 migrates only Schema 4 to Schema 5`,
+        `Schema ${rawVersion} is unsupported; Empirical 0.25 migrates only Schema 4 to Schema 5`,
       );
     }
     await project.ensureProjectMetadata();

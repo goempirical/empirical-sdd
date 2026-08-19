@@ -8,6 +8,40 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ## [Unreleased]
 
+## [0.25.0] - 2026-08-19
+
+### Added
+
+- Added a trusted-host OAuth resolver contract for Linear, GitHub, and Jira,
+  with provider tokens kept ephemeral and outside Tracker Policy, MCP tool
+  input/output, chat, logs, and repository state.
+- Added explicit MCP URL-mode capability negotiation for out-of-band OAuth;
+  form-only, legacy-empty, absent, declined, and cancelled clients fail closed
+  to the host fallback without receiving a credential form.
+- Added a guarded read-only user secrets file fallback at
+  `${XDG_CONFIG_HOME:-$HOME/.config}/empirical/secrets.env` on POSIX or
+  `%APPDATA%\Empirical\secrets.env` on Windows, including containment, link,
+  size, syntax, completeness, and POSIX permission checks.
+
+### Changed
+
+- Made new Linear setup default to `LINEAR_SECRET_KEY`, while preserving every
+  existing Tracker Policy v1/v2 name—including `LINEAR_API_KEY` and custom
+  valid names—without migration or repair rewrites.
+- Made Jira OAuth use Atlassian's Cloud API base with Bearer authorization while
+  retaining tenant-origin Basic authentication for email/API-token fallback.
+- Made Linear OAuth use its required Bearer authorization while preserving the
+  raw `Authorization` value required by existing personal API-key fallbacks.
+- Aligned CLI, MCP, generated `empirical-init` guidance, Doctor, README, and
+  protocol/security documentation around OAuth-first setup, the exact host
+  fallback path, and the rule: `Never paste credentials into chat`.
+
+### Fixed
+
+- Serialized the process-heavy release test suite so temporary Git worktree
+  tests cannot exhaust their timeout and race cleanup under parallel load, and
+  removed a redundant non-coverage pass from local CI to match the GitHub gate.
+
 ## [0.24.1] - 2026-08-19
 
 ### Fixed
@@ -121,7 +155,8 @@ Published through GitHub Actions trusted publishing with npm provenance.
 
 - Prepared and released package version `0.20.2`.
 
-[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.24.1...HEAD
+[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.25.0...HEAD
+[0.25.0]: https://github.com/goempirical/empirical-sdd/compare/v0.24.1...v0.25.0
 [0.24.1]: https://github.com/goempirical/empirical-sdd/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/goempirical/empirical-sdd/compare/v0.23.0...v0.24.0
 [0.23.0]: https://github.com/goempirical/empirical-sdd/compare/v0.22.0...v0.23.0
