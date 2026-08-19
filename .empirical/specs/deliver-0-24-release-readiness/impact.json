@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "classification": "behavioral",
+  "capabilities": [
+    "autonomous-delivery"
+  ],
+  "surfaces": [
+    "workflow"
+  ],
+  "regressionRationale": null,
+  "digest": "sha256:da2820a25b29a5d4beaa8796344310b91cb9cc6d2f7e1080c8d34170b6a26b06"
+}

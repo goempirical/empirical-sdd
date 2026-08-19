@@ -1,18 +1,18 @@
 {
   "schemaVersion": 1,
   "sequence": 2,
-  "previousDigest": "sha256:2d868bd64d85b167e63565752a7f7ed914bdb39f58c221db1cabc9d60bad539e",
+  "previousDigest": "sha256:0c0268da07f447b5404d027d7a76b1b71a6c5946bdf454f20383a98e65d90428",
   "actor": "empirical-yolo",
   "type": "transition",
   "summary": "Recorded standing authorization through delivered",
-  "createdAt": "2026-08-18T21:08:32.294Z",
-  "stateBeforeDigest": "sha256:dad3803701130e60d60d7f47b34017f3a6866bec4c78062802cfbdcb94ce83ab",
-  "stateAfterDigest": "sha256:e9b5002699b5189a0cff3fc2c915541db9335e9547d855c9a6c034c633f049a7",
+  "createdAt": "2026-08-19T13:56:29.042Z",
+  "stateBeforeDigest": "sha256:0fec0f261f6c0c6a17eb96ebe24d5d035c92d968c465c1be994d576d57f2cd2f",
+  "stateAfterDigest": "sha256:4c0bb0dee9b9b11892d23e0b4f30e232f3442776c52dacbf0a0b26df4f5d10a8",
   "state": {
     "schemaVersion": 5,
     "revision": 2,
-    "activeFeature": "deliver-sdd-23-through-github",
-    "request": "Commit the already verified integrated changes, push the branch, open source and evidence pull requests to main, wait for every GitHub CI check, and merge them normally.",
+    "activeFeature": "deliver-0-24-release-readiness",
+    "request": "Deliver the already integrated harden-0-24-release-readiness source changes and Empirical evidence through protected GitHub pull requests to main, merge only after required checks pass, reconcile durable delivery receipts, and prepare but do not execute the exact immutable empirical-sdd 0.24.0 publication target. Do not create a tag, GitHub Release, npm version or dist-tag change, and do not modify any VPS.",
     "profile": "complex",
     "workflow": "complex",
     "mode": "yolo",
@@ -21,13 +21,13 @@
     "repairAttempts": 0,
     "message": null,
     "implementationActor": null,
-    "specDigest": "sha256:d45cc31a6664473963866c71c674bede0c0a0f096e1982d4f747c505474f0a38",
+    "specDigest": "sha256:2556084eb6cce751511a884bed41783a6a0f8b891984ad75fb460750942fbe99",
     "approvedSpecRevision": null,
     "capabilityArchiveRequired": true,
     "capabilityDeltaDigest": null,
     "impactDigest": null,
     "capabilityClaimId": null,
-    "authorizationDigest": "sha256:aad0050b496ecf2ef49b12b9e56b6e994b30e159eb939d980354edfd993e212b",
+    "authorizationDigest": "sha256:f8b19f4ee82070ba2910e0979034defb921d8b5e9c53c09dcee51a5cb1075a21",
     "evidence": [],
     "evidenceReceiptIds": [],
     "legacyEvidenceCount": 0,
@@ -46,7 +46,7 @@
         "published": "published has not been proven by a durable receipt."
       }
     },
-    "updatedAt": "2026-08-18T21:08:32.294Z"
+    "updatedAt": "2026-08-19T13:56:29.042Z"
   },
-  "digest": "sha256:acd76dd6dd702fc5e72d015cc05e147842deee8d72284e33bc7eddd3f2fba9b4"
+  "digest": "sha256:46b892489999820a3a1b1117154ee82b7e5cfe84c364b067b1b94c38aa9e0bed"
 }

@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 5,
+  "revision": 8,
+  "activeFeature": "harden-0-24-release-readiness",
+  "request": "Before publishing empirical-sdd 0.24.0, fix the confirmed release-readiness defects: Doctor must correctly validate non-behavioral integration receipts whose claimId is null; the shell-free GitHub delivery/publication runner must use the host's existing gh CLI authentication configuration without persisting credentials or secret values; regenerate and validate repository-owned Empirical activation integrations; add regression tests; run the full clean release suite and Doctor; then prepare the exact immutable 0.24.0 publication target. Do not publish or modify VPS installations until the exact final commit is verified.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "normal",
+  "phase": "done",
+  "status": "done",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: agent-integrations, autonomous-delivery, living-specifications",
+  "implementationActor": "codex",
+  "specDigest": "sha256:dd8073316530c6ccf51719ce81a330100068f84ad27f90037271f9e58f0012ee",
+  "approvedSpecRevision": 2,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:32a027ccb8e89ca0c5fc0d697d2699f9f49dff62da34312a2f7611306315a22d",
+  "impactDigest": "sha256:f447e6660c7d69914fe65d030cf37be18bee9ef67aa0879f27a6a34a19eca87b",
+  "capabilityClaimId": "harden-0-24-release-readiness-b24af25e7b8c",
+  "authorizationDigest": null,
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-daf918fa76dc19fe6e178e64",
+    "collected-9e84f409ca9ae46c748aa8de"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-19T13:55:08.980Z"
+}
