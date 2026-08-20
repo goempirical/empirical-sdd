@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 5,
+  "revision": 10,
+  "activeFeature": "release-0-25-0",
+  "request": "Finalize and publish empirical-sdd 0.25.0 from the Windows-corrected main branch. Add a concise 0.25.0 changelog note for the cross-platform tracker secret-path correction, verify the complete release suite and five-platform GitHub matrix, deliver the release-note source and immutable workflow evidence through protected pull requests, then publish exactly empirical-sdd@0.25.0 with npm dist-tag latest and GitHub tag/release v0.25.0 from the final evidence merge commit.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "yolo",
+  "phase": "deliver",
+  "status": "waiting",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: package-distribution",
+  "implementationActor": "Codex",
+  "specDigest": "sha256:3f2ad59e9c96f0b86cf46441dff4c8f067aa863573621fd67b8b321fd909707a",
+  "approvedSpecRevision": 3,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:8ccfc50fc02fc32f90ca4c5f5e450787309f78296535106d678902c022e1f6ea",
+  "impactDigest": "sha256:28155019597bb0a28e2e6ac5379c3fff40a6fea4007ace6bf33a71716d3d584a",
+  "capabilityClaimId": "release-0-25-0-b5cb02488d17",
+  "authorizationDigest": "sha256:b38f5bec4af53dbf48fd8d0dfc9c69508320a140596cae9372693d438fab9e44",
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-50905863b0184c5393a98356",
+    "collected-a896fe68e98681557c15755a"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-20T00:03:10.065Z"
+}

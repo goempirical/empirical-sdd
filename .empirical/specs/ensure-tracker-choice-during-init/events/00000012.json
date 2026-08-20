@@ -1,25 +1,25 @@
 {
   "schemaVersion": 1,
-  "sequence": 10,
-  "previousDigest": "sha256:9d4735e56af6d4a134bcd9a3e5ac179ae35d7a2edf0dece6a0aefd50299a6de2",
-  "actor": "agent",
-  "type": "transition",
-  "summary": "Integrated capability changes: external-ticket-tracking",
-  "createdAt": "2026-08-19T20:15:46.581Z",
-  "stateBeforeDigest": "sha256:796a54b10c423083492f5bf126e2c73def86565eb7e3b44bf950a73d4c7ea32a",
-  "stateAfterDigest": "sha256:b38c0a2362132e6cfabcc84a5edb92d611cd80d585fa7bf321cca3cc5325d30b",
+  "sequence": 12,
+  "previousDigest": "sha256:e7fcbb231a1e74081730a9b3059578e5a024dc3ee64264102545f9bff404cc0a",
+  "actor": "empirical-deliver",
+  "type": "compaction-boundary",
+  "summary": "Compacted through journal event 11",
+  "createdAt": "2026-08-19T23:44:18.154Z",
+  "stateBeforeDigest": "sha256:d7c4593a7ff7ac8f2eb1fc7d3a4a28bbcb41cd683ede91bd746f86a58e710388",
+  "stateAfterDigest": "sha256:d7c4593a7ff7ac8f2eb1fc7d3a4a28bbcb41cd683ede91bd746f86a58e710388",
   "state": {
     "schemaVersion": 5,
-    "revision": 10,
+    "revision": 11,
     "activeFeature": "ensure-tracker-choice-during-init",
     "request": "Fix empirical-init so initialization inspects existing tracker configuration and, when none exists, asks during setup with Track all work as the recommended default and No tracking as an explicit choice; preserve existing tracker configuration during repair, persist the confirmed choice safely, add regression coverage, merge the fix through a PR, and publish the next patch release.",
     "profile": "complex",
     "workflow": "complex",
     "mode": "yolo",
-    "phase": "deliver",
-    "status": "waiting",
+    "phase": "done",
+    "status": "done",
     "repairAttempts": 0,
-    "message": "Integrated capability changes: external-ticket-tracking",
+    "message": "Delivered through 3ae6f58196c86f53c529d403e5945ddf7204ebed",
     "implementationActor": "agent",
     "specDigest": "sha256:019753fa8562bf2502acb193a34d490fa659f5cf2a4e6cd7669e58741c11e784",
     "approvedSpecRevision": 3,
@@ -37,15 +37,14 @@
       "implemented": true,
       "verified": true,
       "integrated": true,
-      "delivered": false,
+      "delivered": true,
       "published": false,
-      "highest": "integrated",
+      "highest": "delivered",
       "reasons": {
-        "delivered": "delivered has not been proven by a durable receipt.",
         "published": "published has not been proven by a durable receipt."
       }
     },
-    "updatedAt": "2026-08-19T20:15:46.581Z"
+    "updatedAt": "2026-08-19T23:44:17.989Z"
   },
-  "digest": "sha256:e4765383a30d76befd0a48706bc7be9efcee4b08964d48c747fee1c88d682c70"
+  "digest": "sha256:5fed382531736611ad49304298d1abcf038c3b0d093596cfe8ca3496911f5003"
 }

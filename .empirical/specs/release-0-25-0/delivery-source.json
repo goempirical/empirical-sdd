@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "feature": "release-0-25-0",
+  "sourceMergeCommit": "fd87604b49fbcee0ce6ff8aae60eda23c9f6bab5",
+  "integrationReceiptDigest": "sha256:bb5b5a010a10b3a62c47b978f1452a63800d3351fe2012dddedd3980f7ce7966",
+  "digest": "sha256:76674d533567fe9e15241774b4ab1ad70b97c7f6ad77ac9d5c2c4c5419b9ba84"
+}
