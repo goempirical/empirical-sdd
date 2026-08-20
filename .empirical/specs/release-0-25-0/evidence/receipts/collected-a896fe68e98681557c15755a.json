@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "collected-a896fe68e98681557c15755a",
+  "criteria": [
+    "AC-1",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6"
+  ],
+  "evidenceKinds": [
+    "review"
+  ],
+  "summary": "Independent release-readiness review passed with no open finding; exact-tree tests, Windows fix ancestry, five-platform fix matrix, immutable gates, decision consistency, and credential exclusion were verified.",
+  "passed": true,
+  "startedAt": "2026-08-19T23:56:11.740Z",
+  "completedAt": "2026-08-19T23:56:11.740Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "release-0-25-0",
+    "specRevision": 3,
+    "specDigest": "sha256:3f2ad59e9c96f0b86cf46441dff4c8f067aa863573621fd67b8b321fd909707a",
+    "treeDigest": "sha256:9f539b4f4423ccd7ce2744b6550c38d7737c1cff3ed909d30400721210774aa3",
+    "policyDigest": "sha256:d1f5cd886f30de09b672911041c00cda350042fe9d96e5595a6d9ca4be592e0c"
+  },
+  "digest": "sha256:7f3269de2ee88d73b91f2505dee0a8fb51aae1b7b13beaf2e838b4927d151dc1",
+  "kind": "collected",
+  "collector": "Codex",
+  "artifacts": [
+    {
+      "path": ".empirical/specs/release-0-25-0/review.md",
+      "mediaType": "text/markdown",
+      "bytes": 2828,
+      "digest": "sha256:da4cb3f0a95c4a59483925dc17833212e2192641c1e6e99d2c4e29d5fb3241b1"
+    }
+  ]
+}

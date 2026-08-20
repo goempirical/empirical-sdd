@@ -1,7 +1,7 @@
 {
   "schemaVersion": 2,
   "generator": "empirical-0.23.0",
-  "sourceDigest": "sha256:d267ee68eb1ec9f869787635f5cccc45bd54c170f035bce0e6774c03078528ea",
+  "sourceDigest": "sha256:c61fd8cbe0dc76c72d81d303d4b8ebfa28302f1a605abd683cd303506f20cac2",
   "files": [
     {
       "path": ".agents/skills/empirical/SKILL.md",
@@ -55,8 +55,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 7169,
-      "digest": "sha256:dce16a2cb37fed0eb293072ef66577bec0728e2e8094d57b9d7a6b4fed5b1486"
+      "size": 7327,
+      "digest": "sha256:1cd2fe41c052b0454394b929bfcd984727cf3df63618ef02c2f7b3e17f770596"
     },
     {
       "path": "CLAUDE.md",
@@ -340,8 +340,8 @@
     },
     {
       "path": "src/tracker-auth.ts",
-      "size": 17546,
-      "digest": "sha256:05b578c1b5b6dc50cb49546a23231eaf79ad52eb4427161f42e59d068eb2ea55"
+      "size": 17579,
+      "digest": "sha256:bb3526c0a245a608ae7a07a32e8d4605a551466e65225d02c2188b34d7fc9452"
     },
     {
       "path": "src/tracking.ts",
@@ -430,8 +430,8 @@
     },
     {
       "path": "tests/mcp.test.ts",
-      "size": 28603,
-      "digest": "sha256:c20ffab9de92faeeaf39510553020db1fce97a1d38fcbd0a75ba6cc52526a08b"
+      "size": 28638,
+      "digest": "sha256:2e58c282f44fe8d66637a70d02573fb1263a37f4656402ce3aba838e92fc0c14"
     },
     {
       "path": "tests/migration.test.ts",
@@ -445,13 +445,13 @@
     },
     {
       "path": "tests/setup.test.ts",
-      "size": 4421,
-      "digest": "sha256:b092a40c54921d9d6aa9d3d0bdd3d94f6b18662df1076fea351ea72578f1862d"
+      "size": 4457,
+      "digest": "sha256:651aafa9cf72b6853b023296c27ec92eba0a1b311fff543cc3ab8ddd6dd84ddf"
     },
     {
       "path": "tests/tracker-auth.test.ts",
-      "size": 14039,
-      "digest": "sha256:00fa42058e9a0b5d6fdd684daaa499827bb5019e9eafd4b396fd661afc1e0a25"
+      "size": 14135,
+      "digest": "sha256:b49e81076a517a3ac20848ca3e5844fde814634a92b997902bd02e9827d00136"
     },
     {
       "path": "tests/tracking.test.ts",
@@ -575,7 +575,7 @@
         "tests/worktree-isolation.test.ts",
         "tsconfig.json"
       ],
-      "sourceDigest": "sha256:d267ee68eb1ec9f869787635f5cccc45bd54c170f035bce0e6774c03078528ea",
+      "sourceDigest": "sha256:c61fd8cbe0dc76c72d81d303d4b8ebfa28302f1a605abd683cd303506f20cac2",
       "digest": "sha256:62c1e429f938bf5a727c9e089eb965df0b29d2db55837334cad4cb68a75a8ab9",
       "freshness": "fresh"
     },
@@ -635,7 +635,7 @@
         "src/types.ts",
         "src/worktrees.ts"
       ],
-      "sourceDigest": "sha256:45dae2fcbb9f408bdd49218221d41c1858df6200593be266978655c80ce1face",
+      "sourceDigest": "sha256:b30d68fb9a334ae933db241cb0231372a97dc4e93f56ed22f7e644eb096f7afe",
       "digest": "sha256:8a3ce40862fa2601df89006351d195308b09680274472f9e2d1d8130c4db7b8b",
       "freshness": "fresh"
     },
@@ -676,5 +676,5 @@
     }
   ],
   "truncated": false,
-  "digest": "sha256:5537051dd1acffcf27ad3cd59b3a8402bf888689be48cb1ecdfda523bd367750"
+  "digest": "sha256:df36033e3d584f7ded12e72a6ba00d2a52eea9bac41a4960428cebe947e1255c"
 }

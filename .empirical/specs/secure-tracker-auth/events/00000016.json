@@ -1,25 +1,25 @@
 {
   "schemaVersion": 1,
-  "sequence": 14,
-  "previousDigest": "sha256:01ad4590c3d33216b66c25f8fa5264bb9cfdb98500f201fdf7bb4aa3130a5fb4",
-  "actor": "Codex",
-  "type": "transition",
-  "summary": "Integrated capability changes: tracker-authentication",
-  "createdAt": "2026-08-19T23:18:16.330Z",
-  "stateBeforeDigest": "sha256:ef0b3f652eb4a667cc171af112d2232ce4c0863f99a43c966e7555fdf4a6aa0a",
-  "stateAfterDigest": "sha256:96e78864f3bea3821b3d0dd4db93ae2b37931b2437fcac416ed193a0d1de925a",
+  "sequence": 16,
+  "previousDigest": "sha256:b9b9804930f8912bb1e5a3f230565aa8bb41823cbad213a4fb4f3028ab3f94a6",
+  "actor": "empirical-deliver",
+  "type": "compaction-boundary",
+  "summary": "Compacted through journal event 15",
+  "createdAt": "2026-08-19T23:44:33.896Z",
+  "stateBeforeDigest": "sha256:99dcfd8e7aabd31071a8987e728705251abd3c80468ffc54ad3f7bcb9a3d1633",
+  "stateAfterDigest": "sha256:99dcfd8e7aabd31071a8987e728705251abd3c80468ffc54ad3f7bcb9a3d1633",
   "state": {
     "schemaVersion": 5,
-    "revision": 14,
+    "revision": 15,
     "activeFeature": "secure-tracker-auth",
     "request": "Implement secure tracker authentication for Empirical: make OAuth the primary connection flow for Linear, GitHub, and Jira. When OAuth is unavailable, provide a safe provider-specific secret fallback; for Linear default to the environment name LINEAR_SECRET_KEY, show the exact host-side path or secure command where the user should configure it, and explicitly state that credentials must never be pasted into chat. Raw credentials must never enter LLM context, chat transcripts, MCP tool arguments/results, repository files, logs, shell history, or process arguments. Add capability negotiation and a fail-closed fallback for clients without secure elicitation, preserve secret-free Tracker Policy compatibility/migration, update CLI/MCP/setup UX, documentation, tests, changelog, and release metadata. Create/update the GitHub PR, pass CI, integrate it, and prepare the next empirical-sdd release.",
     "profile": "complex",
     "workflow": "complex",
     "mode": "yolo",
-    "phase": "deliver",
-    "status": "waiting",
+    "phase": "done",
+    "status": "done",
     "repairAttempts": 0,
-    "message": "Integrated capability changes: tracker-authentication",
+    "message": "Delivered through 9314ac4e19498e84ddbfa00870d6eca67a5abea0",
     "implementationActor": "Codex",
     "specDigest": "sha256:02059b9aff3bda9ca12013dbb7e30d0709cec82407db34813d014d596a55d50b",
     "approvedSpecRevision": 3,
@@ -38,15 +38,14 @@
       "implemented": true,
       "verified": true,
       "integrated": true,
-      "delivered": false,
+      "delivered": true,
       "published": false,
-      "highest": "integrated",
+      "highest": "delivered",
       "reasons": {
-        "delivered": "delivered has not been proven by a durable receipt.",
         "published": "published has not been proven by a durable receipt."
       }
     },
-    "updatedAt": "2026-08-19T23:18:16.330Z"
+    "updatedAt": "2026-08-19T23:44:33.813Z"
   },
-  "digest": "sha256:47b377181d195221c848e3d4fedf5b49de056e7e39f19f632f6ff9053ac72c42"
+  "digest": "sha256:49ff09ac24e0f7b854ca5805d3899528381559dbdee943aa9c9de3156a558b88"
 }

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+  "feature": "ensure-tracker-choice-during-init",
+  "targetBranch": "main",
+  "source": {
+    "number": 30,
+    "url": "https://github.com/goempirical/empirical-sdd/pull/30",
+    "state": "MERGED",
+    "mergeCommit": "c4f2c3ad1ac8b7e877c3d98aa7c560b33ba66dd9",
+    "commit": "a1510e9c9eccf4b0573eff5405fb19b2ff83bc8c"
+  },
+  "evidence": {
+    "number": 31,
+    "url": "https://github.com/goempirical/empirical-sdd/pull/31",
+    "state": "MERGED",
+    "mergeCommit": "3ae6f58196c86f53c529d403e5945ddf7204ebed",
+    "commit": "db86233eaf0efe615a3a0ad7405c1519d071b99f"
+  },
+  "requiredChecks": [],
+  "commandReceiptDigests": [
+    "sha256:24d7517d8a7573b6e959a9cf65d36377e6bc771087b96ac9bfe818fb593a1838",
+    "sha256:7e21a38ecf623b9e3bc56fd1340f5edc9d542c2bb1c6713f9974e1e7c4196359",
+    "sha256:758fcaadf3f8b98497b2982ff9f10660183b628c995e95cfffa7ce72c9bd3cab",
+    "sha256:6a8706612278afdac84bff67ddb2003e6e32804187045a66c78b4b6dc01ac2b8",
+    "sha256:aedd2f732b2dfcb0463d3a12645975c15d1155b436ae255d76ff7f5ebe7ab4d5"
+  ],
+  "deliveredAt": "2026-08-19T23:44:17.949Z",
+  "digest": "sha256:eb4dae6537956bd9323fee3a94043736daffdce5d982856618b7dea41a7dc78c"
+}

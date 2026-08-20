@@ -1,25 +1,21 @@
 {
   "schemaVersion": 1,
-  "sequence": 9,
-  "previousDigest": "sha256:9b5c686b47349ec5c393dd7cecf775bca1190a1ae1f40bf2c1e4ee2288cfcb4a",
-  "actor": "agent",
-  "type": "transition",
-  "summary": "Reviewed the complete implementation, documentation, tests, release metadata, and accepted decisions against AC-1 through AC-7. No unresolved correctness, security, compatibility, or release-blocking findings remain; generated coverage output was removed from the worktree.",
-  "createdAt": "2026-08-19T20:07:09.044Z",
-  "stateBeforeDigest": "sha256:a8e9973e66a2f1542ac1f47612f5145b5498a71221a7aed8407f3ea8ac57ab0d",
-  "stateAfterDigest": "sha256:796a54b10c423083492f5bf126e2c73def86565eb7e3b44bf950a73d4c7ea32a",
+  "feature": "ensure-tracker-choice-during-init",
+  "lastSequence": 11,
+  "lastEventDigest": "sha256:e7fcbb231a1e74081730a9b3059578e5a024dc3ee64264102545f9bff404cc0a",
+  "stateDigest": "sha256:d7c4593a7ff7ac8f2eb1fc7d3a4a28bbcb41cd683ede91bd746f86a58e710388",
   "state": {
     "schemaVersion": 5,
-    "revision": 9,
+    "revision": 11,
     "activeFeature": "ensure-tracker-choice-during-init",
     "request": "Fix empirical-init so initialization inspects existing tracker configuration and, when none exists, asks during setup with Track all work as the recommended default and No tracking as an explicit choice; preserve existing tracker configuration during repair, persist the confirmed choice safely, add regression coverage, merge the fix through a PR, and publish the next patch release.",
     "profile": "complex",
     "workflow": "complex",
     "mode": "yolo",
-    "phase": "integrate",
-    "status": "waiting",
+    "phase": "done",
+    "status": "done",
     "repairAttempts": 0,
-    "message": "Reviewed the complete implementation, documentation, tests, release metadata, and accepted decisions against AC-1 through AC-7. No unresolved correctness, security, compatibility, or release-blocking findings remain; generated coverage output was removed from the worktree.",
+    "message": "Delivered through 3ae6f58196c86f53c529d403e5945ddf7204ebed",
     "implementationActor": "agent",
     "specDigest": "sha256:019753fa8562bf2502acb193a34d490fa659f5cf2a4e6cd7669e58741c11e784",
     "approvedSpecRevision": 3,
@@ -36,17 +32,16 @@
     "completion": {
       "implemented": true,
       "verified": true,
-      "integrated": false,
-      "delivered": false,
+      "integrated": true,
+      "delivered": true,
       "published": false,
-      "highest": "verified",
+      "highest": "delivered",
       "reasons": {
-        "integrated": "integrated has not been proven by a durable receipt.",
-        "delivered": "delivered has not been proven by a durable receipt.",
         "published": "published has not been proven by a durable receipt."
       }
     },
-    "updatedAt": "2026-08-19T20:07:09.044Z"
+    "updatedAt": "2026-08-19T23:44:17.989Z"
   },
-  "digest": "sha256:9d4735e56af6d4a134bcd9a3e5ac179ae35d7a2edf0dece6a0aefd50299a6de2"
+  "compactedAt": "2026-08-19T23:44:18.154Z",
+  "digest": "sha256:f77aa0e62b29531043324a0aeaf77f8670fbcd2dfa44da8ee07c215ce8d81d43"
 }

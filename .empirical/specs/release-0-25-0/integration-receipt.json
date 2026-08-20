@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "feature": "release-0-25-0",
+  "claimId": "release-0-25-0-b5cb02488d17",
+  "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+  "baseCommit": "97a2aadb11f7e8ce8f84cdff730f425bb1725860",
+  "baseTree": "65b5913b903ba94c16f5172d26038c4395b7a808",
+  "featureTree": "sha256:9f539b4f4423ccd7ce2744b6550c38d7737c1cff3ed909d30400721210774aa3",
+  "targetCommit": "97a2aadb11f7e8ce8f84cdff730f425bb1725860",
+  "targetTree": "65b5913b903ba94c16f5172d26038c4395b7a808",
+  "capabilityBaseDigests": {
+    "package-distribution": "sha256:edfaf724b6c20e9572e16e0dc726c1ca0f97a5028cc88499b160712d7b990fb8"
+  },
+  "deltaDigest": "sha256:4421cf012aa6fc41142ca012e2f4e9b4b933e55c049bfb31d285988a639cec99",
+  "resultDigests": {
+    "package-distribution": "sha256:9dd8f602cc7660f98f810f2862b1602b243f023000f71608b110aaa8fe1dbb25"
+  },
+  "verificationReceiptDigests": [
+    "sha256:4b4c8bd583ed5f0187bb0f2345aa8f221b64420ef1c380741533068a45293430"
+  ],
+  "integratedAt": "2026-08-20T00:03:09.859Z",
+  "digest": "sha256:bb5b5a010a10b3a62c47b978f1452a63800d3351fe2012dddedd3980f7ce7966"
+}
