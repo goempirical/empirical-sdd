@@ -38,6 +38,8 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ### Fixed
 
+- Made tracker secret-file path construction honor explicit POSIX and Windows
+  semantics, with platform-correct permission fixtures and recovery-path tests.
 - Serialized the process-heavy release test suite so temporary Git worktree
   tests cannot exhaust their timeout and race cleanup under parallel load, and
   removed a redundant non-coverage pass from local CI to match the GitHub gate.
