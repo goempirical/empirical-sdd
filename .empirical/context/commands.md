@@ -25,6 +25,8 @@
 - `bun run test:package` runs the npm package dry-run.
 - `bun run test:consistency` checks version, schema, skill, changelog, package,
   and operation surfaces for drift.
+- `bun run build && bun run demo:ticket-policy` runs the packaged offline
+  no-ticket feature demonstration with live network access trapped.
 - `bun run ci` executes the complete required pipeline.
 
 ## Verification evidence

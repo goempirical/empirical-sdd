@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "sequence": 6,
+  "previousDigest": "sha256:e6f6c1ee909a600d18cd58ef97d2a4206487f81caab9eaa21778bca12dc9050c",
+  "actor": "Codex",
+  "type": "transition",
+  "summary": "Prepared all current product surfaces for 0.26.0, retained Schema 5, dated and linked the changelog with no-migration guidance, updated release docs and version-sensitive checks, and passed TypeScript plus 72 focused tests and the consistency gate.",
+  "createdAt": "2026-08-20T12:59:45.358Z",
+  "stateBeforeDigest": "sha256:424a4a658533017b9cbf76877dcccd40f3dc4b838114196e1705aa5d8d248011",
+  "stateAfterDigest": "sha256:eb6e4d4d5d234ba83eb92eeacaf43ee87cfcaa68ecacd961555994eb4a161bf2",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 6,
+    "activeFeature": "release-0-26-0",
+    "request": "Prepare, fully test, deliver, and publish exactly empirical-sdd@0.26.0 with npm dist-tag latest and GitHub tag/release v0.26.0 from the final protected main evidence-merge commit. Include the completed concise ticket policy feature, classify it as an alpha MINOR without changing Schema 5, align PRODUCT_VERSION, package metadata, version-sensitive tests, demo/versioning documentation, and CHANGELOG; inspect the packed artifact; run the complete local CI suite and the five-platform GitHub Actions matrix; deliver source and immutable evidence through separate protected pull requests; then perform only the explicitly authorized immutable publication after exact remote checks.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "context",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Prepared all current product surfaces for 0.26.0, retained Schema 5, dated and linked the changelog with no-migration guidance, updated release docs and version-sensitive checks, and passed TypeScript plus 72 focused tests and the consistency gate.",
+    "implementationActor": "Codex",
+    "specDigest": "sha256:b0fe21b915f7869dded23bdd2da0de58d085bd21af4c7c284bf726da03790be7",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:33731abd1a1a2ab8cfc4fb58859997b90bc2286e39b87a75ee3aa98ba2e59feb",
+    "impactDigest": "sha256:28155019597bb0a28e2e6ac5379c3fff40a6fea4007ace6bf33a71716d3d584a",
+    "capabilityClaimId": "release-0-26-0-092460c4476f",
+    "authorizationDigest": "sha256:7856c6f4cc9fae68f692f4b7e7d3e956ea1cccc769fedfb1048fb695aa6c6e2e",
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "implemented",
+      "reasons": {
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-20T12:59:45.358Z"
+  },
+  "digest": "sha256:d439ccdd4a19859d7e3016188402102ff081c1fd0f4da444b49c1751f5ccad29"
+}

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "sequence": 7,
+  "previousDigest": "sha256:d439ccdd4a19859d7e3016188402102ff081c1fd0f4da444b49c1751f5ccad29",
+  "actor": "Codex",
+  "type": "transition",
+  "summary": "Refreshed bounded repository knowledge, updated custom context for Empirical 0.26, concise/detailed interaction, ticket requirement resolution, optional local-only behavior, and the offline demo; the final report has no stale, missing, invalid, or refinement-required paths.",
+  "createdAt": "2026-08-20T13:00:31.433Z",
+  "stateBeforeDigest": "sha256:eb6e4d4d5d234ba83eb92eeacaf43ee87cfcaa68ecacd961555994eb4a161bf2",
+  "stateAfterDigest": "sha256:663b02f46358c1cf7959955cbf6aa6008bfa530928ca8b1072cf41bd250a8fc0",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 7,
+    "activeFeature": "release-0-26-0",
+    "request": "Prepare, fully test, deliver, and publish exactly empirical-sdd@0.26.0 with npm dist-tag latest and GitHub tag/release v0.26.0 from the final protected main evidence-merge commit. Include the completed concise ticket policy feature, classify it as an alpha MINOR without changing Schema 5, align PRODUCT_VERSION, package metadata, version-sensitive tests, demo/versioning documentation, and CHANGELOG; inspect the packed artifact; run the complete local CI suite and the five-platform GitHub Actions matrix; deliver source and immutable evidence through separate protected pull requests; then perform only the explicitly authorized immutable publication after exact remote checks.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "verify",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Refreshed bounded repository knowledge, updated custom context for Empirical 0.26, concise/detailed interaction, ticket requirement resolution, optional local-only behavior, and the offline demo; the final report has no stale, missing, invalid, or refinement-required paths.",
+    "implementationActor": "Codex",
+    "specDigest": "sha256:b0fe21b915f7869dded23bdd2da0de58d085bd21af4c7c284bf726da03790be7",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:33731abd1a1a2ab8cfc4fb58859997b90bc2286e39b87a75ee3aa98ba2e59feb",
+    "impactDigest": "sha256:28155019597bb0a28e2e6ac5379c3fff40a6fea4007ace6bf33a71716d3d584a",
+    "capabilityClaimId": "release-0-26-0-092460c4476f",
+    "authorizationDigest": "sha256:7856c6f4cc9fae68f692f4b7e7d3e956ea1cccc769fedfb1048fb695aa6c6e2e",
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "implemented",
+      "reasons": {
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-20T13:00:31.433Z"
+  },
+  "digest": "sha256:d78ce9d9d7d2684edf74f4a611ed3d49d325980d944a9419d04e520fc1df8e2a"
+}

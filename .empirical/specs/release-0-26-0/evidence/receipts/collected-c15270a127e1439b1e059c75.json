@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "collected-c15270a127e1439b1e059c75",
+  "criteria": [
+    "AC-1",
+    "AC-2",
+    "AC-4",
+    "AC-8"
+  ],
+  "evidenceKinds": [
+    "review"
+  ],
+  "summary": "Inspected npm pack --dry-run --json for empirical-sdd@0.26.0: 53 entries, CHANGELOG.md and docs/versioning.md included, packaged ticket-policy demo present, package exports remain narrow, and no repository source tree or credential material is included.",
+  "passed": true,
+  "startedAt": "2026-08-20T13:12:35.363Z",
+  "completedAt": "2026-08-20T13:12:35.363Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "release-0-26-0",
+    "specRevision": 3,
+    "specDigest": "sha256:b0fe21b915f7869dded23bdd2da0de58d085bd21af4c7c284bf726da03790be7",
+    "treeDigest": "sha256:60b24876cf4826f305f18cf34a77c317bf5c6cc5aa7115805e802d0ab7b35b2b",
+    "policyDigest": "sha256:d1f5cd886f30de09b672911041c00cda350042fe9d96e5595a6d9ca4be592e0c"
+  },
+  "digest": "sha256:4a98b828dd9cb4262b4dba809d9a7824716e75f18bf4e6f4d610ec837c751a89",
+  "kind": "collected",
+  "collector": "Codex npm pack inspection",
+  "artifacts": [
+    {
+      "path": "CHANGELOG.md",
+      "mediaType": "text/markdown",
+      "bytes": 8507,
+      "digest": "sha256:bf364bbe40f901b3913ca2390f75518fd864af33f7ea0d5aa8dbff5b2fbb9934"
+    },
+    {
+      "path": "dist/cli.js",
+      "mediaType": "text/javascript",
+      "bytes": 1777931,
+      "digest": "sha256:9146ad084ee9331910d54164869badc8a8c85e2be17494eb18f64641fdd3d1e6"
+    },
+    {
+      "path": "dist/demo-ticket-policy.js",
+      "mediaType": "text/javascript",
+      "bytes": 1123423,
+      "digest": "sha256:bf1f442c1000afdc8c7ca7fe0c4657f254703bee1c2cdf9e3b83d8d1811cf2f9"
+    },
+    {
+      "path": "docs/versioning.md",
+      "mediaType": "text/markdown",
+      "bytes": 3432,
+      "digest": "sha256:4ba387bb2e913ddd0afded3777d89c1e05d1499ae0240f758a92d9c2f93276fc"
+    },
+    {
+      "path": "package.json",
+      "mediaType": "application/json",
+      "bytes": 2325,
+      "digest": "sha256:79728800273d9b1720c42377e862d89679ed56c75db32c7851d0533a4ef4c7b4"
+    }
+  ]
+}
