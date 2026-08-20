@@ -39,9 +39,9 @@ function operation(
 }
 
 export const OPERATIONS = Object.freeze([
-  operation("init", "Initialize or repair repository context.", { cliUsage: " [--profile fast|complex] [--defaults|--interactive] [--tracker-input <json-file|->] [--no-integrations]" }),
+  operation("init", "Initialize or repair repository context.", { cliUsage: " [--profile fast|complex] [--defaults|--interactive] [--questions concise|detailed] [--tracker-input <json-file|->] [--no-integrations]" }),
   operation("adopt", "Adopt an Empirical v1 repository non-destructively.", { cliUsage: " [--profile fast|complex] [--no-integrations]" }),
-  operation("configure", "Validate and persist project configuration.", { cliUsage: " [--defaults|--interactive] [configuration options]" }),
+  operation("configure", "Validate and persist project configuration.", { cliUsage: " [--defaults|--interactive] [--questions concise|detailed] [configuration options]" }),
   operation("policy", "Read or validate Policy v2.", { readOnly: true }),
   operation("context", "Inspect or refresh repository knowledge."),
   operation("doctor", "Diagnose repository state without mutation.", { readOnly: true }),

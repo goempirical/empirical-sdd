@@ -25,10 +25,12 @@ and the prepared changelog heading must match it. `SCHEMA_VERSION` changes only
 when durable state compatibility changes; a package version change does not
 imply a schema change.
 
-The prepared `0.25.0` release is an alpha MINOR: it adds a public trusted-host
-OAuth resolver and guarded fallback behavior while leaving Schema 5 and
-Tracker Policy v1/v2 compatible. Existing credential-variable names are not
-migrated or rewritten.
+The prepared `0.26.0` release is an alpha MINOR: it adds public concise/detailed
+question modes, strict Tracker Policy v2 ticket-requirement matrices, safe
+optional no-ticket behavior, and a packaged offline demo while leaving Schema 5
+and Tracker Policy v1/v2 compatible. Existing repositories require no state
+migration; repositories without an explicit question mode retain detailed
+questions until configured otherwise.
 
 ## Changelog rules
 

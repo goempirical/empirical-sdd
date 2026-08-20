@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "classification": "behavioral",
+  "capabilities": [
+    "agent-integrations",
+    "project-policy",
+    "ticket-requirement-policy"
+  ],
+  "surfaces": [
+    "CLI and MCP action packets",
+    "generated agent harness",
+    "packaged demo harness",
+    "project configuration",
+    "tracker synchronization"
+  ],
+  "regressionRationale": null,
+  "digest": "sha256:b6fc46613946bf4fe2689c5ba7e8cd5daca52265ec5da1f9dafe91a23d8678dd"
+}

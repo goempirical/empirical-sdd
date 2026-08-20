@@ -72,17 +72,20 @@ never a feature request.
    Determine whether this is first setup or a repair. Preserve existing
    configuration values and durable workflow history unless the user explicitly
    changes a value.
-2. Before any mutation, render the complete Empirical setup summary for
-   Verification, Parallel work, Decisions, and Tracker. When tracker setup is
-   unconfigured, Tracker MUST present \`Track all work\` as the recommended
-   default and \`No tracking\` as the explicit alternative. Applying recommended
+2. Before any mutation, render the effective Empirical setup summary for
+   Verification, Parallel work, Decisions, Interaction, and Tracker. Offer
+   \`concise\` questions (recommended for new setup) or \`detailed\` questions;
+   concise means ask only a question whose answer changes scope, architecture,
+   authorization, or a safety gate. When tracker setup is unconfigured, Tracker
+   MUST present \`Track work by type\` as the recommended default and
+   \`No tracking\` as the explicit alternative. Applying recommended
    settings or customizing MUST NOT bypass that choice. On repair with an
    explicitly disabled or configured tracker, Preserve current tracker is the
    default and MUST make no provider request. Offer Apply recommended settings
    (or Keep current settings), Customize, Configure tracker, and Cancel. On
    Customize, visit one section at a time and end with a complete Save, Edit, or
    Cancel review.
-3. \`Track all work\` selects Linear, GitHub Projects, or Jira and starts with
+3. \`Track work by type\` selects Linear, GitHub Projects, or Jira and starts with
    trusted host OAuth. Use only negotiated MCP URL-mode elicitation for the
    out-of-band OAuth handoff; never use form elicitation, ordinary tool input,
    tool output, or assistant text for a credential. If OAuth is unavailable or
@@ -94,7 +97,11 @@ never a feature request.
    put a value in a command. Pause while the human edits that host file outside
    chat, then resume only after they confirm host-side configuration. Persist
    environment-variable names only in Tracker Policy v2 with ticket behavior
-   \`ensure\`. Call \`empirical_tracker_discover\`
+   \`ensure\`. Offer one compact ticket choice: \`features+large-fixes\`
+   (recommended: every feature required, Fast fixes optional, Quick/Complex
+   fixes required, chores optional), \`all\`, \`none\`, or \`custom\`. Custom
+   must fill the strict feature/fix/chore by fast/quick/complex matrix with only
+   required, optional, or off. Call \`empirical_tracker_discover\`
    to show accessible workspaces/sites, teams/repositories, projects, issue
    types, fields, and states by name. Propose all seven semantic phase mappings;
    call \`empirical_tracker_suggest\` for the selected workflow parent, allow
@@ -107,7 +114,8 @@ never a feature request.
 4. Cancel stops without calling \`empirical_init\`, \`empirical_context\`, or a
    private mutating fallback. After confirmation, call \`empirical_init\` with
    all four explicit evidence booleans plus isolation, base, path, branch,
-   decision policy, and the explicit preserve/disabled/applied tracker change.
+   decision policy, question mode, and the explicit
+   preserve/disabled/applied tracker change.
    The private fallback is \`empirical __internal init\` with equivalent flags
    and a strict \`--tracker-input\` JSON document; discovery and preview remain
    separate read-only private operations.
@@ -136,6 +144,10 @@ the user does not need to mention Empirical or choose a profile.
 2. If selected non-terminal work exists, call \`empirical_loop\` with no request or
    profile and resume the returned action. Attached text never replaces active
    work. The private fallback is \`empirical __internal loop\`.
+   Read \`interaction.questions\` from every returned action. In concise mode,
+   show the phase, exact instruction, compact tracker state, only missing
+   artifacts/evidence, and the completion action; ask at most the exact material
+   blocking question. Detailed mode keeps the expanded context.
 3. For a genuinely vague new idea, call \`empirical_explore\` for repository and
    capability context, then call \`empirical_discovery\` with empty answers to
    create the draft and receive its first nextQuestion. Ask only the returned
@@ -164,9 +176,14 @@ the user does not need to mention Empirical or choose a profile.
    is absent or ticket behavior is off, remain local-only/off and make no
    provider requests. In manual mode use \`empirical_tracker_bind\` only for the
    user's explicit create or attach choice and never replace a binding
-   implicitly. In ensure mode, \`empirical_tracker_sync\` validates a referenced
-   ticket, reconciles the stable feature marker, or creates exactly once when no
-   unique ticket exists; ambiguity requires reconciliation and never a guess.
+   implicitly. When tracker status includes \`changeType\` and
+   \`ticketRequirement\`, follow that resolved rule. Required work validates a
+   referenced ticket, reconciles the stable feature marker, or creates exactly
+   once when no unique ticket exists. Optional work with one reference attaches
+   it; optional work with no reference stays local with no credential/provider
+   access and MUST NOT trigger a question about creating a ticket. Off work
+   makes no provider request. Multiple references are a real ambiguity and
+   require an exact choice; Empirical never guesses.
    After each local workflow mutation is durably committed, call
    \`empirical_tracker_sync\`. It publishes only configured milestone comments
    and receipt-approved safe evidence, preserves user-authored descriptions,

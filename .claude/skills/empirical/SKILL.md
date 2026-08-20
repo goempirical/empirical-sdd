@@ -16,6 +16,10 @@ the user does not need to mention Empirical or choose a profile.
 2. If selected non-terminal work exists, call `empirical_loop` with no request or
    profile and resume the returned action. Attached text never replaces active
    work. The private fallback is `empirical __internal loop`.
+   Read `interaction.questions` from every returned action. In concise mode,
+   show the phase, exact instruction, compact tracker state, only missing
+   artifacts/evidence, and the completion action; ask at most the exact material
+   blocking question. Detailed mode keeps the expanded context.
 3. For a genuinely vague new idea, call `empirical_explore` for repository and
    capability context, then call `empirical_discovery` with empty answers to
    create the draft and receive its first nextQuestion. Ask only the returned
@@ -44,16 +48,26 @@ the user does not need to mention Empirical or choose a profile.
    is absent or ticket behavior is off, remain local-only/off and make no
    provider requests. In manual mode use `empirical_tracker_bind` only for the
    user's explicit create or attach choice and never replace a binding
-   implicitly. In ensure mode, `empirical_tracker_sync` validates a referenced
-   ticket, reconciles the stable feature marker, or creates exactly once when no
-   unique ticket exists; ambiguity requires reconciliation and never a guess.
+   implicitly. When tracker status includes `changeType` and
+   `ticketRequirement`, follow that resolved rule. Required work validates a
+   referenced ticket, reconciles the stable feature marker, or creates exactly
+   once when no unique ticket exists. Optional work with one reference attaches
+   it; optional work with no reference stays local with no credential/provider
+   access and MUST NOT trigger a question about creating a ticket. Off work
+   makes no provider request. Multiple references are a real ambiguity and
+   require an exact choice; Empirical never guesses.
    After each local workflow mutation is durably committed, call
    `empirical_tracker_sync`. It publishes only configured milestone comments
    and receipt-approved safe evidence, preserves user-authored descriptions,
    and retries durable unacknowledged effects. A remote failure leaves local
    progress intact; report local-only, off, synced, pending, or failed health.
    Tracker operations are granular MCP tools, not additional skills or user
-   commands.
+   commands. OAuth authorization is out-of-band through negotiated URL mode.
+   Raw credentials are never chat text or tool arguments/results. If OAuth is
+   unavailable, tell the human `Never paste credentials into chat` and pause
+   for direct host-file configuration at
+   `${XDG_CONFIG_HOME:-$HOME/.config}/empirical/secrets.env` on POSIX or
+   `%APPDATA%\Empirical\secrets.env` on Windows.
 8. Execute every returned action, create immutable evidence receipts with the
    configured commands or collected artifacts, complete its exact revision with
    receipt ids, consume the response as the next action, and integrate reviewed

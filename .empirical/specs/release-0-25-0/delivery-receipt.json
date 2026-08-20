@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+  "feature": "release-0-25-0",
+  "targetBranch": "main",
+  "source": {
+    "number": 35,
+    "url": "https://github.com/goempirical/empirical-sdd/pull/35",
+    "state": "MERGED",
+    "mergeCommit": "fd87604b49fbcee0ce6ff8aae60eda23c9f6bab5",
+    "commit": "f4f22a1fd9c0791111f668745ffbcb82ebd20c7a"
+  },
+  "evidence": {
+    "number": 36,
+    "url": "https://github.com/goempirical/empirical-sdd/pull/36",
+    "state": "MERGED",
+    "mergeCommit": "2049e6cb1aa1b23597c8eb7c1f0e476ffa2e998c",
+    "commit": "6c6675e4fab1bcd1c373ca23bfe9123b8e7ec455"
+  },
+  "requiredChecks": [],
+  "commandReceiptDigests": [
+    "sha256:f1dd9530b1a94c30ff7a60165473b1a8e503e2459ddb7075a135fdaa17ab91d4",
+    "sha256:1e5b375c56a639ad8a6944472e77baa214be596a62f203075db42804b6a6c186",
+    "sha256:e8fd0531f90f475fc740f6e36c55175402951f82eba399ca48484a052f54fadf",
+    "sha256:297b4534b5825bbb170323e63dcbf7688e6154bbe5bab94412d003fdf6d242bd",
+    "sha256:79ab8defe5aa1fdfe55f70eda17ffb8df66c26a353a104a0f65788ebc09b325f"
+  ],
+  "deliveredAt": "2026-08-20T03:40:27.512Z",
+  "digest": "sha256:93883ad78e32ef1b1e5b1f6e5353ed5c7325e664f39c9b27ad7598e392d89581"
+}

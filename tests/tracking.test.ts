@@ -12,8 +12,11 @@ import {
   discoverTracker,
   loadTrackerSetupState,
   parseTrackerPolicy,
+  parseTrackerSetupChange,
   previewTrackerPolicy,
   proposeTrackerStateMapping,
+  recommendedTrackerTicketRules,
+  resolveTrackerTicketRequirement,
   suggestTrackerStateMapping,
   trackerProgress,
 } from "../src/tracking.js";
@@ -29,6 +32,7 @@ import type {
   TrackerHttpResponse,
   TrackerOAuthResolver,
   TrackerStateMap,
+  TrackerTicketRules,
   TrackerTransport,
   WorkflowState,
 } from "../src/types.js";
@@ -60,7 +64,7 @@ function linearPolicy(): LinearTrackerPolicy {
 }
 
 function linearPolicyV2(
-  overrides: Partial<Pick<LinearTrackerPolicyV2, "ticket" | "visibility">> = {},
+  overrides: Partial<Pick<LinearTrackerPolicyV2, "ticket" | "visibility" | "ticketRules">> = {},
 ): LinearTrackerPolicyV2 {
   return {
     schemaVersion: 2,
@@ -78,6 +82,7 @@ function linearPolicyV2(
     },
     ticket: overrides.ticket ?? "ensure",
     visibility: overrides.visibility ?? "milestones",
+    ...(overrides.ticketRules ? { ticketRules: overrides.ticketRules } : {}),
   };
 }
 
@@ -565,6 +570,153 @@ describe("external ticket tracking", () => {
     expect(repeatedRequests).toBe(0);
   });
 
+  test("recommended ticket rules resolve every work type and return defensive copies", () => {
+    const first = recommendedTrackerTicketRules();
+    const second = recommendedTrackerTicketRules();
+    expect(first).toEqual({
+      feature: { fast: "required", quick: "required", complex: "required" },
+      fix: { fast: "optional", quick: "required", complex: "required" },
+      chore: { fast: "optional", quick: "optional", complex: "optional" },
+    });
+    first.feature.fast = "off";
+    expect(second.feature.fast).toBe("required");
+
+    const policy = linearPolicyV2({ ticketRules: second });
+    expect(resolveTrackerTicketRequirement(policy, {
+      request: "Add a feature",
+      profile: "fast",
+    })).toEqual({ changeType: "feature", requirement: "required", rules: true });
+    expect(resolveTrackerTicketRequirement(policy, {
+      request: "Fix a tiny bug",
+      profile: "fast",
+    })).toEqual({ changeType: "fix", requirement: "optional", rules: true });
+    expect(resolveTrackerTicketRequirement(policy, {
+      request: "Fix a large crash",
+      profile: "complex",
+    })).toEqual({ changeType: "fix", requirement: "required", rules: true });
+    expect(resolveTrackerTicketRequirement(policy, {
+      request: "Update documentation",
+      profile: "quick",
+    })).toEqual({ changeType: "chore", requirement: "optional", rules: true });
+  });
+
+  test("optional ticket rules stay local without authentication or provider access", async () => {
+    const { project } = await projectWithFastFeature("Fix a tiny bug without a ticket");
+    const setup = sequence([linearDiscoveryResponse()]);
+    await project.configureTracker(linearPolicyV2({
+      ticketRules: recommendedTrackerTicketRules(),
+    }), {
+      transport: setup.transport,
+      env: { LINEAR_API_KEY: "setup-only" },
+    });
+    let oauthCalls = 0;
+    let providerCalls = 0;
+    const result = await project.syncTracker({
+      oauthResolver: {
+        resolve: async () => {
+          oauthCalls += 1;
+          throw new Error("OAuth must not run for optional no-ticket work");
+        },
+      },
+      transport: async () => {
+        providerCalls += 1;
+        return json(500, {});
+      },
+      env: {},
+    });
+    expect(result).toMatchObject({
+      binding: null,
+      tracker: {
+        health: "local-only",
+        provider: "linear",
+        changeType: "fix",
+        ticketRequirement: "optional",
+      },
+    });
+    expect(oauthCalls).toBe(0);
+    expect(providerCalls).toBe(0);
+    expect((await project.statusReport()).tracker).toMatchObject({
+      health: "local-only",
+      changeType: "fix",
+      ticketRequirement: "optional",
+    });
+  });
+
+  test("optional ticket rules attach one explicit reference and custom off rules do zero I/O", async () => {
+    const referenced = await projectWithFastFeature(
+      "Fix a tiny bug from https://linear.app/empirical/issue/EMP-42",
+    );
+    const attach = sequence([
+      linearDiscoveryResponse(),
+      json(200, { data: { issue: linearIssue({ identifier: "EMP-42", url: "https://linear.app/empirical/issue/EMP-42" }) } }),
+      json(200, { data: { issue: linearIssue({ identifier: "EMP-42", url: "https://linear.app/empirical/issue/EMP-42" }) } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue({ identifier: "EMP-42", url: "https://linear.app/empirical/issue/EMP-42" }) } } }),
+      json(200, { data: { issue: { comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
+      json(200, { data: { commentCreate: { success: true, comment: { id: "comment-42", body: "created" } } } }),
+    ]);
+    await referenced.project.configureTracker(linearPolicyV2({
+      ticketRules: recommendedTrackerTicketRules(),
+    }), { transport: attach.transport, env: { LINEAR_API_KEY: "linear-secret" } });
+    const attached = await referenced.project.syncTracker({
+      transport: attach.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    expect(attached.binding?.remoteKey).toBe("EMP-42");
+    expect(attached.tracker).toMatchObject({ changeType: "fix", ticketRequirement: "optional" });
+    expect(attach.calls.some((request) => request.body?.includes("issueCreate"))).toBe(false);
+
+    const off = await projectWithFastFeature("Add a feature without remote tracking");
+    const rules: TrackerTicketRules = recommendedTrackerTicketRules();
+    rules.feature.fast = "off";
+    const discovery = sequence([linearDiscoveryResponse()]);
+    await off.project.configureTracker(linearPolicyV2({ ticketRules: rules }), {
+      transport: discovery.transport,
+      env: { LINEAR_API_KEY: "setup-only" },
+    });
+    let calls = 0;
+    expect((await off.project.syncTracker({
+      oauthResolver: { resolve: async () => { calls += 1; throw new Error("unexpected"); } },
+      transport: async () => { calls += 1; return json(500, {}); },
+      env: {},
+    })).tracker).toMatchObject({
+      health: "off",
+      changeType: "feature",
+      ticketRequirement: "off",
+    });
+    expect(calls).toBe(0);
+  });
+
+  test("rule-backed multiple references fail before intent, authentication, or provider access", async () => {
+    const { root, project, action } = await projectWithFastFeature(
+      "Add a feature using https://linear.app/demo/issue/DEMO-1 and https://linear.app/demo/issue/DEMO-2",
+    );
+    const setup = sequence([linearDiscoveryResponse()]);
+    await project.configureTracker(linearPolicyV2({
+      ticketRules: recommendedTrackerTicketRules(),
+    }), { transport: setup.transport, env: { LINEAR_API_KEY: "setup-only" } });
+    let calls = 0;
+    const result = await project.syncTracker({
+      oauthResolver: { resolve: async () => { calls += 1; throw new Error("unexpected"); } },
+      transport: async () => { calls += 1; return json(500, {}); },
+      env: {},
+    });
+    expect(result.tracker).toMatchObject({
+      health: "failed",
+      changeType: "feature",
+      ticketRequirement: "required",
+      failure: { code: "TRACKER_BIND_AMBIGUOUS" },
+    });
+    expect(calls).toBe(0);
+    expect(await Bun.file(join(
+      root,
+      ".empirical",
+      "specs",
+      action.feature!,
+      "tracker",
+      "pending.json",
+    )).exists()).toBe(false);
+  });
+
   test("Policy v2 GitHub ensure reuses one stable marker and projects each effect once", async () => {
     const { project, action } = await projectWithFastFeature();
     const setup = sequence([githubDiscoveryResponse()]);
@@ -1005,6 +1157,27 @@ describe("external ticket tracking", () => {
 
   test("policy is strict, complete, credential-free, and rejects unsafe Jira sites", () => {
     expect(parseTrackerPolicy(linearPolicy())).toEqual(linearPolicy());
+    const ticketRules = recommendedTrackerTicketRules();
+    expect(parseTrackerPolicy(linearPolicyV2({ ticketRules }))).toEqual(linearPolicyV2({ ticketRules }));
+    expect(() => parseTrackerPolicy({
+      ...linearPolicyV2(),
+      ticketRules: { feature: ticketRules.feature, fix: ticketRules.fix },
+    })).toThrow("strict secret-free target");
+    expect(() => parseTrackerPolicy({
+      ...linearPolicyV2(),
+      ticketRules: { ...ticketRules, unexpected: ticketRules.chore },
+    })).toThrow("strict secret-free target");
+    expect(() => parseTrackerPolicy({
+      ...linearPolicyV2({ ticket: "manual" }),
+      ticketRules,
+    })).toThrow("valid only with ticket behavior ensure");
+    expect(() => parseTrackerSetupChange({
+      mode: "apply",
+      policy: {
+        ...linearPolicyV2({ ticket: "manual" }),
+        ticketRules,
+      },
+    })).toThrow("valid only with ticket behavior ensure");
     expect(() => parseTrackerPolicy({
       ...linearPolicy(),
       apiKey: "lin_api_should-never-be-persisted",

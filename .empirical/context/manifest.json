@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
   "generator": "empirical-0.23.0",
-  "sourceDigest": "sha256:c61fd8cbe0dc76c72d81d303d4b8ebfa28302f1a605abd683cd303506f20cac2",
+  "sourceDigest": "sha256:c29ff82989b8891e515e48be16346883cb371d3324c543e1971466e651641f7d",
   "files": [
     {
       "path": ".agents/skills/empirical/SKILL.md",
-      "size": 4844,
-      "digest": "sha256:a78bb0ae585cf3020e522960771512cad3e274991a1cfffd7ea2f1c2638e9204"
+      "size": 5864,
+      "digest": "sha256:8f0dfc18d2a515aaf146d18da2185fe2e1aec8dac2686551d3a7a54be79933e1"
     },
     {
       "path": ".claude/skills/empirical/SKILL.md",
-      "size": 4844,
-      "digest": "sha256:a78bb0ae585cf3020e522960771512cad3e274991a1cfffd7ea2f1c2638e9204"
+      "size": 5864,
+      "digest": "sha256:8f0dfc18d2a515aaf146d18da2185fe2e1aec8dac2686551d3a7a54be79933e1"
     },
     {
       "path": ".codex/config.toml",
@@ -55,8 +55,8 @@
     },
     {
       "path": "CHANGELOG.md",
-      "size": 7327,
-      "digest": "sha256:1cd2fe41c052b0454394b929bfcd984727cf3df63618ef02c2f7b3e17f770596"
+      "size": 8158,
+      "digest": "sha256:11163e0cfa6655216f2c28b189cca820878ca23bee120435051c5fe3ba67db11"
     },
     {
       "path": "CLAUDE.md",
@@ -80,8 +80,8 @@
     },
     {
       "path": "README.md",
-      "size": 5770,
-      "digest": "sha256:05eefcef0eb83530b2f5a857880ab741a962f8ee9575c4e86b946fc173c8e982"
+      "size": 6870,
+      "digest": "sha256:ca16fa58747d1e36f6a8e4e89efcd249dfeb9a7e0efa0cd4b31009e62ca16334"
     },
     {
       "path": "SECURITY.md",
@@ -95,23 +95,23 @@
     },
     {
       "path": "docs/architecture.md",
-      "size": 8745,
-      "digest": "sha256:bade85177b37e102e191688294acb15336ba6391c2fec03b9b04f208e68a3eef"
+      "size": 8953,
+      "digest": "sha256:eff7855be5ae940aa45f4c243860d457a1dac21ec5c46922ec051c2d91d72b00"
     },
     {
       "path": "docs/demo.md",
-      "size": 6567,
-      "digest": "sha256:f293fffe288d8ed1dd59b3fd7def559900b66cd35fc68572a3d978b80845be0e"
+      "size": 7757,
+      "digest": "sha256:38bbcedc16f03ae5d0c6822730b80fb4aaf114988bfd737a72402fe23b519762"
     },
     {
       "path": "docs/mcp.md",
-      "size": 15859,
-      "digest": "sha256:562695b5c50e8e1d614a414c946a8afb89f930db1873e831313c76dbbfa991be"
+      "size": 17143,
+      "digest": "sha256:d9bb8b60b4fba651b94e026013f9452ada8e17826b95c4e1f0c0e3e8047dc7a5"
     },
     {
       "path": "docs/migration-v1.md",
-      "size": 4932,
-      "digest": "sha256:1c5cc8f540e6f4df52f9d3f048b3788561801104faa649a1d661fa412200f009"
+      "size": 5247,
+      "digest": "sha256:83942a02a8cfc8c02b9c328bf53ae1d9fabe754984a4358d3b333f4ebb56077e"
     },
     {
       "path": "docs/openspec-comparison.md",
@@ -120,13 +120,13 @@
     },
     {
       "path": "docs/protocol.md",
-      "size": 10842,
-      "digest": "sha256:10d8255d9441e0a80d0ec3631835f90eca68d5347e67ad954b27c7ff1e21c8d8"
+      "size": 12151,
+      "digest": "sha256:054bdb6823579d92c740bc6e9791b9cf58d829d82407365f58a151bf214f2398"
     },
     {
       "path": "docs/security.md",
-      "size": 7141,
-      "digest": "sha256:cd9b41797068b9f42ba1b8e01405c14cae019b6d6664db9074b1b002e45c8f4a"
+      "size": 7327,
+      "digest": "sha256:540b9d0b52e0c028afe8a3bd17f8e05b6d59b7560c2be3f1aa093d243010fd5f"
     },
     {
       "path": "docs/versioning.md",
@@ -140,13 +140,13 @@
     },
     {
       "path": "package.json",
-      "size": 2244,
-      "digest": "sha256:4ef091f623e8287aa19130990fe73538a62daea3ea4b0fe838291e730cecf98d"
+      "size": 2325,
+      "digest": "sha256:b03081ab3795433be97439e7abebc69c1a2e8e53fe2be1343b9ca3b90da816d3"
     },
     {
       "path": "scripts/build.ts",
-      "size": 1008,
-      "digest": "sha256:3d4556b9dfd025e83cdd4bd22a411ff000ea714a7902ae7329cd90c1ccdb40d4"
+      "size": 1056,
+      "digest": "sha256:7f539eb318ad97400b27e6b4effaad1ae14bf27dc78e50d5384445f610dca727"
     },
     {
       "path": "scripts/check-consistency.ts",
@@ -155,8 +155,8 @@
     },
     {
       "path": "scripts/check-coverage.ts",
-      "size": 3038,
-      "digest": "sha256:462842e9a09c9298937ebaebf37ccfdf9eaa3b897c32b4ac3b08551699b9d6ae"
+      "size": 3069,
+      "digest": "sha256:2c2b93b4ec7daa9adc73c9d1afac76526ad19e0cb2f0669b869f66c576954b07"
     },
     {
       "path": "scripts/install.ps1",
@@ -175,8 +175,8 @@
     },
     {
       "path": "scripts/test-package.ts",
-      "size": 7003,
-      "digest": "sha256:695369c1c3e0886ab3430a3557aee77cc0a2d4b628028512cd055c2f88568f8e"
+      "size": 8746,
+      "digest": "sha256:a33e53552b6f16b1a285d8ed7e83c6dd97c8f54c7f31ac503a4954ca03df947e"
     },
     {
       "path": "src/agent-catalog.ts",
@@ -200,8 +200,8 @@
     },
     {
       "path": "src/cli.ts",
-      "size": 96512,
-      "digest": "sha256:897ee32f3ea53e2c407f16e867b27a299a78358192e00d808af7d04558c2632a"
+      "size": 100719,
+      "digest": "sha256:cbdbec6dd7b8b06d737b6523823725d8618ae44ab006ce280f0e3188d6ba2dc9"
     },
     {
       "path": "src/coordination.ts",
@@ -210,8 +210,8 @@
     },
     {
       "path": "src/core.ts",
-      "size": 124777,
-      "digest": "sha256:3049d5e69e53f6f72069654f422e70c2f6fbc04a106017aa36b6be8d1462cd21"
+      "size": 125285,
+      "digest": "sha256:f0f91d45b8987e30f79564cf082f500f1fd364244ccc7cdcbdcd5243c92d89aa"
     },
     {
       "path": "src/decisions.ts",
@@ -227,6 +227,11 @@
       "path": "src/demo-integration-repair.ts",
       "size": 3669,
       "digest": "sha256:e262bfe809b44e16c1fe973e28cd80b37e608ded53c0e635e358d031a3486cbb"
+    },
+    {
+      "path": "src/demo-ticket-policy.ts",
+      "size": 5962,
+      "digest": "sha256:bd06ec7fcaeec0b68800006f4193a6590b7fd9a4e2392ee645d31a398ae72357"
     },
     {
       "path": "src/discovery.ts",
@@ -250,13 +255,13 @@
     },
     {
       "path": "src/index.ts",
-      "size": 3062,
-      "digest": "sha256:63a02eadce8948a9d6958e26fe3e8558880ac4cd24a146d4bb9f3c1ea5628b5c"
+      "size": 3244,
+      "digest": "sha256:421a4d5931084fe1ce6e1228dcd6d37aa526b2cf7e94c09e8d9fbdd5cc0dbc24"
     },
     {
       "path": "src/integrations.ts",
-      "size": 39530,
-      "digest": "sha256:b4aec541e2a7c38d44cc2983a7c80440646c6d1d6953c124f8b799d291f29a35"
+      "size": 40737,
+      "digest": "sha256:a51d5ee0d72cae3427e78c01d54a12e38fe4cc12801f7e3f8103598544383176"
     },
     {
       "path": "src/journal.ts",
@@ -280,8 +285,8 @@
     },
     {
       "path": "src/mcp.ts",
-      "size": 31815,
-      "digest": "sha256:02c7c31fdae06a1ddf994031ffcb8ac08bd69b8e5802e61fd19e69c4882e5274"
+      "size": 32014,
+      "digest": "sha256:523c09ea652174405d88c5a16f3202d8d531e7d8bc85afd760c113fd40b7ad33"
     },
     {
       "path": "src/migration-scratch.ts",
@@ -295,8 +300,8 @@
     },
     {
       "path": "src/operations.ts",
-      "size": 9100,
-      "digest": "sha256:0cadf4f6e2f43acf0a8f67b43f4889ae37d09b70f03a995894af9c2e6a6e6b80"
+      "size": 9162,
+      "digest": "sha256:84c88e47df68ced6cc714b5eb34c5e6d9e21ffa85091d721095673951bf9ab71"
     },
     {
       "path": "src/policy.ts",
@@ -325,8 +330,8 @@
     },
     {
       "path": "src/setup.ts",
-      "size": 7181,
-      "digest": "sha256:e0b4998b5e19ddc347341e9b206114744618735fc2c5051df965c716193c6a56"
+      "size": 8992,
+      "digest": "sha256:c25dbe4360dd13276f65c690f2b2d8b979b432de990099158c2c13a7822c84cc"
     },
     {
       "path": "src/specifications.ts",
@@ -335,8 +340,8 @@
     },
     {
       "path": "src/storage.ts",
-      "size": 38869,
-      "digest": "sha256:25d87900e9ea85da8f344dc710d1ee500cb98017b29796cfdf6784f0996f6588"
+      "size": 39111,
+      "digest": "sha256:d0dd22103fe25efe920228c67b0ae305565987ac10b91df9bfabe20998432e6c"
     },
     {
       "path": "src/tracker-auth.ts",
@@ -345,13 +350,13 @@
     },
     {
       "path": "src/tracking.ts",
-      "size": 187537,
-      "digest": "sha256:a398ed154f310524683dc22068d280a90c85e059c0f05e45400fed66b7e4ba13"
+      "size": 191385,
+      "digest": "sha256:cca9e5685c1ddf7f084997c21f1968c82f434e6790b1b22ae777854a35bd5d2e"
     },
     {
       "path": "src/types.ts",
-      "size": 23636,
-      "digest": "sha256:2eddf0adfda138ff0388e4273f56ebe0abe95e91a72bfad17232b0c6642defe8"
+      "size": 24472,
+      "digest": "sha256:e8751a2cd2a5920d05d0c6d26504e3d451286defccdb23e47b520c7e7ac06163"
     },
     {
       "path": "src/worktrees.ts",
@@ -375,8 +380,8 @@
     },
     {
       "path": "tests/cli-config.test.ts",
-      "size": 15536,
-      "digest": "sha256:33e9e629c081bfe1a46fbe8fb4283bb78bdd51dca2e774ce8542402a90c19ee8"
+      "size": 17414,
+      "digest": "sha256:5744a41cf5a097f60118a4b598e14ba8a3e200284795b851d289c4d8f7fb911b"
     },
     {
       "path": "tests/coordination.test.ts",
@@ -385,8 +390,8 @@
     },
     {
       "path": "tests/core.test.ts",
-      "size": 31818,
-      "digest": "sha256:e95699bd6a4580fd5b578533dff04fae2a0db0a75e1a887b516722e6a35709b3"
+      "size": 32742,
+      "digest": "sha256:979eb1b326aed74c751762e32e50b4d769f180e6bd43e818fdac39413bc39d6b"
     },
     {
       "path": "tests/delivery.test.ts",
@@ -405,8 +410,8 @@
     },
     {
       "path": "tests/integrations.test.ts",
-      "size": 38240,
-      "digest": "sha256:c3ab35bfb6db944f9010c8a3455eb30a48e2eba8a3f205f3d04c0884b51a013f"
+      "size": 38723,
+      "digest": "sha256:1a6b845b397f2dd1badf666a2aad4fad9b25961f8226d5d033e7b7def7bf566e"
     },
     {
       "path": "tests/journal.test.ts",
@@ -430,8 +435,8 @@
     },
     {
       "path": "tests/mcp.test.ts",
-      "size": 28638,
-      "digest": "sha256:2e58c282f44fe8d66637a70d02573fb1263a37f4656402ce3aba838e92fc0c14"
+      "size": 28970,
+      "digest": "sha256:9aa8c8060235d2ac4e78daa11ed98a26efd705eb220d1cd4903ebb579629e0e3"
     },
     {
       "path": "tests/migration.test.ts",
@@ -445,8 +450,8 @@
     },
     {
       "path": "tests/setup.test.ts",
-      "size": 4457,
-      "digest": "sha256:651aafa9cf72b6853b023296c27ec92eba0a1b311fff543cc3ab8ddd6dd84ddf"
+      "size": 4303,
+      "digest": "sha256:01c68c2553e923bb1cbc54a64c4ca0915d6d58486c25db0f2b79f5b3d0cca68c"
     },
     {
       "path": "tests/tracker-auth.test.ts",
@@ -455,8 +460,8 @@
     },
     {
       "path": "tests/tracking.test.ts",
-      "size": 96752,
-      "digest": "sha256:4cd521c98ac56d55d451ddb1bad68e21ae444b8587d7cec3cb676d4bf342801d"
+      "size": 104102,
+      "digest": "sha256:7803241453cb3c0f88d9668aa3f01a252cbb360a9230ac29086c973a011e4f86"
     },
     {
       "path": "tests/trust-foundations.test.ts",
@@ -525,6 +530,7 @@
         "src/decisions.ts",
         "src/delivery.ts",
         "src/demo-integration-repair.ts",
+        "src/demo-ticket-policy.ts",
         "src/discovery.ts",
         "src/doctor.ts",
         "src/errors.ts",
@@ -575,7 +581,7 @@
         "tests/worktree-isolation.test.ts",
         "tsconfig.json"
       ],
-      "sourceDigest": "sha256:c61fd8cbe0dc76c72d81d303d4b8ebfa28302f1a605abd683cd303506f20cac2",
+      "sourceDigest": "sha256:c29ff82989b8891e515e48be16346883cb371d3324c543e1971466e651641f7d",
       "digest": "sha256:62c1e429f938bf5a727c9e089eb965df0b29d2db55837334cad4cb68a75a8ab9",
       "freshness": "fresh"
     },
@@ -587,7 +593,7 @@
         "README.md",
         "package.json"
       ],
-      "sourceDigest": "sha256:4bc8f39a0db525320a951ddaba61015238ca901ac44abfa812a6467100285569",
+      "sourceDigest": "sha256:9953c865e04079d445ee3648c7effa2a98820a21767141ef467838d3229d3afa",
       "digest": "sha256:30bc451fac5fa8e21662312c12f4ea57798c9fdaa6c3582bb9a069527e77e4c8",
       "freshness": "fresh"
     },
@@ -608,6 +614,7 @@
         "src/decisions.ts",
         "src/delivery.ts",
         "src/demo-integration-repair.ts",
+        "src/demo-ticket-policy.ts",
         "src/discovery.ts",
         "src/doctor.ts",
         "src/errors.ts",
@@ -635,7 +642,7 @@
         "src/types.ts",
         "src/worktrees.ts"
       ],
-      "sourceDigest": "sha256:b30d68fb9a334ae933db241cb0231372a97dc4e93f56ed22f7e644eb096f7afe",
+      "sourceDigest": "sha256:6e9525adf55a3bd7b2a4f6a2f71833b4523fc4871c566749f4e85604bccd6ae6",
       "digest": "sha256:8a3ce40862fa2601df89006351d195308b09680274472f9e2d1d8130c4db7b8b",
       "freshness": "fresh"
     },
@@ -655,7 +662,7 @@
         "scripts/smoke-mcp.ts",
         "scripts/test-package.ts"
       ],
-      "sourceDigest": "sha256:72ebd6d96ebbf7736c45a9ac1df644e09c2826f85f749befb5bc49d0c4809bcf",
+      "sourceDigest": "sha256:1ecb38c098a38dbbd9ccdf84642a7268c686fb12f8448cfadf9df3fc8d8e42df",
       "digest": "sha256:6582b97fdadb423928980f6a90300c1ab6bf17637880e37f1cffb3092a4d2638",
       "freshness": "fresh"
     },
@@ -676,5 +683,5 @@
     }
   ],
   "truncated": false,
-  "digest": "sha256:df36033e3d584f7ded12e72a6ba00d2a52eea9bac41a4960428cebe947e1255c"
+  "digest": "sha256:41214608eed99a5cb49e0ccbe786a108925d648915d0085e478d701a7bc4a82d"
 }

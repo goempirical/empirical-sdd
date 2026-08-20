@@ -60,6 +60,7 @@ const configurationSchema = {
   worktreePath: z.string().min(1).optional(),
   branchPattern: z.string().min(1).optional(),
   decisions: z.enum(["required", "off"]).optional(),
+  questions: z.enum(["concise", "detailed"]).optional(),
 };
 const deliveryCommitSchema = z.object({
   branch: z.string().min(1),
@@ -165,7 +166,7 @@ export function createMcpServer(
     description: operationSummary("init"),
     inputSchema: { root: z.string().optional(), profile: profileSchema.optional(), tracker: trackerSetupSchema.optional(), ...configurationSchema },
     annotations: operationAnnotations("init"),
-  }, async ({ root, profile, tracker, evidenceRequired, browserForUi, screenshotForUi, codeReview, isolation, base, worktreePath, branchPattern, decisions }) => toolResult(async () => {
+  }, async ({ root, profile, tracker, evidenceRequired, browserForUi, screenshotForUi, codeReview, isolation, base, worktreePath, branchPattern, decisions, questions }) => toolResult(async () => {
     const initialized = await EmpiricalProject.initialize(root ?? defaultRoot, {
       ...(profile ? { profile } : {}),
       evidence: {
@@ -181,6 +182,7 @@ export function createMcpServer(
         ...(branchPattern ? { branchPattern } : {}),
       },
       decisions: { ...(decisions ? { complexRecords: decisions } : {}) },
+      interaction: { ...(questions ? { questions } : {}) },
       ...(tracker ? { tracker } : {}),
       setupComplete: true,
     });
@@ -221,7 +223,7 @@ export function createMcpServer(
     description: operationSummary("configure"),
     inputSchema: { root: z.string().optional(), policy: z.unknown().optional(), tracker: trackerSetupSchema.optional(), ...configurationSchema },
     annotations: operationAnnotations("configure"),
-  }, async ({ root, policy, tracker, evidenceRequired, browserForUi, screenshotForUi, codeReview, isolation, base, worktreePath, branchPattern, decisions }) => toolResult(async () => {
+  }, async ({ root, policy, tracker, evidenceRequired, browserForUi, screenshotForUi, codeReview, isolation, base, worktreePath, branchPattern, decisions, questions }) => toolResult(async () => {
     const project = await EmpiricalProject.open(root ?? defaultRoot);
     if (policy !== undefined && tracker !== undefined) {
       throw new EmpiricalError("INVALID_CONFIG", "Configure project policy and tracker setup in separate exact requests");
@@ -242,6 +244,7 @@ export function createMcpServer(
         ...(branchPattern ? { branchPattern } : {}),
       },
       decisions: { ...(decisions ? { complexRecords: decisions } : {}) },
+      interaction: { ...(questions ? { questions } : {}) },
       setupComplete: true,
     });
     if (!tracker || tracker.mode === "preserve") return config;

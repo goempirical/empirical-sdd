@@ -57,7 +57,9 @@ untrusted.
   bounded pagination, checksummed target-bound feature state, stable create
   markers, and deterministic per-effect keys. Discovery catalogs are ephemeral
   and preview validates target access before persistence. Off/disabled branches
-  occur before authentication resolution.
+  occur before authentication resolution. A rule-backed optional ticket with
+  no explicit reference also returns local-only before OAuth, environment/file
+  lookup, or provider transport; this is covered with throwing doubles.
 - Tracker evidence is selected only through receipt IDs already committed in
   local workflow state. Receipt and file digests, repository containment,
   regular-file/non-symlink identity, secret-like names, media allowlists, count,

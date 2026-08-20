@@ -136,9 +136,9 @@ The product MUST expose the example behavior.
 `, "utf8");
 }
 
-describe("Empirical 0.25 Schema-5 core", () => {
+describe("Empirical 0.26 Schema-5 core", () => {
   test("exports one product/schema version and parses stable criteria", () => {
-    expect(PRODUCT_VERSION).toBe("0.25.0");
+    expect(PRODUCT_VERSION).toBe("0.26.0");
     expect(SCHEMA_VERSION).toBe(5);
     expect(parseCriteria("<!--\n- [ ] [AC-X] Example only\n-->\n")).toEqual([]);
     expect(parseCriteria("- [ ] [AC-1] The result is returned\n  without losing context.\n"))
@@ -163,7 +163,11 @@ describe("Empirical 0.25 Schema-5 core", () => {
       evidence: { required: false, browserForUi: false },
       isolation: { mode: "off", baseBranch: "main", worktreePath: "../sandbox-{feature}", branchPattern: "{type}/alpha-{feature}" },
       decisions: { complexRecords: "off" },
+      interaction: { questions: "concise" },
     });
+    expect(configured.interaction.questions).toBe("concise");
+    expect(action(await project.fast("Add a configured interaction fixture")).interaction)
+      .toEqual({ questions: "concise" });
     expect((await EmpiricalProject.open(root)).config()).resolves.toEqual(configured);
     await expect(project.configure({ isolation: { worktreePath: "../fixed" } }))
       .rejects.toMatchObject({ code: "INVALID_CONFIG" });
@@ -197,6 +201,19 @@ describe("Empirical 0.25 Schema-5 core", () => {
       "utf8",
     );
     await expect(project.policy()).rejects.toMatchObject({ code: "INVALID_POLICY" });
+  });
+
+  test("Schema-5 configuration without interaction stays detailed and is not rewritten on read", async () => {
+    const root = await temporaryProject();
+    const { project } = await EmpiricalProject.initialize(root, { integrations: false });
+    const path = join(root, ".empirical", "config.json");
+    const raw = JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
+    delete raw.interaction;
+    await writeFile(path, `${JSON.stringify(raw, null, 2)}\n`, "utf8");
+    const before = await readFile(path, "utf8");
+
+    expect((await project.config()).interaction).toEqual({ questions: "detailed" });
+    expect(await readFile(path, "utf8")).toBe(before);
   });
 
   test("Fast completion accepts only immutable receipts and derives verified completion", async () => {

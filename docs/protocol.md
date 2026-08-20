@@ -1,4 +1,4 @@
-# Empirical protocol 0.25
+# Empirical protocol 0.26
 
 ## Shared contract
 
@@ -20,6 +20,7 @@ revision. Its essential fields are:
   "profile": "complex",
   "mode": "normal",
   "riskFloor": "behavioral",
+  "interaction": { "questions": "concise" },
   "phase": "verify",
   "status": "waiting",
   "revision": 5,
@@ -31,6 +32,8 @@ revision. Its essential fields are:
     "committedRevision": 5,
     "lastSyncedRevision": 5,
     "pendingRevision": null,
+    "changeType": "feature",
+    "ticketRequirement": "required",
     "failure": null
   },
   "completion": {
@@ -43,6 +46,11 @@ revision. Its essential fields are:
 
 All mutations require the exact revision. A stale caller receives
 `STALE_REVISION`; it cannot overwrite newer state.
+
+Project Schema 5 stores `interaction.questions` as `concise | detailed`.
+Action packets always expose the normalized effective value. Missing fields in
+existing Schema-5 configuration normalize to `detailed` without a read-time
+rewrite; new recommended setup explicitly persists `concise`.
 
 ## Routing and modes
 
@@ -147,6 +155,27 @@ revisions`. `off` performs no provider access. `ensure` binds one valid request
 reference, one exact stable-marker match, or a newly created ticket only after
 a complete zero-match reconciliation. Ambiguity is durable failure state, never
 a selection heuristic.
+
+Policy v2 may add a strict complete `ticketRules` matrix only when `ticket` is
+`ensure`:
+
+```json
+{
+  "ticketRules": {
+    "feature": { "fast": "required", "quick": "required", "complex": "required" },
+    "fix": { "fast": "optional", "quick": "required", "complex": "required" },
+    "chore": { "fast": "optional", "quick": "optional", "complex": "optional" }
+  }
+}
+```
+
+Each cell is `required`, `optional`, or `off`. Resolution uses the persisted
+workflow profile and the same request classifier as worktree routing. Required
+uses the existing attach/reconcile/guarded-create path. Optional attaches one
+explicit reference but, with none, returns local-only before credential or
+provider resolution. Off returns before provider access. Rule-less v2 and all
+v1 policies keep their prior semantics. Rule-backed status adds `changeType`
+and `ticketRequirement` without changing the existing `ticket` field.
 
 Discovery is ephemeral and provider-neutral: strict input names a provider and
 fallback credential-variable names, while runtime resolution remains

@@ -46,15 +46,15 @@ describe("first-run configuration CLI", () => {
     const directory = await root();
     const first = await run(internal([
       "init", "--interactive", "--no-integrations", "--root", directory,
-    ]), "customize\noff\non\noff\non\nask\nmain\n../{repo}-sandbox-{feature}\n{type}/team-{feature}\nrequired\nno-tracking\nsave\n");
+    ]), "customize\noff\non\noff\non\nask\nmain\n../{repo}-sandbox-{feature}\n{type}/team-{feature}\nrequired\nconcise\nno-tracking\nsave\n");
     expect(first.exitCode).toBe(0);
     expect(first.stderr).toBe("");
     expect(first.stdout).toContain("Empirical setup");
-    expect(first.stdout).toContain("Recommended settings");
+    expect(first.stdout).toContain("Empirical setup · recommended");
     expect(first.stdout).toContain("Verification policy");
     expect(first.stdout).toContain("Default Git base");
     expect(first.stdout).toContain("Complex decision records");
-    expect(first.stdout).toContain("Track all work (recommended default)");
+    expect(first.stdout).toContain("Track work by type (recommended default)");
     expect(first.stdout).toContain("No tracking");
     expect(first.stdout).toContain("Save these effective settings");
     expect(JSON.parse(await readFile(join(directory, ".empirical/config.json"), "utf8"))).toMatchObject({
@@ -67,13 +67,14 @@ describe("first-run configuration CLI", () => {
         branchPattern: "{type}/team-{feature}",
       },
       decisions: { complexRecords: "required" },
+      interaction: { questions: "concise" },
     });
     expect(JSON.parse(await readFile(join(directory, ".empirical/tracker.json"), "utf8")))
       .toEqual({ schemaVersion: 1, mode: "disabled" });
 
     const second = await run(internal(["init", "--interactive", "--no-integrations", "--root", directory]), "\n");
     expect(second.exitCode).toBe(0);
-    expect(second.stdout).toContain("Current settings");
+    expect(second.stdout).toContain("Empirical setup · current");
     expect(second.stdout).toContain("Keep current settings");
     expect(JSON.parse(await readFile(join(directory, ".empirical/config.json"), "utf8"))).toMatchObject({
       evidence: { required: false, browserForUi: true, screenshotForUi: false, codeReview: true },
@@ -87,7 +88,7 @@ describe("first-run configuration CLI", () => {
       "init", "--interactive", "--no-integrations", "--root", directory,
     ]), "\nno-tracking\n\n");
     expect(initialized.exitCode).toBe(0);
-    expect(initialized.stdout).toContain("Track all work (recommended default)");
+    expect(initialized.stdout).toContain("Track work by type (recommended default)");
     expect(initialized.stdout).toContain("Save this complete setup?");
     expect(JSON.parse(await readFile(join(directory, ".empirical/tracker.json"), "utf8")))
       .toEqual({ schemaVersion: 1, mode: "disabled" });
@@ -121,18 +122,21 @@ describe("first-run configuration CLI", () => {
       evidence: { required: true, browserForUi: true, screenshotForUi: true, codeReview: true },
       isolation: { mode: "ask", baseBranch: "auto", worktreePath: "../{repo}-{feature}", branchPattern: "{type}/{feature}" },
       decisions: { complexRecords: "required" },
+      interaction: { questions: "concise" },
     });
     const configured = await run(internal([
       "config", "--isolation", "off", "--base", "develop",
       "--worktree-path", "../alt-{feature}", "--branch-pattern", "{type}/alt-{feature}",
       "--decisions", "off", "--evidence", "off", "--ui-browser", "off",
-      "--ui-screenshot", "on", "--code-review", "on", "--json", "--root", directory,
+      "--ui-screenshot", "on", "--code-review", "on", "--questions", "detailed",
+      "--json", "--root", directory,
     ]));
     expect(configured.exitCode).toBe(0);
     expect(JSON.parse(configured.stdout)).toMatchObject({
       isolation: { mode: "off", baseBranch: "develop", worktreePath: "../alt-{feature}", branchPattern: "{type}/alt-{feature}" },
       decisions: { complexRecords: "off" },
       evidence: { required: false, browserForUi: false, screenshotForUi: true, codeReview: true },
+      interaction: { questions: "detailed" },
     });
 
     const partial = await run(internal([
@@ -142,6 +146,7 @@ describe("first-run configuration CLI", () => {
       evidence: { required: true, browserForUi: false, screenshotForUi: true, codeReview: true },
       isolation: { mode: "off", baseBranch: "develop" },
       decisions: { complexRecords: "off" },
+      interaction: { questions: "detailed" },
     });
   });
 
@@ -171,6 +176,7 @@ describe("first-run configuration CLI", () => {
   test("legacy workstream flags and commands are rejected", async () => {
     const directory = await root();
     await run(internal(["init", "--defaults", "--no-integrations", "--root", directory]));
+    await run(internal(["config", "--questions", "detailed", "--root", directory]));
     const flag = await run(internal(["status", "--workstream", "legacy", "--root", directory]));
     expect(flag.exitCode).toBe(1);
     expect(flag.stderr).toContain("INVALID_ARGUMENT");
@@ -203,6 +209,7 @@ describe("first-run configuration CLI", () => {
   test("tracker status, action, bind, and sync human output expose bounded recovery state", async () => {
     const directory = await root();
     await run(internal(["init", "--defaults", "--no-integrations", "--root", directory]));
+    await run(internal(["config", "--questions", "detailed", "--root", directory]));
     await run(internal(["fast", "Make tracker recovery observable", "--root", directory]));
     const configured = await run(internal([
       "tracker-configure", "--input", "-", "--root", directory,
@@ -237,6 +244,7 @@ describe("first-run configuration CLI", () => {
   test("tracker status and action human output expose a validated bound URL", async () => {
     const directory = await root();
     await run(internal(["init", "--defaults", "--no-integrations", "--root", directory]));
+    await run(internal(["config", "--questions", "detailed", "--root", directory]));
     const started = await run(internal([
       "fast", "Show a safe tracker URL", "--json", "--root", directory,
     ]));
@@ -284,6 +292,25 @@ describe("first-run configuration CLI", () => {
     }
   });
 
+  test("concise mode renders compact action and status without hiding completion", async () => {
+    const directory = await root();
+    await run(internal(["init", "--defaults", "--no-integrations", "--root", directory]));
+    const started = await run(internal([
+      "fast", "Add one compact status fixture", "--root", directory,
+    ]));
+    expect(started.exitCode).toBe(0);
+    expect(started.stdout).toContain("Empirical · step 1/2");
+    expect(started.stdout).toContain("Tracker: local-only");
+    expect(started.stdout).toContain("Complete: empirical __internal complete");
+    expect(started.stdout).not.toContain("External tracker:");
+    expect(started.stdout).not.toContain("Acceptance criteria:");
+
+    const status = await run(internal(["status", "--root", directory]));
+    expect(status.stdout).toContain("feature=add-one-compact-status-fixture");
+    expect(status.stdout).toContain("Tracker: local-only");
+    expect(status.stdout).not.toContain("External tracker:");
+  });
+
   test("interactive/default modes reject conflicting configuration flags before mutation", async () => {
     const directory = await root();
     const interactive = await run(internal([
@@ -298,6 +325,13 @@ describe("first-run configuration CLI", () => {
     ]));
     expect(defaults.exitCode).toBe(1);
     expect(defaults.stderr).toContain("INVALID_ARGUMENT");
+    expect(await stat(join(directory, ".empirical")).then(() => true, () => false)).toBe(false);
+
+    const invalidQuestions = await run(internal([
+      "init", "--questions", "brief", "--no-integrations", "--root", directory,
+    ]));
+    expect(invalidQuestions.exitCode).toBe(1);
+    expect(invalidQuestions.stderr).toContain("--questions must be concise or detailed");
     expect(await stat(join(directory, ".empirical")).then(() => true, () => false)).toBe(false);
   });
 

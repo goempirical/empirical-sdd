@@ -61,6 +61,7 @@ import {
   parseTrackerSetupChange,
   previewTrackerPolicy,
   proposeTrackerStateMapping,
+  recommendedTrackerTicketRules,
   suggestTrackerStateMapping,
   type TrackerSetupState,
 } from "./tracking.js";
@@ -85,6 +86,8 @@ import {
   type TrackerPolicyPreview,
   type TrackerSetupChange,
   type TrackerStateMap,
+  type TrackerTicketRequirement,
+  type TrackerTicketRules,
   type UninstallReport,
   type WorktreeHandoff,
   type WorktreeProposal,
@@ -248,7 +251,7 @@ async function main(): Promise<void> {
           trackerSetup,
         )
         : {
-            configuration: configuration.input,
+            configuration: defaults ? defaultConfiguration() : configuration.input,
             tracker: trackerInput ?? (trackerSetup.mode === "unconfigured"
               ? { mode: "disabled" as const }
               : { mode: "preserve" as const }),
@@ -921,38 +924,38 @@ async function interactiveTrackerSetup(
   root: string,
 ): Promise<TrackerSetupChange> {
   console.log("\n◆ Tracker · OAuth first; raw credentials stay outside Empirical, MCP, and chat.");
-  let trackAll = false;
+  let ticketPresetDefault = "features+large-fixes";
   let provider: string;
   if (current.mode === "unconfigured") {
-    console.log("│  ● Track all work (recommended default)");
+    console.log("│  ● Track work by type (recommended default)");
     console.log("│  ○ No tracking");
     const choice = await askEnumDefault(
       prompt,
-      "Tracker [track-all]: ",
-      "track-all",
-      new Set(["track-all", "track", "all", "t", "no-tracking", "no", "none", "off", "local"]),
+      "Tracker [track-work]: ",
+      "track-work",
+      new Set(["track-work", "track", "policy", "t", "track-all", "all", "no-tracking", "no", "none", "off", "local"]),
     );
     if (["no-tracking", "no", "none", "off", "local"].includes(choice)) return { mode: "disabled" };
-    trackAll = true;
-    console.log("│  Choose a provider for Track all work: linear · github · jira");
+    if (["track-all", "all"].includes(choice)) ticketPresetDefault = "all";
+    console.log("│  Choose a provider: linear · github · jira");
     provider = await askEnumRequired(
       prompt,
       "Provider (linear/github/jira): ",
       new Set(["linear", "github", "jira"]),
     );
   } else {
-    if (current.mode === "configured") console.log("│  preserve (default) · disable · track-all · linear · github · jira");
-    else console.log("│  preserve (default) · track-all · linear · github · jira");
+    if (current.mode === "configured") console.log("│  preserve (default) · disable · track-work · linear · github · jira");
+    else console.log("│  preserve (default) · track-work · linear · github · jira");
     provider = await askEnumDefault(
       prompt,
       "Tracker [preserve]: ",
       "preserve",
-      new Set(["preserve", "p", "disable", "disabled", "off", "local", "track-all", "track", "all", "t", "linear", "github", "jira"]),
+      new Set(["preserve", "p", "disable", "disabled", "off", "local", "track-work", "policy", "track-all", "track", "all", "t", "linear", "github", "jira"]),
     );
     if (provider === "preserve" || provider === "p") return { mode: "preserve" };
     if (["disable", "disabled", "off", "local"].includes(provider)) return { mode: "disabled" };
-    if (["track-all", "track", "all", "t"].includes(provider)) {
-      trackAll = true;
+    if (["track-work", "policy", "track-all", "track", "all", "t"].includes(provider)) {
+      if (["track-all", "all"].includes(provider)) ticketPresetDefault = "all";
       provider = await askEnumRequired(
         prompt,
         "Provider (linear/github/jira): ",
@@ -1000,15 +1003,7 @@ async function interactiveTrackerSetup(
   const scoped = scopedTrackerDiscovery(discovery, policyTarget.stateParent);
   const suggested = suggestTrackerStateMapping(scoped);
   const states = await editTrackerMapping(prompt, scoped, suggested);
-  const ticket = trackAll
-    ? "ensure" as const
-    : await askEnumDefault(
-      prompt,
-      "Ticket behavior [ensure] (off/manual/ensure): ",
-      "ensure",
-      new Set(["off", "manual", "ensure"]),
-    ) as "off" | "manual" | "ensure";
-  if (trackAll) console.log("│  Ticket behavior: ensure (Track all work)");
+  const ticketSelection = await chooseTrackerTicketPolicy(prompt, ticketPresetDefault);
   const visibility = await askEnumDefault(
     prompt,
     "Progress visibility [milestones] (blockers-final/milestones/revisions): ",
@@ -1022,7 +1017,7 @@ async function interactiveTrackerSetup(
         target: policyTarget.target as Extract<TrackerPolicy, { provider: "linear" }>["target"],
         credentialEnv: credentialEnv as Extract<TrackerPolicy, { provider: "linear" }>["credentialEnv"],
         states,
-        ticket,
+        ...ticketSelection,
         visibility,
       }
     : provider === "github"
@@ -1032,7 +1027,7 @@ async function interactiveTrackerSetup(
           target: policyTarget.target as Extract<TrackerPolicy, { provider: "github" }>["target"],
           credentialEnv: credentialEnv as Extract<TrackerPolicy, { provider: "github" }>["credentialEnv"],
           states,
-          ticket,
+          ...ticketSelection,
           visibility,
         }
       : {
@@ -1041,7 +1036,7 @@ async function interactiveTrackerSetup(
           target: policyTarget.target as Extract<TrackerPolicy, { provider: "jira" }>["target"],
           credentialEnv: credentialEnv as Extract<TrackerPolicy, { provider: "jira" }>["credentialEnv"],
           states,
-          ticket,
+          ...ticketSelection,
           visibility,
         };
   const preview = await previewTrackerPolicy(policy, { repositoryRoot: root });
@@ -1049,6 +1044,9 @@ async function interactiveTrackerSetup(
   console.log(`│  Provider: ${preview.policy.provider} · Policy v${preview.policy.schemaVersion}`);
   console.log(`│  Target: ${preview.target.map((entry) => `${entry.name} (${entry.kind})`).join(" → ")}`);
   console.log(`│  Ticket behavior: ${preview.effective.ticket}`);
+  if (policy.schemaVersion === 2 && policy.ticketRules) {
+    for (const line of renderTicketRuleLines(policy.ticketRules)) console.log(`│  ${line}`);
+  }
   console.log(`│  Progress visibility: ${preview.effective.visibility}`);
   for (const phase of Object.keys(states) as Array<keyof TrackerStateMap>) {
     const resource = scoped.resources.find((entry) => entry.kind === "state" && entry.id === states[phase]);
@@ -1059,6 +1057,37 @@ async function interactiveTrackerSetup(
   console.log(`│  Credential source: ${Object.values(credentialEnv).join(", ")} (names only; values are never saved)`);
   console.log(`│  ${authentication.warning}.`);
   return { mode: "apply", policy };
+}
+
+async function chooseTrackerTicketPolicy(
+  prompt: LinePrompter,
+  fallback: string,
+): Promise<{ ticket: "off" } | { ticket: "ensure"; ticketRules?: TrackerTicketRules }> {
+  console.log("\n◆ Tickets · choose when a linked ticket is required");
+  const preset = await askEnumDefault(
+    prompt,
+    `Tickets [${fallback}] (features+large-fixes/all/none/custom): `,
+    fallback,
+    new Set(["features+large-fixes", "recommended", "all", "none", "off", "custom"]),
+  );
+  if (preset === "none" || preset === "off") return { ticket: "off" };
+  if (preset === "all") return { ticket: "ensure" };
+  if (preset === "features+large-fixes" || preset === "recommended") {
+    return { ticket: "ensure", ticketRules: recommendedTrackerTicketRules() };
+  }
+  const ticketRules = recommendedTrackerTicketRules();
+  for (const changeType of ["feature", "fix", "chore"] as const) {
+    for (const profile of ["fast", "quick", "complex"] as const) {
+      const current = ticketRules[changeType][profile];
+      ticketRules[changeType][profile] = await askEnumDefault(
+        prompt,
+        `${changeType}/${profile} [${current}] (required/optional/off): `,
+        current,
+        new Set(["required", "optional", "off"]),
+      ) as TrackerTicketRequirement;
+    }
+  }
+  return { ticket: "ensure", ticketRules };
 }
 
 async function chooseTrackerTarget(
@@ -1198,10 +1227,18 @@ async function customizeSetup(prompt: LinePrompter, current: SetupSettings): Pro
     current.decisions.complexRecords,
     new Set(["required", "off"]),
   ) as "required" | "off";
+  console.log("\n◆ Interaction");
+  const questions = await askEnumDefault(
+    prompt,
+    `Questions [${current.interaction.questions}] (concise/detailed): `,
+    current.interaction.questions,
+    new Set(["concise", "detailed"]),
+  ) as "concise" | "detailed";
   return {
     evidence: { required, browserForUi, screenshotForUi, codeReview },
     isolation: { mode, baseBranch, worktreePath, branchPattern },
     decisions: { complexRecords },
+    interaction: { questions },
   };
 }
 
@@ -1520,9 +1557,11 @@ function readConfigurationFlags(args: string[]): { input: ProjectConfigurationIn
   const branchPattern = takeOption(args, "--branch-pattern");
   const complexRecords = takeOption(args, "--decisions");
   if (complexRecords && complexRecords !== "required" && complexRecords !== "off") throw new EmpiricalError("INVALID_CONFIG", "--decisions must be required or off");
+  const questions = takeOption(args, "--questions");
+  if (questions && questions !== "concise" && questions !== "detailed") throw new EmpiricalError("INVALID_CONFIG", "--questions must be concise or detailed");
   const explicit = [evidenceRequired, browserForUi, screenshotForUi, codeReview]
     .some((value) => value !== undefined)
-    || Boolean(mode || baseBranch || worktreePath || branchPattern || complexRecords);
+    || Boolean(mode || baseBranch || worktreePath || branchPattern || complexRecords || questions);
   return {
     explicit,
     input: {
@@ -1542,6 +1581,7 @@ function readConfigurationFlags(args: string[]): { input: ProjectConfigurationIn
         ...(branchPattern ? { branchPattern } : {}),
       } } : {}),
       ...(complexRecords ? { decisions: { complexRecords: complexRecords as "required" | "off" } } : {}),
+      ...(questions ? { interaction: { questions: questions as "concise" | "detailed" } } : {}),
     },
   };
 }
@@ -1750,6 +1790,7 @@ function renderConfig(value: unknown): string {
     `Worktree path: ${config.isolation.worktreePath}`,
     `Branch pattern: ${config.isolation.branchPattern}`,
     `Complex decisions: ${config.decisions.complexRecords}`,
+    `Questions: ${config.interaction.questions}`,
   ].join("\n");
 }
 
@@ -1780,6 +1821,18 @@ function renderAction(value: unknown): string {
   const action = value as ActionPacket;
   const header = action.feature ? `${action.feature}: ${action.phase} (${action.profile}, ${action.status}, revision ${action.revision})` : `Empirical: ${action.phase}`;
   const progress = phaseProgress(action.profile, action.phase);
+  if (action.interaction.questions === "concise") {
+    const sections = [
+      `Empirical${progress ? ` · ${progress}` : ""} · ${header}`,
+      action.instructions,
+      renderTrackerStatus(action.tracker, true),
+    ];
+    if (action.rationale.missingContext.length) {
+      sections.push(`Missing: ${action.rationale.missingContext.join(", ")}`);
+    }
+    if (action.completion.available) sections.push(`Complete: ${action.completion.cli}`);
+    return sections.join("\n");
+  }
   const sections = [`Empirical${progress ? ` · ${progress}` : ""}`, header, action.instructions];
   sections.push(renderTrackerStatus(action.tracker));
   if (action.projectContext.length) sections.push(`Project context:\n${action.projectContext.map((item) => `- ${item}`).join("\n")}`);
@@ -1794,13 +1847,19 @@ function renderAction(value: unknown): string {
 
 function renderStatus(value: unknown): string {
   const state = value as ProjectStatus;
+  if (state.interaction.questions === "concise") {
+    return [
+      `feature=${state.activeFeature ?? "none"} phase=${state.phase} status=${state.status} revision=${state.revision} profile=${state.profile}`,
+      renderTrackerStatus(state.tracker, true),
+    ].join("\n");
+  }
   return [
     `feature=${state.activeFeature ?? "none"} phase=${state.phase} status=${state.status} revision=${state.revision} profile=${state.profile}`,
     renderTrackerStatus(state.tracker),
   ].join("\n\n");
 }
 
-function renderTrackerStatus(tracker: TrackerStatus): string {
+function renderTrackerStatus(tracker: TrackerStatus, concise = false): string {
   const failure = tracker.failure
     ? `${boundedHumanText(tracker.failure.code, 64)} — ${boundedHumanText(tracker.failure.summary, 500)}`
     : "none";
@@ -1808,6 +1867,16 @@ function renderTrackerStatus(tracker: TrackerStatus): string {
   const recovery = tracker.failure
     ? boundedHumanText(trackerRecoveryHint(tracker.failure.code), 500)
     : "none";
+  if (concise) {
+    const rule = tracker.changeType && tracker.ticketRequirement
+      ? ` · ${tracker.changeType}/${tracker.ticketRequirement}`
+      : "";
+    const remote = tracker.url ? ` · ${safeTrackerUrl(tracker)}` : "";
+    const line = `Tracker: ${tracker.health}${tracker.provider ? ` · ${tracker.provider}` : ""}${rule}${remote}`;
+    return tracker.failure
+      ? `${line}\nTracker failure: ${failure}\nRecovery: ${recovery}`
+      : line;
+  }
   return [
     "External tracker:",
     `- Health: ${tracker.health}`,
@@ -1819,6 +1888,8 @@ function renderTrackerStatus(tracker: TrackerStatus): string {
     ...(tracker.schemaVersion === undefined ? [] : [`- Policy schema: ${tracker.schemaVersion}`]),
     ...(tracker.ticket === undefined ? [] : [`- Ticket behavior: ${tracker.ticket}`]),
     ...(tracker.visibility === undefined ? [] : [`- Progress visibility: ${tracker.visibility}`]),
+    ...(tracker.changeType === undefined ? [] : [`- Change type: ${tracker.changeType}`]),
+    ...(tracker.ticketRequirement === undefined ? [] : [`- Ticket requirement: ${tracker.ticketRequirement}`]),
     ...(tracker.pendingEffects === undefined ? [] : [`- Pending effects: ${tracker.pendingEffects}`]),
     `- Failure: ${failure}`,
     `- Failure at: ${failureAt}`,
@@ -1854,6 +1925,9 @@ function renderTrackerPreview(value: unknown): string {
     `Tracker policy preview: ${preview.policy.provider} v${preview.policy.schemaVersion}`,
     `Target: ${preview.target.map((resource) => `${resource.name} (${resource.kind})`).join(" → ")}`,
     `Ticket behavior: ${preview.effective.ticket}`,
+    ...(preview.policy.schemaVersion === 2 && preview.policy.ticketRules
+      ? ["Ticket rules:", ...renderTicketRuleLines(preview.policy.ticketRules).map((line) => `- ${line}`)]
+      : []),
     `Progress visibility: ${preview.effective.visibility}`,
     "Authentication: trusted host OAuth preferred",
     `Fallback file: ${authentication.secretFilePath}`,
@@ -1864,6 +1938,13 @@ function renderTrackerPreview(value: unknown): string {
     `Credential sources: ${Object.values(preview.policy.credentialEnv).join(", ")} (names only; values are never saved)`,
     `Preview digest: ${preview.digest}`,
   ].join("\n");
+}
+
+function renderTicketRuleLines(rules: TrackerTicketRules): string[] {
+  return (["feature", "fix", "chore"] as const).map((changeType) => {
+    const profile = rules[changeType];
+    return `${changeType}: fast ${profile.fast} · quick ${profile.quick} · complex ${profile.complex}`;
+  });
 }
 
 function renderTrackerMapping(mapping: import("./types.js").TrackerMappingSuggestion): string {

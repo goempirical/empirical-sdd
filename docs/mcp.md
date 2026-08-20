@@ -46,7 +46,9 @@ Schema-5 integration requirement.
 
 1. Invoke `empirical-init` explicitly for setup or repair. Inspect without
    writing, show the complete settings, and persist only after confirmation.
-   Init stops without creating feature state.
+   Init stops without creating feature state. Set `questions` to `concise` or
+   `detailed`; every returned action exposes the same value at
+   `interaction.questions`.
 2. In a valid initialized repository, ordinary mutation prompts automatically
    use the local workflow. Read-only prompts do not. Resume selected
    non-terminal work before treating request text as new work.
@@ -59,9 +61,11 @@ Schema-5 integration requirement.
 7. Execute configured evidence or collect artifacts, then complete the exact
    revision with immutable receipt IDs.
 8. If tracking is configured, commit the local transition first and then call
-   `empirical_tracker_sync`. In `ensure` mode this also establishes the one
-   feature ticket. A remote failure is reported and retried from the durable
-   unacknowledged effect; it never rewinds or blocks local workflow state.
+   `empirical_tracker_sync`. Follow rule-backed `changeType` and
+   `ticketRequirement` status: do not ask about an optional missing ticket, and
+   do not call a provider for optional unreferenced or off work. Required work
+   establishes the one feature ticket. A remote failure is reported and retried
+   from the durable unacknowledged effect; it never rewinds local state.
 9. When Context is returned, call `empirical_context`, refine every reported
    placeholder topic from inspected evidence, remove its managed marker, call
    context again, and complete only when `refinementRequired`, `stale`, and
@@ -121,7 +125,7 @@ with the same runtime behavior. Policy v2 with `ticket:
 access. `empirical_tracker_configure` accepts a strict Tracker Policy v1 or v2
 document, or `null` to persist No tracking.
 
-User-facing Init first requires Track all work (recommended) or No tracking
+User-facing Init first requires Track work by type (recommended) or No tracking
 when no prior choice exists. Setup then uses the same contract in every client:
 
 1. Start with the trusted host OAuth connection. If it is unavailable, show
@@ -169,12 +173,20 @@ Tracker Policy v2 adds behavior without changing provider target shapes:
   "credentialEnv": { "apiKey": "LINEAR_SECRET_KEY" },
   "states": { "specification": "todo", "planned": "todo", "in-progress": "started", "verification": "qa", "review": "qa", "blocked": "started", "done": "done" },
   "ticket": "ensure",
-  "visibility": "milestones"
+  "visibility": "milestones",
+  "ticketRules": {
+    "feature": { "fast": "required", "quick": "required", "complex": "required" },
+    "fix": { "fast": "optional", "quick": "required", "complex": "required" },
+    "chore": { "fast": "optional", "quick": "optional", "complex": "optional" }
+  }
 }
 ```
 
 `ticket` is `off`, `manual`, or `ensure`. `visibility` is `blockers-final`,
-`milestones`, or `revisions`. Provider-specific legacy v1 examples follow; they
+`milestones`, or `revisions`. `ticketRules` is optional, is legal only with
+`ensure`, and must contain every displayed key with values `required`,
+`optional`, or `off`. Init offers `features+large-fixes`, `all`, `none`, or
+`custom`; the JSON above is the recommended preset. Provider-specific legacy v1 examples follow; they
 remain accepted byte-for-byte and are interpreted as manual binding with the
 legacy state/description projection:
 
@@ -237,7 +249,8 @@ Bearer header while its personal API-key fallback retains Linear's raw
 tenant origin with Basic authorization.
 
 In `manual` mode, `empirical_tracker_bind` accepts `{ "mode": "create" }` or
-`{ "mode": "attach", "ticket": "..." }`. In `ensure` mode ordinary
+`{ "mode": "attach", "ticket": "..." }`. Rule-less `ensure` and a resolved
+`required` rule use ordinary
 `empirical_tracker_sync` first validates one ticket URL referenced by the
 feature request, then performs a complete bounded lookup for the stable feature
 marker, and creates only after a complete zero-match result. Multiple references
@@ -249,6 +262,12 @@ provider target and effective policy. A target change therefore fails locally
 until explicit replacement; a same-target state-map change invalidates the
 same-revision acknowledgment and projects the committed state through the new
 mapping.
+
+A resolved `optional` rule attaches exactly one target-valid request reference.
+With no reference it returns `local-only` without OAuth resolution, fallback
+credential lookup, provider search, ticket creation, or an agent question. A
+resolved `off` rule returns `off` with the same zero-I/O guarantee. Policy v1
+and v2 policies without `ticketRules` retain their existing behavior.
 
 Pending work is the durable reconciliation source. Normal synchronization
 resumes that exact operation before deriving newer work. A durable `dispatched`
@@ -280,7 +299,8 @@ values enter pending JSON.
 
 Status and action packets report `local-only`, `off`, `synced`, `pending`, or
 `failed` without provider requests. Policy v2 status also shows ticket behavior,
-visibility, and remaining effects. Keep local progress; provide a named missing
+visibility, and remaining effects; rule-backed policies also show change type
+and effective ticket requirement. Keep local progress; provide a named missing
 credential, explicitly rebind target drift, resolve marker ambiguity, repair an
 unsafe artifact, or retry `empirical_tracker_sync` after an outage as reported.
 

@@ -333,7 +333,12 @@ export class EmpiricalProject {
 
   async statusReport(): Promise<ProjectStatus> {
     const state = await this.store.loadState(!this.readOnly);
-    return { ...state, tracker: await trackerStatus(this.store.root, state) };
+    const config = await this.store.loadConfig();
+    return {
+      ...state,
+      interaction: { ...config.interaction },
+      tracker: await trackerStatus(this.store.root, state),
+    };
   }
 
   async trackerPolicy(): Promise<TrackerPolicy | null> {
@@ -393,6 +398,7 @@ export class EmpiricalProject {
       evidence: { ...current.evidence, ...input.evidence },
       isolation: { ...current.isolation, ...input.isolation },
       decisions: { ...current.decisions, ...input.decisions },
+      interaction: { ...current.interaction, ...input.interaction },
       setupComplete: input.setupComplete ?? true,
     });
     const policy = await this.store.loadPolicy();
@@ -2344,6 +2350,9 @@ function defaultConfig(
     decisions: {
       complexRecords: options.decisions?.complexRecords ?? "required",
     },
+    interaction: {
+      questions: options.interaction?.questions ?? "detailed",
+    },
     setupComplete: options.setupComplete ?? true,
     legacySource,
   };
@@ -2359,11 +2368,15 @@ function initializationConfiguration(options: InitOptions): ProjectConfiguration
   const decisions = options.decisions && Object.keys(options.decisions).length > 0
     ? options.decisions
     : undefined;
-  if (!evidence && !isolation && !decisions && options.setupComplete === undefined) return null;
+  const interaction = options.interaction && Object.keys(options.interaction).length > 0
+    ? options.interaction
+    : undefined;
+  if (!evidence && !isolation && !decisions && !interaction && options.setupComplete === undefined) return null;
   return {
     ...(evidence ? { evidence } : {}),
     ...(isolation ? { isolation } : {}),
     ...(decisions ? { decisions } : {}),
+    ...(interaction ? { interaction } : {}),
     ...(options.setupComplete !== undefined ? { setupComplete: options.setupComplete } : {}),
   };
 }
@@ -2565,6 +2578,7 @@ function actionPacket(
     mode: state.mode,
     riskFloor: route.riskFloor,
     routeRationale: route.rationaleCodes,
+    interaction: { ...config.interaction },
     phase: state.phase,
     status: state.status,
     revision: state.revision,

@@ -187,6 +187,7 @@ export class ProjectStore {
         evidence: { ...current.evidence, ...update.evidence },
         isolation: { ...current.isolation, ...update.isolation },
         decisions: { ...current.decisions, ...update.decisions },
+        interaction: { ...current.interaction, ...update.interaction },
       } as ProjectConfig);
       await writeJsonAtomic(this.configPath, next);
       return next;
@@ -396,7 +397,7 @@ export class ProjectStore {
     if (rawVersion !== SCHEMA_VERSION) {
       throw new EmpiricalError(
         "MIGRATION_REQUIRED",
-        `Schema ${rawVersion} is unsupported; Empirical 0.25 migrates only Schema 4 to Schema 5`,
+        `Schema ${rawVersion} is unsupported; Empirical 0.26 migrates only Schema 4 to Schema 5`,
       );
     }
     await project.ensureProjectMetadata();
@@ -967,6 +968,7 @@ function normalizeConfig(config: ProjectConfig): ProjectConfig {
   const value = config as unknown as Record<string, unknown>;
   const isolation = isRecord(value.isolation) ? value.isolation : {};
   const decisions = isRecord(value.decisions) ? value.decisions : {};
+  const interaction = isRecord(value.interaction) ? value.interaction : {};
   const evidence = isRecord(value.evidence) ? value.evidence : {};
   const mode = isolation.mode === "off" ? "off" : "ask";
   const baseBranch = typeof isolation.baseBranch === "string" && isolation.baseBranch.trim()
@@ -991,6 +993,7 @@ function normalizeConfig(config: ProjectConfig): ProjectConfig {
     },
     isolation: { mode, baseBranch, worktreePath, branchPattern },
     decisions: { complexRecords: decisions.complexRecords === "off" ? "off" : "required" },
+    interaction: { questions: interaction.questions === "concise" ? "concise" : "detailed" },
     setupComplete: typeof value.setupComplete === "boolean" ? value.setupComplete : false,
   };
 }

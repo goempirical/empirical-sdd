@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "id": "executed-eeb57f36eafb2f6ddd9d8eab",
+  "criteria": [
+    "AC-1",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7",
+    "AC-8",
+    "AC-9"
+  ],
+  "evidenceKinds": [
+    "test"
+  ],
+  "summary": "Complete CI rerun proves the corrected concise/detailed configuration and surfaces, exact custom ticket-rule previews and strict setup validation, deterministic requirement resolution, optional/off zero-I/O behavior, required one-ticket convergence, legacy compatibility, generated harness guidance, documentation, and the globally network-trapped packaged demo.",
+  "passed": true,
+  "startedAt": "2026-08-20T04:34:00.132Z",
+  "completedAt": "2026-08-20T04:36:26.895Z",
+  "provenance": {
+    "repositoryId": "sha256:f4ea9554258e0d32bff5fe99c6e3b4f28bfa703e7d5ce1b15ef409a741eae703",
+    "feature": "concise-ticket-policy",
+    "specRevision": 2,
+    "specDigest": "sha256:fdc97a35cc8fd47df4abe0178b59441dc6890bd3651a6e5a052d4011134f5ef6",
+    "treeDigest": "sha256:6f94541f52cf3fec2142b890a7439047a46d73e4476f39c9c11570b4cddf5a69",
+    "policyDigest": "sha256:d1f5cd886f30de09b672911041c00cda350042fe9d96e5595a6d9ca4be592e0c"
+  },
+  "digest": "sha256:d3c102f4ae8956a09b753de67d896db24f705c87c8c3dcc4c47b03bde47d00f7",
+  "kind": "executed",
+  "command": {
+    "argv": [
+      "bun",
+      "run",
+      "ci"
+    ],
+    "cwd": ".",
+    "timeoutMs": 900000,
+    "maxOutputBytes": 4194304,
+    "environmentKeys": [
+      "PATH",
+      "TMPDIR"
+    ]
+  },
+  "result": {
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "stdoutDigest": "sha256:2160a3742c10fc4029243d0cc55a9a9278264dfdb7530b3dc62ad6b43f1aacc2",
+    "stderrDigest": "sha256:733d47ee50b507f428af1ed2ba7e461e20a09c4ca66d60c4ede78b254383a3bf",
+    "stdoutTail": "bun test v1.3.14 (0d9b296a) 1x PARALLEL\nCoverage gate: 90.12% lines, 91.31% functions across 33 modules.\nBundled 0.25 OAuth-first Init, tracker, uninstall, receipt, routing, YOLO, worktree, CLI, and MCP smoke passed.\n\nadded 94 packages in 4s\nClean package consumer passed for empirical-sdd 0.25.0.\nConsistency gate: Empirical 0.25.0, Schema 5, 1 skill, 37 operations.\n",
+    "stderrTail": "6ms]\n(pass) package lifecycle > uninstall confirmation defaults closed and accepts only an explicit yes [0.14ms]\n\ntests/integrations.test.ts:\n(pass) agent integrations > project initialization installs automatic local activation and runtime bridges [192.35ms]\n(pass) agent integrations > project repair replaces owned guidance, removes owned legacy artifacts, and preserves collisions [71.12ms]\n(pass) agent integrations > 0.22-style repository repair preserves configuration, context, and history without feature state [172.31ms]\n(pass) agent integrations > project activation never follows instruction or skill symbolic links [14.91ms]\n(pass) agent integrations > global install creates only the registry-backed Empirical skill for every selected agent [425.89ms]\n(pass) agent integrations > global refresh updates current managed skills, removes managed legacy skills, and preserves unmanaged collisions [412.45ms]\n(pass) agent integrations > global migration keeps the old managed workflow until Init is fully installed [53.28ms]\n(pass) agent integrations > an explicit selection installs selected agents and removes only deselected managed skills [397.31ms]\n(pass) agent integrations > shared roots are reconciled once and remain until the last selected target leaves [195.62ms]\n(pass) agent integrations > legacy aliases canonicalize, project-only targets fail, and unmanaged selection metadata is preserved [54.11ms]\n(pass) agent integrations > global refresh does not follow skill or parent-directory symbolic links [399.36ms]\n(pass) agent integrations > global uninstall removes only owned skills and metadata and converges [169.18ms]\n(pass) agent integrations > global uninstall preserves incompatible selection metadata [62.20ms]\n(pass) agent integrations > global integration rejects empty and filesystem-root homes [0.25ms]\n(pass) agent integrations > install CLI works outside a project and reports one human and JSON entrypoint per agent [963.88ms]\n(pass) agent integrations > primary help exposes only install, update, and uninstall as normal terminal commands [962.67ms]\n(pass) agent integrations > every registry operation and public subcommand has no-write usable help [10065.98ms]\n(pass) agent integrations > version aliases remain exact and unbranded [741.46ms]\n(pass) agent integrations > public workflow verbs are rejected before project discovery [2163.58ms]\n(pass) agent integrations > non-interactive install requires an explicit selection [552.36ms]\n(pass) agent integrations > non-interactive uninstall refuses before mutation without --yes [506.34ms]\n(pass) agent integrations > confirmed uninstall works outside a repository with JSON and human reports [1330.92ms]\n(pass) agent integrations > repeatable agent flags install the exact selection [298.96ms]\n(pass) agent integrations > yes mode preserves detected agents without prompting [292.28ms]\n(pass) agent integrations > yes mode reuses a remembered broad selection without detecting it [612.10ms]\n\ntests/setup.test.ts:\n(pass) setup settings > renders every safe default before persistence [0.38ms]\n(pass) setup settings > distinguishes an explicit no-tracking choice from missing tracker setup [0.19ms]\n(pass) setup settings > explains inactive UI sub-policies without erasing them [0.15ms]\n(pass) setup settings > validates path and branch templates before save [0.34ms]\n----------------------------|---------|---------|-------------------\nFile                        | % Funcs | % Lines | Uncovered Line #s\n----------------------------|---------|---------|-------------------\nAll files                   |   93.01 |   92.73 |\n src/agent-catalog.ts       |   90.48 |   96.65 | 242,252,283-288\n src/agents.ts              |   81.82 |   96.83 | 99-101\n src/branding.ts            |  100.00 |  100.00 | \n src/checkouts.ts           |   95.00 |   93.20 | 51,70,99,103,116,127-128\n src/coordination.ts        |   91.57 |   89.19 | 125,155-156,168,177-178,182-183,194,201,215,218,223,227,232,301,324,327,340-341,347-348,357-358,364-365,369,394,399,452,469-470,505-527,535,542,574-575,588,618,632-633,661,740-741,747,757,791,801,810\n src/core.ts                |   88.94 |   89.43 | 353-373,569-572,891-900,1462-1608,1789-1841,1906-1951,2800-2802,2915-2922,3085-3086,3137-3141,3222-3224\n src/decisions.ts           |   94.74 |   90.91 | 47,72-73,109-113,116-119\n src/delivery.ts            |   95.45 |   94.15 | 74,80,109,192-194,210,224-225,238-239,266,270,313,390,405,458-459,467-468,471,476,522,525,548-549,555,571,575,663-664,746,757,809-811,822,874-875,896,917,931,949,961,965,969,993-994\n src/discovery.ts           |   96.77 |   88.79 | 159,165,168,174-175,181-182,210-213,223,238,258-261,264-267,301-303,338-342,350-353,397,426,429,433\n src/doctor.ts              |   97.92 |   85.00 | 66,101-102,234-242,339-346,398-428,445-453,498-506,615-624,645-653,712-720,727-733,739-745\n src/errors.ts              |  100.00 |  100.00 | \n src/evidence.ts            |   90.00 |   93.47 | 35,114,130,138,183-187,191-195,230\n src/integrations.ts        |   98.94 |   94.89 | 431,614,618,623,636,697,715-716,801-804,819-820,825-826,854-855,858-869,886,914,931,953-954\n src/journal.ts             |   97.30 |   91.27 | 64,70,76,92,97,123,146,162,165,168,171,178,182,199,208-209,213-214,247-248,280,287,296,346-347,351,362-363,401,405,413,418,426,454\n src/knowledge-templates.ts |  100.00 |  100.00 | \n src/knowledge.ts           |   92.19 |   96.90 | 217,227-228,322,388,414-415,483-486,492-495\n src/lifecycle.ts           |   80.00 |   94.29 | 46-47\n src/mcp.ts                 |   51.47 |   81.64 | 86-89,154-160,209-217,226-251,260-261,290-294,309-314,325-329,343-349,472-473,509-514,532-538,567-568,589,603-608,627-636,648,654-658\n src/migration-scratch.ts   |  100.00 |  100.00 | \n src/migration.ts           |   95.89 |   91.02 | 71,79-80,89,126-128,137-138,142-143,153,171,209,223,233,245-246,257-258,272-273,312-315,458,489-502,525,585-586,612,671,679,689-690,715,722,744,800,803-804,810,822-826,885-886,897-900,919-920,925-927\n src/operations.ts          |   83.33 |   94.57 | 121,130,139,143-145\n src/policy.ts              |  100.00 |   93.33 | 32,45-47,60,64\n src/protocol.ts            |   93.33 |   96.36 | 83,109,189-193,252,256,259,448,451,454\n src/routing.ts             |  100.00 |   96.18 | 76,105-107\n src/runtime.ts             |   93.75 |   95.63 | 84,136-139,180,209\n src/selector.ts            |   96.15 |   80.08 | 89,93,200-245\n src/setup.ts               |   91.67 |   89.60 | 31-36,52,55,68,91-92,153-157,159\n src/specifications.ts      |   95.12 |   86.93 | 51,85,93,103,121-124,148-151,162-163,169-170,174-175,192-194,200,241-247,266,270,294-305,355-356\n src/storage.ts             |   90.13 |   91.67 | 91,447-458,491,523,697-698,769-819,831-835,840,896-897\n src/tracker-auth.ts        |   94.44 |   95.45 | 163-166,191,194-195,206,213-214,220,227,279,296-297,301\n src/tracking.ts            |   93.05 |   88.26 | 426-430,435-438,494-498,611-614,621-624,645,679-683,796-800,804-807,813-816,824,828,833,836,840,844,891-901,905-920,950,1102,1107,1147-1148,1193-1195,1209-1210,1212-1213,1217-1229,1237,1297,1399,1403-1407,1413-1414,1560-1582,1587-1611,1707-1708,1731,1734-1746,1765-1784,1943-1957,1987,2023-2024,2059-2061,2096,2101,2120-2128,2136,2140,2145,2149,2189-2190,2414,2420,2426-2427,2455,2462,2469-2471,2507,2514,2568,2640,2656-2686,2709,2765,2793,2826,2871-2874,2922-2924,3013-3019,3092,3112,3130,3136,3157-3165,3173,3214-3215,3247,3254,3411,3423,3429,3455,3460,3469,3483-3484,3564,3753-3754,3766,3789-3801,3881,3928,3936-3937,3967,3970-3971,3975-3977,3980-4019,4061-4062,4100-4102,4105-4153,4172-4188,4411,4414,4418,4424,4438-4442,4464,4467,4470,4473,4478,4502,4506,4565-4569,4634,4639,4699,4727,4739-4740,4752,4761\n src/types.ts               |  100.00 |  100.00 | \n src/worktrees.ts           |  100.00 |   84.48 | 83,95-98,107,115-118,127-133,140,147,150,156,164,167,170,180,188\n----------------------------|---------|---------|-------------------\n\n 259 pass\n 0 fail\n 2147 expect() calls\nRan 259 tests across 22 files. [114.87s]\n$ bun run build && bun run scripts/smoke-mcp.ts\n$ bun run scripts/build.ts\n$ bun run scripts/test-package.ts\n$ bun run scripts/check-consistency.ts\n",
+    "stdoutTruncated": false,
+    "stderrTruncated": false
+  }
+}

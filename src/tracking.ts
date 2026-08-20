@@ -7,6 +7,7 @@ import { join, relative, resolve } from "node:path";
 import { z } from "zod";
 
 import { EmpiricalError } from "./errors.js";
+import { inferChangeType } from "./worktrees.js";
 import { resolveTrackerAuthentication } from "./tracker-auth.js";
 import {
   digestJson,
@@ -55,6 +56,9 @@ import type {
   TrackerSetupChange,
   TrackerSyncResult,
   TrackerTicketPolicy,
+  TrackerTicketRequirement,
+  TrackerTicketResolution,
+  TrackerTicketRules,
   TrackerTransport,
   WorkflowState,
 } from "./types.js";
@@ -106,6 +110,17 @@ const environmentNameSchema = z.string().regex(ENVIRONMENT_NAME);
 const remoteIdSchema = z.string().regex(REMOTE_ID);
 const trackerTicketPolicySchema = z.enum(["off", "manual", "ensure"]);
 const trackerVisibilitySchema = z.enum(["blockers-final", "milestones", "revisions"]);
+const trackerTicketRequirementSchema = z.enum(["required", "optional", "off"]);
+const trackerTicketProfileRulesSchema = z.object({
+  fast: trackerTicketRequirementSchema,
+  quick: trackerTicketRequirementSchema,
+  complex: trackerTicketRequirementSchema,
+}).strict();
+const trackerTicketRulesSchema = z.object({
+  feature: trackerTicketProfileRulesSchema,
+  fix: trackerTicketProfileRulesSchema,
+  chore: trackerTicketProfileRulesSchema,
+}).strict();
 
 const githubTrackerPolicyV1Schema = z.object({
   schemaVersion: z.literal(TRACKER_LEGACY_SCHEMA_VERSION),
@@ -133,6 +148,7 @@ const githubTrackerPolicyV2Schema = z.object({
   states: trackerStateMapSchema,
   ticket: trackerTicketPolicySchema,
   visibility: trackerVisibilitySchema,
+  ticketRules: trackerTicketRulesSchema.optional(),
 }).strict();
 
 const linearTrackerPolicyV1Schema = z.object({
@@ -157,6 +173,7 @@ const linearTrackerPolicyV2Schema = z.object({
   states: trackerStateMapSchema,
   ticket: trackerTicketPolicySchema,
   visibility: trackerVisibilitySchema,
+  ticketRules: trackerTicketRulesSchema.optional(),
 }).strict();
 
 const jiraTrackerPolicyV1Schema = z.object({
@@ -189,6 +206,7 @@ const jiraTrackerPolicyV2Schema = z.object({
   states: trackerStateMapSchema,
   ticket: trackerTicketPolicySchema,
   visibility: trackerVisibilitySchema,
+  ticketRules: trackerTicketRulesSchema.optional(),
 }).strict();
 
 export const trackerPolicySchema = z.union([
@@ -454,6 +472,12 @@ export function parseTrackerPolicy(value: unknown): TrackerPolicy {
     );
   }
   if (parsed.provider === "jira") validateJiraSite(parsed.target.siteUrl);
+  if (parsed.schemaVersion === TRACKER_SCHEMA_VERSION && parsed.ticketRules && parsed.ticket !== "ensure") {
+    throw new EmpiricalError(
+      "INVALID_TRACKER_POLICY",
+      "Tracker ticketRules are valid only with ticket behavior ensure",
+    );
+  }
   if (containsSecretLikeValue(parsed)) {
     throw new EmpiricalError(
       "INVALID_TRACKER_POLICY",
@@ -464,8 +488,9 @@ export function parseTrackerPolicy(value: unknown): TrackerPolicy {
 }
 
 export function parseTrackerSetupChange(value: unknown): TrackerSetupChange {
+  let parsed: TrackerSetupChange;
   try {
-    return trackerSetupChangeSchema.parse(value) as TrackerSetupChange;
+    parsed = trackerSetupChangeSchema.parse(value) as TrackerSetupChange;
   } catch (error) {
     throw new EmpiricalError(
       "INVALID_TRACKER_SETUP",
@@ -473,6 +498,9 @@ export function parseTrackerSetupChange(value: unknown): TrackerSetupChange {
       error,
     );
   }
+  return parsed.mode === "apply"
+    ? { ...parsed, policy: parseTrackerPolicy(parsed.policy) }
+    : parsed;
 }
 
 export function effectiveTrackerPolicy(policy: TrackerPolicy): EffectiveTrackerPolicy {
@@ -490,7 +518,43 @@ export function effectiveTrackerPolicy(policy: TrackerPolicy): EffectiveTrackerP
         ticket: policy.ticket,
         visibility: policy.visibility,
         compatibility: "v2",
+        ...(policy.ticketRules ? { ticketRules: policy.ticketRules } : {}),
       };
+}
+
+const RECOMMENDED_TRACKER_TICKET_RULES: TrackerTicketRules = {
+  feature: { fast: "required", quick: "required", complex: "required" },
+  fix: { fast: "optional", quick: "required", complex: "required" },
+  chore: { fast: "optional", quick: "optional", complex: "optional" },
+};
+
+export function recommendedTrackerTicketRules(): TrackerTicketRules {
+  return {
+    feature: { ...RECOMMENDED_TRACKER_TICKET_RULES.feature },
+    fix: { ...RECOMMENDED_TRACKER_TICKET_RULES.fix },
+    chore: { ...RECOMMENDED_TRACKER_TICKET_RULES.chore },
+  };
+}
+
+export function resolveTrackerTicketRequirement(
+  policy: TrackerPolicy,
+  state: Pick<WorkflowState, "request" | "profile">,
+): TrackerTicketResolution {
+  const changeType = inferChangeType(state.request ?? "");
+  if (policy.schemaVersion === TRACKER_SCHEMA_VERSION && policy.ticketRules) {
+    return {
+      changeType,
+      requirement: policy.ticketRules[changeType][state.profile],
+      rules: true,
+    };
+  }
+  const ticket = effectiveTrackerPolicy(policy).ticket;
+  const requirement: TrackerTicketRequirement = ticket === "ensure"
+    ? "required"
+    : ticket === "off"
+      ? "off"
+      : "optional";
+  return { changeType, requirement, rules: false };
 }
 
 export async function loadTrackerPolicy(root: string): Promise<TrackerPolicy | null> {
@@ -881,7 +945,10 @@ export async function trackerStatus(
     return failedStatus(state.revision, null, null, null, failureFrom(error, dependencies));
   }
   if (!policy) return localOnlyStatus(state.revision);
-  if (effectiveTrackerPolicy(policy).ticket === "off") return offStatus(state.revision, policy);
+  const resolution = resolveTrackerTicketRequirement(policy, state);
+  if (resolution.requirement === "off") {
+    return trackerStatusWithPolicy(offStatus(state.revision, policy), policy, null, null, state);
+  }
   try {
     const [binding, pending] = await Promise.all([
       loadTrackerBinding(root, state.activeFeature),
@@ -891,7 +958,7 @@ export async function trackerStatus(
       status: TrackerStatus,
       statusPending: TrackerPendingRecord | null = pending,
       statusBinding: TrackerBinding | null = binding,
-    ): TrackerStatus => trackerStatusWithPolicy(status, policy, statusPending, statusBinding);
+    ): TrackerStatus => trackerStatusWithPolicy(status, policy, statusPending, statusBinding, state);
     if (
       binding
       && pending?.replacesBindingDigest === binding.digest
@@ -1019,6 +1086,7 @@ export async function trackerStatus(
       policy,
       null,
       null,
+      state,
     );
   }
 }
@@ -1035,7 +1103,7 @@ export async function bindTracker(
   }
   const feature = state.activeFeature;
   const policy = await requireTrackerPolicy(root);
-  if (effectiveTrackerPolicy(policy).ticket === "off") {
+  if (resolveTrackerTicketRequirement(policy, state).requirement === "off") {
     throw new EmpiricalError("TRACKER_TICKET_POLICY_OFF", "Tracker ticket behavior is off; enable manual or ensure before binding");
   }
   const result = await withTrackerLock(root, feature, async () => {
@@ -1216,7 +1284,7 @@ export async function bindTracker(
   const pending = await loadTrackerPending(root, feature);
   return {
     ...result,
-    tracker: trackerStatusWithPolicy(result.tracker, policy, pending, result.binding),
+    tracker: trackerStatusWithPolicy(result.tracker, policy, pending, result.binding, state),
   };
 }
 
@@ -1230,8 +1298,13 @@ export async function synchronizeTracker(
   }
   const policy = await loadTrackerPolicy(root);
   if (!policy) return { binding: null, tracker: localOnlyStatus(state.revision), projection: null };
-  if (effectiveTrackerPolicy(policy).ticket === "off") {
-    return { binding: null, tracker: offStatus(state.revision, policy), projection: createTrackerProjection(state, policy, []) };
+  const resolution = resolveTrackerTicketRequirement(policy, state);
+  if (resolution.requirement === "off") {
+    return {
+      binding: null,
+      tracker: trackerStatusWithPolicy(offStatus(state.revision, policy), policy, null, null, state),
+      projection: createTrackerProjection(state, policy, []),
+    };
   }
   const result = await withTrackerLock<TrackerSyncResult>(root, state.activeFeature, async () => {
     const feature = state.activeFeature!;
@@ -1259,8 +1332,33 @@ export async function synchronizeTracker(
       && previousPending?.replacesBindingDigest === binding.digest
       && previousPending.idempotencyKey !== binding.bindIdempotencyKey,
     );
-    if (!binding && !previousPending && effectiveTrackerPolicy(policy).ticket === "ensure") {
+    if (
+      !binding
+      && !previousPending
+      && (resolution.rules || effectiveTrackerPolicy(policy).ticket === "ensure")
+    ) {
       const references = trackerReferences(state.request, policy);
+      if (resolution.rules && resolution.requirement === "optional" && references.length === 0) {
+        return { binding: null, tracker: localOnlyStatus(state.revision), projection };
+      }
+      if (resolution.rules && references.length > 1) {
+        return {
+          binding: null,
+          projection,
+          tracker: failedStatus(
+            state.revision,
+            policy.provider,
+            null,
+            null,
+            failure(
+              "TRACKER_BIND_AMBIGUOUS",
+              "The feature request references multiple target-valid ticket candidates; choose one explicitly",
+              dependencies,
+            ),
+            projection.revision,
+          ),
+        };
+      }
       const intent = references.length === 1
         ? trackerBindIntent(feature, { mode: "attach", ticket: references[0]! })
         : trackerBindIntent(feature, { mode: "create" });
@@ -1285,7 +1383,14 @@ export async function synchronizeTracker(
         return {
           binding: null,
           projection,
-          tracker: failedStatus(state.revision, policy.provider, null, null, recorded.failure, projection.revision),
+          tracker: failedStatus(
+            state.revision,
+            policy.provider,
+            null,
+            null,
+            recorded.failure,
+            projection.revision,
+          ),
         };
       }
     }
@@ -1448,7 +1553,7 @@ export async function synchronizeTracker(
   const pending = await loadTrackerPending(root, state.activeFeature);
   return {
     ...result,
-    tracker: trackerStatusWithPolicy(result.tracker, policy, pending, result.binding),
+    tracker: trackerStatusWithPolicy(result.tracker, policy, pending, result.binding, state),
   };
 }
 
@@ -3506,14 +3611,20 @@ function trackerStatusWithPolicy(
   policy: TrackerPolicy,
   pending: TrackerPendingRecord | null,
   binding: TrackerBinding | null,
+  state?: Pick<WorkflowState, "request" | "profile">,
 ): TrackerStatus {
   if (policy.schemaVersion !== TRACKER_SCHEMA_VERSION) return status;
+  const resolution = state ? resolveTrackerTicketRequirement(policy, state) : null;
   return {
     ...status,
     provider: status.provider ?? policy.provider,
     schemaVersion: policy.schemaVersion,
     ticket: policy.ticket,
     visibility: policy.visibility,
+    ...(resolution?.rules ? {
+      changeType: resolution.changeType,
+      ticketRequirement: resolution.requirement,
+    } : {}),
     pendingEffects: remainingTrackerEffects(policy, pending, binding),
   };
 }

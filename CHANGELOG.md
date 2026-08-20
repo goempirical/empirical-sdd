@@ -8,6 +8,32 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-08-20
+
+### Added
+
+- Added selectable `concise` or `detailed` interaction questions across project
+  configuration, CLI, MCP, action packets, status rendering, and generated
+  agent guidance. New recommended setup is concise; existing missing fields
+  remain detailed.
+- Added strict optional Tracker Policy v2 ticket-rule matrices, including the
+  `features+large-fixes` preset and resolved change-type/requirement status.
+- Added a packaged provider-independent no-ticket feature demo that proves one
+  guarded create, one durable binding, and zero live-network calls.
+
+### Changed
+
+- Optional ticket work with no explicit reference now remains local before
+  authentication or provider access and no longer causes a redundant ticket
+  question; required work retains attach, marker reconciliation, and
+  exactly-once guarded creation.
+
+### Migration
+
+- Existing Schema 5 and Tracker Policy v1/v2 repositories require no state
+  migration. Repositories without an explicit question mode retain detailed
+  questions until configured otherwise; new setup recommends concise mode.
+
 ## [0.25.0] - 2026-08-19
 
 ### Added
@@ -157,7 +183,8 @@ Published through GitHub Actions trusted publishing with npm provenance.
 
 - Prepared and released package version `0.20.2`.
 
-[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.25.0...HEAD
+[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.26.0...HEAD
+[0.26.0]: https://github.com/goempirical/empirical-sdd/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/goempirical/empirical-sdd/compare/v0.24.1...v0.25.0
 [0.24.1]: https://github.com/goempirical/empirical-sdd/compare/v0.24.0...v0.24.1
 [0.24.0]: https://github.com/goempirical/empirical-sdd/compare/v0.23.0...v0.24.0
