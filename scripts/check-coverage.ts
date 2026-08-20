@@ -53,6 +53,7 @@ for (const [file, coverage] of [...files].sort(([left], [right]) => left.localeC
 const processAdapterModules = new Set([
   "src/cli.ts",
   "src/demo-integration-repair.ts",
+  "src/demo-ticket-policy.ts",
   "src/index.ts",
   "src/mcp.ts",
 ]);

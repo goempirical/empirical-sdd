@@ -29,6 +29,7 @@
     "README.md",
     "CHANGELOG.md",
     "docs/mcp.md",
+    "docs/demo.md",
     "docs/protocol.md",
     "docs/security.md",
     "docs/versioning.md",
@@ -47,6 +48,7 @@
     "test:package": "bun run scripts/test-package.ts",
     "test:consistency": "bun run scripts/check-consistency.ts",
     "demo:integration-repair": "node dist/demo-integration-repair.js",
+    "demo:ticket-policy": "node dist/demo-ticket-policy.js",
     "ci": "bun run check && bun run test:coverage && bun run test:dist && bun run test:package && bun run test:consistency && git diff --check"
   },
   "keywords": [

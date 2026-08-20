@@ -62,7 +62,7 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
     const initTool = listed.tools.find((tool) => tool.name === "empirical_init");
     expect(Object.keys(initTool?.inputSchema.properties ?? {})).toEqual(expect.arrayContaining([
       "evidenceRequired", "browserForUi", "screenshotForUi", "codeReview",
-      "isolation", "base", "worktreePath", "branchPattern", "decisions", "tracker",
+      "isolation", "base", "worktreePath", "branchPattern", "decisions", "questions", "tracker",
     ]));
     const completeTool = listed.tools.find((tool) => tool.name === "empirical_complete");
     expect(Object.keys(completeTool?.inputSchema.properties ?? {})).toContain("receiptIds");
@@ -132,6 +132,7 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
       ]));
       if (providerChoice.properties?.schemaVersion?.const === 2) {
         expect(providerChoice.required).toEqual(expect.arrayContaining(["ticket", "visibility"]));
+        expect(providerChoice.properties).toHaveProperty("ticketRules");
       }
       for (const property of ["target", "credentialEnv", "states"]) {
         expect(providerChoice.properties?.[property]?.additionalProperties).toBe(false);
@@ -166,11 +167,12 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
 
     const initialized = await client.callTool({
       name: "empirical_init",
-      arguments: { root, tracker: { mode: "disabled" } },
+      arguments: { root, questions: "concise", tracker: { mode: "disabled" } },
     });
     expect(initialized.isError).not.toBe(true);
     expect(initialized.structuredContent).toMatchObject({
       state: { profile: "complex", phase: "idle", revision: 0 },
+      config: { interaction: { questions: "concise" } },
       knowledge: {
         status: "current",
         manifest: ".empirical/context/manifest.json",
@@ -233,6 +235,7 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
       revision: 1,
       requiredEvidence: ["test", "review"],
       tracker: { health: "local-only", provider: null },
+      interaction: { questions: "concise" },
       kind: "action",
     });
 
@@ -240,6 +243,7 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
     expect(status.isError).not.toBe(true);
     expect(status.structuredContent).toMatchObject({
       phase: "implement",
+      interaction: { questions: "concise" },
       tracker: { health: "local-only", provider: null },
     });
 
@@ -305,6 +309,7 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
         codeReview: true,
         isolation: "off",
         decisions: "off",
+        questions: "detailed",
       },
     });
     expect(configured.isError).not.toBe(true);
@@ -312,6 +317,7 @@ test("the bundled stdio MCP server exposes and executes the portable workflow to
       evidence: { required: false, browserForUi: false, screenshotForUi: true, codeReview: true },
       isolation: { mode: "off" },
       decisions: { complexRecords: "off" },
+      interaction: { questions: "detailed" },
     });
 
     const complexInitialized = await client.callTool({

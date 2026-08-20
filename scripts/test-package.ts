@@ -52,8 +52,10 @@ try {
     "dist/integrations.js",
     "dist/integrations.d.ts",
     "dist/demo-integration-repair.js",
+    "dist/demo-ticket-policy.js",
     "CHANGELOG.md",
     "docs/mcp.md",
+    "docs/demo.md",
     "docs/protocol.md",
     "docs/security.md",
     "docs/versioning.md",
@@ -78,7 +80,7 @@ try {
 
   await writeFile(
     join(consumer, "runtime.mjs"),
-    `import { EmpiricalProject, PRODUCT_VERSION, SCHEMA_VERSION } from "empirical-sdd";
+    `import { EmpiricalProject, PRODUCT_VERSION, SCHEMA_VERSION, recommendedTrackerTicketRules, resolveTrackerTicketRequirement } from "empirical-sdd";
 import { canonicalJson } from "empirical-sdd/protocol";
 import { createMcpServer } from "empirical-sdd/mcp";
 import { EMPIRICAL_AGENT_SKILL_NAMES, inspectProjectIntegrations, uninstallGlobalAgentSkills } from "empirical-sdd/integrations";
@@ -86,6 +88,7 @@ import { EMPIRICAL_AGENT_SKILL_NAMES, inspectProjectIntegrations, uninstallGloba
 if (typeof EmpiricalProject !== "function" || PRODUCT_VERSION !== "0.25.0" || SCHEMA_VERSION !== 5) throw new Error("root export mismatch");
 if (canonicalJson({ b: 2, a: 1 }) !== '{"a":1,"b":2}') throw new Error("protocol export mismatch");
 if (typeof createMcpServer !== "function") throw new Error("MCP export mismatch");
+if (recommendedTrackerTicketRules().fix.fast !== "optional" || typeof resolveTrackerTicketRequirement !== "function") throw new Error("ticket policy export mismatch");
 if (EMPIRICAL_AGENT_SKILL_NAMES.length !== 1 || EMPIRICAL_AGENT_SKILL_NAMES[0] !== "empirical-init" || typeof inspectProjectIntegrations !== "function" || typeof uninstallGlobalAgentSkills !== "function") throw new Error("integration export mismatch");
 let blocked = false;
 try { await import("empirical-sdd/storage"); } catch (error) { blocked = error?.code === "ERR_PACKAGE_PATH_NOT_EXPORTED"; }
@@ -122,10 +125,33 @@ if (!blocked) throw new Error("internal package subpath was exported");
   ) {
     throw new Error("Packed integration-repair demo did not prove safe repair");
   }
+  const ticketDemoOutput = run(
+    node,
+    [join(consumer, "node_modules", "empirical-sdd", "dist", "demo-ticket-policy.js")],
+    consumer,
+  );
+  const ticketDemo = JSON.parse(ticketDemoOutput) as {
+    interactionMode?: string;
+    changeType?: string;
+    ticketRequirement?: string;
+    createCount?: number;
+    bindingCount?: number;
+    liveNetworkCount?: number;
+  };
+  if (
+    ticketDemo.interactionMode !== "concise"
+    || ticketDemo.changeType !== "feature"
+    || ticketDemo.ticketRequirement !== "required"
+    || ticketDemo.createCount !== 1
+    || ticketDemo.bindingCount !== 1
+    || ticketDemo.liveNetworkCount !== 0
+  ) {
+    throw new Error("Packed ticket-policy demo did not prove safe one-ticket creation");
+  }
 
   await writeFile(
     join(consumer, "types.ts"),
-    `import { EmpiricalProject, defaultTrackerSecretFilePath, type TrackerOAuthResolver, type UninstallReport, type WorkflowState } from "empirical-sdd";
+    `import { EmpiricalProject, defaultTrackerSecretFilePath, recommendedTrackerTicketRules, resolveTrackerTicketRequirement, type QuestionMode, type TrackerOAuthResolver, type TrackerTicketRules, type UninstallReport, type WorkflowState } from "empirical-sdd";
 import { type EvidenceReceipt } from "empirical-sdd/protocol";
 import { createMcpServer, type EmpiricalMcpServerOptions } from "empirical-sdd/mcp";
 import { inspectProjectIntegrations, uninstallGlobalAgentSkills, type EmpiricalAgentSkillName, type ProjectIntegrationInspection } from "empirical-sdd/integrations";
@@ -139,7 +165,10 @@ const inspection = null as unknown as ProjectIntegrationInspection;
 const uninstall = null as unknown as UninstallReport;
 const resolver = null as unknown as TrackerOAuthResolver;
 const mcpOptions: EmpiricalMcpServerOptions = { trackerDependencies: { oauthResolver: resolver } };
-void state; void receipt; void skill; void inspection; void uninstall; void resolver; void mcpOptions; void defaultTrackerSecretFilePath; void inspectProjectIntegrations; void uninstallGlobalAgentSkills; void ProjectStore;
+const questionMode: QuestionMode = "concise";
+const ticketRules: TrackerTicketRules = recommendedTrackerTicketRules();
+const resolution = resolveTrackerTicketRequirement({ schemaVersion: 2, provider: "linear", target: { teamId: "team", projectId: null }, credentialEnv: { apiKey: "LINEAR_SECRET_KEY" }, states: { specification: "todo", planned: "todo", "in-progress": "doing", verification: "review", review: "review", blocked: "doing", done: "done" }, ticket: "ensure", visibility: "milestones", ticketRules }, { request: "Fix a bug", profile: "fast" });
+void state; void receipt; void skill; void inspection; void uninstall; void resolver; void mcpOptions; void questionMode; void ticketRules; void resolution; void defaultTrackerSecretFilePath; void inspectProjectIntegrations; void uninstallGlobalAgentSkills; void ProjectStore;
 `,
     "utf8",
   );

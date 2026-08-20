@@ -1,25 +1,21 @@
 {
   "schemaVersion": 1,
-  "sequence": 9,
-  "previousDigest": "sha256:686b31efd767e9d05d96e4258879bd62e3dd5f18957315721fb8e37f07c988fd",
-  "actor": "Codex",
-  "type": "transition",
-  "summary": "Review passed with no open finding. The one-line source diff, 0.25.0 consistency, exact-tree CI receipt, Windows fix ancestry and matrix, accepted fresh-evidence decision, immutable release gates, and credential exclusion all satisfy pre-delivery readiness.",
-  "createdAt": "2026-08-19T23:56:18.811Z",
-  "stateBeforeDigest": "sha256:ccdc65e8e608da45c55f3aec463c4fcf7ba29e50861a2c6d6164e8975385edaa",
-  "stateAfterDigest": "sha256:48bceb2235cc9d270b8dceac7be8e11c95c85bc868d43a5191b66c326a9f9dfe",
+  "feature": "release-0-25-0",
+  "lastSequence": 11,
+  "lastEventDigest": "sha256:a4e5033e2cf6662665f6c05f2e7a98d7adba9ea11fd87a410689d03fd4efc2af",
+  "stateDigest": "sha256:9db0dffafd47697ce429e835c5cce477bb55bf10bdc22fbcd98a71f5f205071b",
   "state": {
     "schemaVersion": 5,
-    "revision": 9,
+    "revision": 11,
     "activeFeature": "release-0-25-0",
     "request": "Finalize and publish empirical-sdd 0.25.0 from the Windows-corrected main branch. Add a concise 0.25.0 changelog note for the cross-platform tracker secret-path correction, verify the complete release suite and five-platform GitHub matrix, deliver the release-note source and immutable workflow evidence through protected pull requests, then publish exactly empirical-sdd@0.25.0 with npm dist-tag latest and GitHub tag/release v0.25.0 from the final evidence merge commit.",
     "profile": "complex",
     "workflow": "complex",
     "mode": "yolo",
-    "phase": "integrate",
-    "status": "waiting",
+    "phase": "done",
+    "status": "done",
     "repairAttempts": 0,
-    "message": "Review passed with no open finding. The one-line source diff, 0.25.0 consistency, exact-tree CI receipt, Windows fix ancestry and matrix, accepted fresh-evidence decision, immutable release gates, and credential exclusion all satisfy pre-delivery readiness.",
+    "message": "Delivered through 2049e6cb1aa1b23597c8eb7c1f0e476ffa2e998c",
     "implementationActor": "Codex",
     "specDigest": "sha256:3f2ad59e9c96f0b86cf46441dff4c8f067aa863573621fd67b8b321fd909707a",
     "approvedSpecRevision": 3,
@@ -37,17 +33,16 @@
     "completion": {
       "implemented": true,
       "verified": true,
-      "integrated": false,
-      "delivered": false,
+      "integrated": true,
+      "delivered": true,
       "published": false,
-      "highest": "verified",
+      "highest": "delivered",
       "reasons": {
-        "integrated": "integrated has not been proven by a durable receipt.",
-        "delivered": "delivered has not been proven by a durable receipt.",
         "published": "published has not been proven by a durable receipt."
       }
     },
-    "updatedAt": "2026-08-19T23:56:18.811Z"
+    "updatedAt": "2026-08-20T03:40:27.560Z"
   },
-  "digest": "sha256:1f249e0d618a38a9ea48cdffae82f8a7e1ce745c365e13503a0f2894ea017617"
+  "compactedAt": "2026-08-20T03:40:27.787Z",
+  "digest": "sha256:fa957f15689a0f9bf19f60d36ee490db8caa7374e8afb4db912d5c5747a3bf9d"
 }

@@ -26,7 +26,7 @@ Schema 5 model.
   explicit publication planning.
 - `tracking.ts` owns the unconfigured/disabled/configured setup state, provider
   discovery/preview and semantic mapping, optional Tracker Policy v1/v2,
-  ensure/manual/off binding, target-bound feature
+  strict change-type/profile ticket rules, ensure/manual/off binding, target-bound feature
   bindings, per-effect durable pending operations, safe receipt artifacts, and
   GitHub, Linear, and Jira adapters.
 - `knowledge.ts` owns Manifest v2 fingerprints and fresh-by-default retrieval.
@@ -91,9 +91,11 @@ both succeed.
 External tracking is a separate one-way projection boundary. Every workflow
 transition commits its local journal and state projection first. A later
 tracker sync resumes durable pending work or snapshots that committed revision
-into a checksummed pending record. In ensure mode it validates a request
-reference, performs complete stable-marker reconciliation, and creates only on
-one proven zero-match path. It then converges provider state, append-only
+into a checksummed pending record. A pure resolver combines the existing
+request change classifier with the persisted workflow profile. Required work
+validates a request reference, performs complete stable-marker reconciliation,
+and creates only on one proven zero-match path; optional unreferenced work and
+off work branch before authentication. It then converges provider state, append-only
 milestone comments, and receipt-approved evidence through individually
 acknowledged deterministic effects before advancing the binding. Policy v2
 Linear updates never include description content. Binding target drift,

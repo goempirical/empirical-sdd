@@ -1,15 +1,15 @@
 {
   "schemaVersion": 5,
-  "revision": 10,
+  "revision": 11,
   "activeFeature": "release-0-25-0",
   "request": "Finalize and publish empirical-sdd 0.25.0 from the Windows-corrected main branch. Add a concise 0.25.0 changelog note for the cross-platform tracker secret-path correction, verify the complete release suite and five-platform GitHub matrix, deliver the release-note source and immutable workflow evidence through protected pull requests, then publish exactly empirical-sdd@0.25.0 with npm dist-tag latest and GitHub tag/release v0.25.0 from the final evidence merge commit.",
   "profile": "complex",
   "workflow": "complex",
   "mode": "yolo",
-  "phase": "deliver",
-  "status": "waiting",
+  "phase": "done",
+  "status": "done",
   "repairAttempts": 0,
-  "message": "Integrated capability changes: package-distribution",
+  "message": "Delivered through 2049e6cb1aa1b23597c8eb7c1f0e476ffa2e998c",
   "implementationActor": "Codex",
   "specDigest": "sha256:3f2ad59e9c96f0b86cf46441dff4c8f067aa863573621fd67b8b321fd909707a",
   "approvedSpecRevision": 3,
@@ -28,13 +28,12 @@
     "implemented": true,
     "verified": true,
     "integrated": true,
-    "delivered": false,
+    "delivered": true,
     "published": false,
-    "highest": "integrated",
+    "highest": "delivered",
     "reasons": {
-      "delivered": "delivered has not been proven by a durable receipt.",
       "published": "published has not been proven by a durable receipt."
     }
   },
-  "updatedAt": "2026-08-20T00:03:10.065Z"
+  "updatedAt": "2026-08-20T03:40:27.560Z"
 }

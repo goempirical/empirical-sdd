@@ -14,7 +14,9 @@ fetch during installation.
 ## Initialize deliberately
 
 In Codex, invoke `$empirical-init`. The agent first shows current or recommended
-Verification, Parallel work, and Decisions settings. Apply, customize, or
+Verification, Parallel work, Decisions, Interaction, and Tracker settings.
+Choose concise questions to ask only about material blockers, or detailed for
+the expanded view. Apply, customize, or
 cancel; cancellation writes nothing. Initialization then persists Schema 5,
 Policy v2, Manifest v2, supported runtime bridges, and marker-owned local
 activation without creating feature state. In Claude Code use
@@ -46,6 +48,29 @@ Empirical-owned content, explicit Init updates it. If a path is unsafe or an
 Empirical MCP entry is unmanaged and conflicting, Init preserves it and Doctor
 continues reporting `PROJECT_INTEGRATIONS_DRIFTED` until the developer resolves
 the collision.
+
+## New feature without an assigned ticket
+
+The packaged ticket-policy demo starts a real Complex feature with no ticket
+reference, selects concise questions plus the recommended
+`features+large-fixes` matrix, and calls production tracker synchronization:
+
+```bash
+bun run build
+bun run demo:ticket-policy
+```
+
+It never contacts Linear. A deterministic injected transport provides target
+discovery, an empty stable-marker lookup, one create response, projection, and
+one milestone; an in-memory OAuth resolver prevents any host credential read.
+The JSON result must report `feature/required`, `createCount: 1`,
+`bindingCount: 1`, and `liveNetworkCount: 0`. The clean packed-consumer harness
+executes and rejects the package if any invariant changes.
+
+For a Fast fix under the same preset, the effective rule is `optional`. With no
+ticket reference, synchronization stays local and asks no ticket question.
+Quick or Complex fixes require a ticket; chores are optional. A custom policy
+can set any complete matrix cell to `required`, `optional`, or `off`.
 
 ## Normal mode
 
@@ -85,7 +110,8 @@ other hard safety floor. It cannot authorize publication.
 
 > Mirror this feature to our Linear board and create its ticket.
 
-Init asks only for the credential environment-variable name, discovers
+Init starts with OAuth and asks only for fallback environment-variable names,
+discovers
 accessible teams/projects/states by display name, proposes an editable semantic
 mapping, and previews the secret-free result. In ensure mode the first sync
 attaches a referenced or marker-matched ticket, or creates one only after a

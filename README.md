@@ -35,6 +35,7 @@ artifacts; unmanaged or unsafe conflicts are preserved and remain visible.
 - Isolated parallel work through linked Git worktrees.
 - Guided Linear, GitHub Issues + Projects, or Jira ticket mirrors with automatic
   binding, milestone comments, and safe evidence projection.
+- Selectable concise or detailed agent questions and runtime summaries.
 - Explicit, guarded delivery and npm publication boundaries.
 
 Completion is reported only at the highest proven level: implemented,
@@ -42,10 +43,17 @@ verified, integrated, delivered, or published.
 
 ## Tracker setup
 
-`empirical-init` always shows a Tracker section. When no prior choice exists,
-it recommends **Track all work** and requires choosing that or **No tracking**
-before setup can be saved. Track all selects Linear, GitHub Projects, or Jira;
-No tracking persists a provider-free choice and makes no provider requests.
+`empirical-init` always shows Interaction and Tracker sections. New recommended
+setup selects **concise** questions: agents ask only when an answer changes
+scope, architecture, authorization, or a safety gate. **Detailed** preserves
+the expanded guidance used by existing Schema-5 repositories. Automation can
+set the same value with `--questions concise|detailed` or the MCP `questions`
+field.
+
+When no tracker choice exists, Init recommends **Track work by type** and
+requires choosing that or **No tracking** before setup can be saved. Track work
+selects Linear, GitHub Projects, or Jira; No tracking persists a provider-free
+choice and makes no provider requests.
 
 Authentication starts with OAuth when a trusted host supplies a connection.
 MCP clients may open that connection only through explicitly negotiated
@@ -84,6 +92,21 @@ preserve user-authored descriptions, and receipt-approved evidence is uploaded
 or linked only after repository containment, media, size, and digest checks.
 Existing Tracker Policy v1 files remain valid with manual binding and legacy
 projection until deliberately upgraded.
+
+An optional strict `ticketRules` matrix refines `ensure` by change type and
+workflow size. The recommended `features+large-fixes` preset is:
+
+| Work | Fast | Quick | Complex |
+| --- | --- | --- | --- |
+| Feature | required | required | required |
+| Fix | optional | required | required |
+| Chore | optional | optional | optional |
+
+Optional work with no referenced ticket stays local without OAuth, provider
+access, ticket creation, or a redundant question. One explicit reference is
+attached; multiple references fail closed. See the [demo](docs/demo.md) for a
+provider-independent new-feature run and [MCP documentation](docs/mcp.md) for
+the complete custom JSON form.
 
 ## CLI
 

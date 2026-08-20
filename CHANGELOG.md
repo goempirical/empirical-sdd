@@ -8,6 +8,24 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ## [Unreleased]
 
+### Added
+
+- Added selectable `concise` or `detailed` interaction questions across project
+  configuration, CLI, MCP, action packets, status rendering, and generated
+  agent guidance. New recommended setup is concise; existing missing fields
+  remain detailed.
+- Added strict optional Tracker Policy v2 ticket-rule matrices, including the
+  `features+large-fixes` preset and resolved change-type/requirement status.
+- Added a packaged provider-independent no-ticket feature demo that proves one
+  guarded create, one durable binding, and zero live-network calls.
+
+### Changed
+
+- Optional ticket work with no explicit reference now remains local before
+  authentication or provider access and no longer causes a redundant ticket
+  question; required work retains attach, marker reconciliation, and
+  exactly-once guarded creation.
+
 ## [0.25.0] - 2026-08-19
 
 ### Added

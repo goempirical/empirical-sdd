@@ -7,7 +7,7 @@ import {
 import type { TrackerSetupState } from "./tracking.js";
 import type { ProjectConfig, ProjectConfigurationInput, TrackerPolicy } from "./types.js";
 
-export type SetupSettings = Pick<ProjectConfig, "evidence" | "isolation" | "decisions">;
+export type SetupSettings = Pick<ProjectConfig, "evidence" | "isolation" | "decisions" | "interaction">;
 
 export function recommendedSetupSettings(): SetupSettings {
   return {
@@ -24,6 +24,7 @@ export function recommendedSetupSettings(): SetupSettings {
       branchPattern: "{type}/{feature}",
     },
     decisions: { complexRecords: "required" },
+    interaction: { questions: "concise" },
   };
 }
 
@@ -32,6 +33,7 @@ export function setupSettingsFromConfig(config: ProjectConfig): SetupSettings {
     evidence: { ...config.evidence },
     isolation: { ...config.isolation },
     decisions: { ...config.decisions },
+    interaction: { ...config.interaction },
   };
 }
 
@@ -40,6 +42,7 @@ export function setupConfigurationInput(settings: SetupSettings): ProjectConfigu
     evidence: { ...settings.evidence },
     isolation: { ...settings.isolation },
     decisions: { ...settings.decisions },
+    interaction: { ...settings.interaction },
     setupComplete: true,
   };
 }
@@ -63,6 +66,9 @@ export function validateSetupSettings(settings: SetupSettings): void {
   );
   if (settings.decisions.complexRecords !== "required" && settings.decisions.complexRecords !== "off") {
     throw new EmpiricalError("INVALID_CONFIG", "Complex decisions must be required or off");
+  }
+  if (settings.interaction.questions !== "concise" && settings.interaction.questions !== "detailed") {
+    throw new EmpiricalError("INVALID_CONFIG", "Questions must be concise or detailed");
   }
 }
 
@@ -89,6 +95,33 @@ export function renderSetupSummary(
   const trackerGuidance = trackerSetup.mode === "configured"
     ? trackerAuthenticationGuidance(trackerSetup.policy)
     : null;
+  if (settings.interaction.questions === "concise") {
+    const verification = [
+      `tests ${onOff(settings.evidence.required)}`,
+      `browser ${onOff(settings.evidence.browserForUi)}`,
+      `screenshots ${onOff(settings.evidence.screenshotForUi)}`,
+      `review ${onOff(settings.evidence.codeReview)}`,
+    ].join(" · ");
+    const tracker = trackerSetup.mode === "configured"
+      ? [
+          `Tracker: ${trackerSelectionLabel(trackerSetup.policy)} · ${state}`,
+          `Auth: host OAuth first · fallback ${trackerGuidance!.secretFilePath} · Never paste credentials into chat`,
+        ]
+      : trackerSetup.mode === "disabled"
+        ? [`Tracker: no tracking · local-only · ${state}`]
+        : [
+            `Tracker: choose Track work or No tracking before Save · ${state}`,
+            `Auth: host OAuth first · fallback ${defaultTrackerSecretFilePath()} · Never paste credentials into chat`,
+          ];
+    return [
+      `◆ Empirical setup · ${state}`,
+      "Questions: concise · only material blockers",
+      `Verification: ${verification}`,
+      `Worktrees: ${settings.isolation.mode} · base ${base} · ${settings.isolation.branchPattern}`,
+      `Decisions: ${settings.decisions.complexRecords}`,
+      ...tracker,
+    ].join("\n");
+  }
   return [
     "◆ Empirical setup",
     `│  ${options.effective ? "Effective settings" : options.current ? "Current settings" : "Recommended settings"}`,
@@ -112,6 +145,9 @@ export function renderSetupSummary(
     "│  Decisions",
     `│  ${marker(settings.decisions.complexRecords === "required")} ${settings.decisions.complexRecords === "required" ? "Require reviewable decision records for Complex work" : "Do not require Complex decision records"}`,
     "│",
+    "│  Interaction",
+    "│  ● Detailed questions and expanded runtime summaries",
+    "│",
     "│  Tracker",
     ...(trackerSetup.mode === "configured" ? [
       `│  ● ${trackerSelectionLabel(trackerSetup.policy)} · ${state}`,
@@ -133,8 +169,10 @@ export function renderSetupSummary(
 }
 
 function trackerSelectionLabel(policy: TrackerPolicy): string {
-  const selection = policy.schemaVersion === 2 && policy.ticket === "ensure"
-    ? "Track all work"
+  const selection = policy.schemaVersion === 2 && policy.ticketRules
+    ? "Track by work type"
+    : policy.schemaVersion === 2 && policy.ticket === "ensure"
+      ? "Track all work"
     : "Tracker configured";
   return `${selection} · ${trackerLabel(policy)}`;
 }

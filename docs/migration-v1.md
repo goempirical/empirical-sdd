@@ -67,9 +67,14 @@ the policy adds:
 ```json
 {
   "ticket": "off | manual | ensure",
-  "visibility": "blockers-final | milestones | revisions"
+  "visibility": "blockers-final | milestones | revisions",
+  "ticketRules": "optional strict feature/fix/chore × fast/quick/complex matrix"
 }
 ```
+
+`ticketRules` is optional and legal only with `ticket: "ensure"`. Omitting it
+preserves the original global v2 behavior byte-for-byte. Adding it deliberately
+allows each complete matrix cell to be `required`, `optional`, or `off`.
 
 Upgrading does not replace an existing feature binding. Same-target bindings
 are reprojected under the new policy digest; target drift still requires an

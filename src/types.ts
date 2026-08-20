@@ -42,6 +42,7 @@ export type EvidenceKind = "test" | "browser" | "screenshot" | "review" | "human
 export type ChangeType = "feature" | "fix" | "chore";
 export type IsolationMode = "ask" | "off";
 export type ComplexDecisionMode = "required" | "off";
+export type QuestionMode = "concise" | "detailed";
 
 export interface IsolationConfig {
   mode: IsolationMode;
@@ -52,6 +53,10 @@ export interface IsolationConfig {
 
 export interface DecisionConfig {
   complexRecords: ComplexDecisionMode;
+}
+
+export interface InteractionConfig {
+  questions: QuestionMode;
 }
 
 export interface ProjectConfig {
@@ -66,6 +71,7 @@ export interface ProjectConfig {
   };
   isolation: IsolationConfig;
   decisions: DecisionConfig;
+  interaction: InteractionConfig;
   setupComplete: boolean;
   legacySource: "ai" | null;
 }
@@ -74,6 +80,7 @@ export interface ProjectConfigurationInput {
   evidence?: Partial<ProjectConfig["evidence"]>;
   isolation?: Partial<IsolationConfig>;
   decisions?: Partial<DecisionConfig>;
+  interaction?: Partial<InteractionConfig>;
   setupComplete?: boolean;
 }
 
@@ -117,6 +124,17 @@ export type TrackerHealth = "local-only" | "off" | "pending" | "synced" | "faile
 export type TrackerStateMap = Record<TrackerProgressState, string>;
 export type TrackerTicketPolicy = "off" | "manual" | "ensure";
 export type TrackerProgressVisibility = "blockers-final" | "milestones" | "revisions";
+export type TrackerTicketRequirement = "required" | "optional" | "off";
+export type TrackerTicketRules = Record<
+  ChangeType,
+  Record<Profile, TrackerTicketRequirement>
+>;
+
+export interface TrackerTicketResolution {
+  changeType: ChangeType;
+  requirement: TrackerTicketRequirement;
+  rules: boolean;
+}
 
 export interface GitHubTrackerPolicyV1 {
   schemaVersion: 1;
@@ -135,6 +153,7 @@ export interface GitHubTrackerPolicyV2 extends Omit<GitHubTrackerPolicyV1, "sche
   schemaVersion: 2;
   ticket: TrackerTicketPolicy;
   visibility: TrackerProgressVisibility;
+  ticketRules?: TrackerTicketRules | undefined;
 }
 
 export type GitHubTrackerPolicy = GitHubTrackerPolicyV1 | GitHubTrackerPolicyV2;
@@ -154,6 +173,7 @@ export interface LinearTrackerPolicyV2 extends Omit<LinearTrackerPolicyV1, "sche
   schemaVersion: 2;
   ticket: TrackerTicketPolicy;
   visibility: TrackerProgressVisibility;
+  ticketRules?: TrackerTicketRules | undefined;
 }
 
 export type LinearTrackerPolicy = LinearTrackerPolicyV1 | LinearTrackerPolicyV2;
@@ -174,6 +194,7 @@ export interface JiraTrackerPolicyV2 extends Omit<JiraTrackerPolicyV1, "schemaVe
   schemaVersion: 2;
   ticket: TrackerTicketPolicy;
   visibility: TrackerProgressVisibility;
+  ticketRules?: TrackerTicketRules | undefined;
 }
 
 export type JiraTrackerPolicy = JiraTrackerPolicyV1 | JiraTrackerPolicyV2;
@@ -186,6 +207,7 @@ export interface EffectiveTrackerPolicy {
   ticket: TrackerTicketPolicy;
   visibility: TrackerProgressVisibility | "legacy";
   compatibility: "v1" | "v2";
+  ticketRules?: TrackerTicketRules | undefined;
 }
 
 export type TrackerDiscoveryResourceKind =
@@ -394,10 +416,13 @@ export interface TrackerStatus {
   schemaVersion?: 1 | 2;
   ticket?: TrackerTicketPolicy;
   visibility?: TrackerProgressVisibility | "legacy";
+  changeType?: ChangeType;
+  ticketRequirement?: TrackerTicketRequirement;
   pendingEffects?: number;
 }
 
 export interface ProjectStatus extends WorkflowState {
+  interaction: InteractionConfig;
   tracker: TrackerStatus;
 }
 
@@ -598,6 +623,7 @@ export interface ActionPacket {
   mode: ExecutionMode;
   riskFloor: RiskFloor;
   routeRationale: string[];
+  interaction: InteractionConfig;
   phase: Phase;
   status: WorkflowStatus;
   revision: number;

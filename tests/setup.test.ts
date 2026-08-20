@@ -10,22 +10,20 @@ describe("setup settings", () => {
   test("renders every safe default before persistence", () => {
     const settings = recommendedSetupSettings();
     const summary = renderSetupSummary(settings, { current: false, resolvedBase: "main" });
-    expect(summary).toContain("Recommended settings");
-    expect(summary).toContain("Acceptance-test evidence for every criterion  on · recommended");
-    expect(summary).toContain("Real-browser evidence for [UI] criteria  on");
-    expect(summary).toContain("Screenshot artifact for [UI] criteria  on");
-    expect(summary).toContain("Independent code-review evidence  on");
-    expect(summary).toContain("Base: auto (currently main)");
-    expect(summary).toContain("Path: ../{repo}-{feature}");
-    expect(summary).toContain("Branch: {type}/{feature}");
-    expect(summary).toContain("Require reviewable decision records for Complex work");
-    expect(summary).toContain("Track all work (recommended; configure a provider before Save)");
-    expect(summary).toContain("No tracking (local-only; no provider requests)");
-    expect(summary).toContain("Authentication: trusted host OAuth preferred for Linear, GitHub, and Jira");
+    expect(summary).toContain("Empirical setup · recommended");
+    expect(summary).toContain("Questions: concise · only material blockers");
+    expect(summary).toContain("Verification: tests on · browser on · screenshots on · review on");
+    expect(summary).toContain("Worktrees: ask · base auto (currently main) · {type}/{feature}");
+    expect(summary).toContain("Decisions: required");
+    expect(summary).toContain("Tracker: choose Track work or No tracking before Save");
+    expect(summary).toContain("Auth: host OAuth first");
     expect(summary.replaceAll("\\", "/").toLowerCase()).toContain("empirical/secrets.env");
     expect(summary).toContain("Never paste credentials into chat");
-    expect(summary).toContain("Choose one tracker mode before setup can be saved");
-    expect(setupConfigurationInput(settings)).toMatchObject({ setupComplete: true, evidence: { required: true } });
+    expect(setupConfigurationInput(settings)).toMatchObject({
+      setupComplete: true,
+      evidence: { required: true },
+      interaction: { questions: "concise" },
+    });
   });
 
   test("distinguishes an explicit no-tracking choice from missing tracker setup", () => {
@@ -34,8 +32,8 @@ describe("setup settings", () => {
       current: true,
       trackerSetup: { mode: "disabled", policy: null },
     });
-    expect(disabled).toContain("● No tracking (local-only; no provider requests) · current");
-    expect(disabled).not.toContain("Choose one tracker mode");
+    expect(disabled).toContain("Tracker: no tracking · local-only · current");
+    expect(disabled).not.toContain("before Save");
 
     const configured = renderSetupSummary(settings, {
       current: true,
@@ -60,14 +58,14 @@ describe("setup settings", () => {
         },
       },
     });
-    expect(configured).toContain("Track all work · Linear · tickets ensure");
-    expect(configured).toContain("Credential source: LINEAR_API_KEY (environment names only)");
-    expect(configured).toContain("Authentication: trusted host OAuth preferred");
+    expect(configured).toContain("Tracker: Track all work · Linear · tickets ensure");
+    expect(configured).toContain("Auth: host OAuth first");
     expect(configured).toContain("Never paste credentials into chat");
   });
 
   test("explains inactive UI sub-policies without erasing them", () => {
     const settings = recommendedSetupSettings();
+    settings.interaction.questions = "detailed";
     settings.evidence.required = false;
     const summary = renderSetupSummary(settings, { current: true });
     expect(summary).toContain("Current settings");
@@ -77,6 +75,7 @@ describe("setup settings", () => {
     expect(settings.evidence.browserForUi).toBe(true);
     expect(settings.evidence.screenshotForUi).toBe(true);
     expect(renderSetupSummary(settings, { current: false, effective: true })).toContain("Effective settings");
+    expect(renderSetupSummary(settings, { current: true })).toContain("Detailed questions and expanded runtime summaries");
   });
 
   test("validates path and branch templates before save", () => {
@@ -87,5 +86,8 @@ describe("setup settings", () => {
     settings.isolation.worktreePath = "../{feature}";
     settings.isolation.branchPattern = "feature/{feature}";
     expect(() => validateSetupSettings(settings)).toThrow("Branch pattern must contain {type} and {feature}");
+    settings.isolation.branchPattern = "{type}/{feature}";
+    settings.interaction.questions = "invalid" as "concise";
+    expect(() => validateSetupSettings(settings)).toThrow("Questions must be concise or detailed");
   });
 });
