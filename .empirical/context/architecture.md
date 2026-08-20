@@ -15,8 +15,8 @@
 - `src/discovery.ts`: ordered Socratic passes, progressive durable answers, and
   exact approved Complex handoff.
 - `src/tracking.ts`: strict optional tracker policy, target-bound feature
-  bindings, durable pending operations, normalized projection, and GitHub,
-  Linear, and Jira adapters.
+  bindings, change-type/profile ticket-requirement resolution, durable pending
+  operations, normalized projection, and GitHub, Linear, and Jira adapters.
 - `src/agents.ts` / `src/integrations.ts` / `src/lifecycle.ts`: supported-agent
   detection, the single explicit Init global catalog, repository-local
   activation, managed legacy removal, updates, and ownership-bound global
@@ -38,6 +38,8 @@ Optional external tracking commits that state machine first, then converges one
 target-bound ticket from durable feature-local pending work. Target drift fails
 before provider access, while same-target mapping changes force reprojection;
 provider failure cannot roll back local progress.
+Optional work with no ticket reference exits before authentication or network
+access; required work keeps attach, marker reconciliation, and guarded creation.
 Complex Review projects validated deltas into living capability specifications.
 Git metadata selects the feature owned by each linked checkout.
 
