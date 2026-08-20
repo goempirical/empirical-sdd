@@ -4,7 +4,7 @@ Agent-neutral, resumable spec-driven development for coding agents. Empirical
 turns an ordinary change request into a deterministic workflow with durable
 state, reviewable evidence, and safe Git integration.
 
-> Empirical 0.25 is alpha software. It requires Node.js 22 or newer.
+> Empirical 0.26 is alpha software. It requires Node.js 22 or newer.
 
 ## Install
 
