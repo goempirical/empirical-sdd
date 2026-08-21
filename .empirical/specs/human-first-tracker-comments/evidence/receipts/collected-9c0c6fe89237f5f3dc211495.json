@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "collected-9c0c6fe89237f5f3dc211495",
+  "criteria": [
+    "AC-1",
+    "AC-10",
+    "AC-2",
+    "AC-3"
+  ],
+  "evidenceKinds": [
+    "browser",
+    "screenshot"
+  ],
+  "summary": "Installed Chromium rendered and visually inspected ordinary, awaiting-human, blocked, review, and verified-complete provider-like comments at 1440x1100. Headline, work label, summary, action emphasis, friendly evidence, and subtle managed footer are legible without visible slugs, receipts, digests, revision fields, or completion metadata.",
+  "passed": true,
+  "startedAt": "2026-08-21T21:36:48.330Z",
+  "completedAt": "2026-08-21T21:36:48.330Z",
+  "provenance": {
+    "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+    "feature": "human-first-tracker-comments",
+    "specRevision": 2,
+    "specDigest": "sha256:27573d8ec9adeb8e53d2320289963a8ab948038fd7ce024bc662c811fbc0378c",
+    "treeDigest": "sha256:7d4e58da3120748c2b1c28d0b9b7bd13f1595b0d16aa17cc1659949889871734",
+    "policyDigest": "sha256:d1f5cd886f30de09b672911041c00cda350042fe9d96e5595a6d9ca4be592e0c"
+  },
+  "digest": "sha256:2d51e18d96cdff87284ae4e3eefbc61fcd28e0d6d31b96885a646740d99f468f",
+  "kind": "collected",
+  "collector": "codex-headless-chromium",
+  "artifacts": [
+    {
+      "path": ".empirical/specs/human-first-tracker-comments/evidence/artifacts/human-first-tracker-comments.png",
+      "mediaType": "image/png",
+      "bytes": 116875,
+      "digest": "sha256:016e4e981f8904a0f92f572ef5b9b995096f99ed6cde982f71f39069ef80645f"
+    },
+    {
+      "path": "tests/fixtures/human-first-tracker-comments.html",
+      "mediaType": "text/html",
+      "bytes": 5544,
+      "digest": "sha256:d24d9d82df277caf54d1cf63a456ff11cfe0e85b3c72ecaefb34b86594e4fbaf"
+    }
+  ]
+}

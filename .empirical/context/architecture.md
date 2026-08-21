@@ -17,6 +17,9 @@
 - `src/tracking.ts`: strict optional tracker policy, target-bound feature
   bindings, change-type/profile ticket-requirement resolution, durable pending
   operations, normalized projection, and GitHub, Linear, and Jira adapters.
+- `src/tracker-comments.ts`: bounded human milestone semantics, safe evidence
+  presentation, provider-native Markdown/ADF serialization, and exact current
+  plus legacy comment-marker inspection.
 - `src/agents.ts` / `src/integrations.ts` / `src/lifecycle.ts`: supported-agent
   detection, the single explicit Init global catalog, repository-local
   activation, managed legacy removal, updates, and ownership-bound global
@@ -38,6 +41,9 @@ Optional external tracking commits that state machine first, then converges one
 target-bound ticket from durable feature-local pending work. Target drift fails
 before provider access, while same-target mapping changes force reprojection;
 provider failure cannot roll back local progress.
+Policy v2 lifecycle comments derive one human semantic view, then serialize to
+provider-native GitHub/Linear Markdown or Jira ADF while exact effect identity
+remains non-distracting and recoverable after an ambiguous response.
 Optional work with no ticket reference exits before authentication or network
 access; required work keeps attach, marker reconciliation, and guarded creation.
 Complex Review projects validated deltas into living capability specifications.

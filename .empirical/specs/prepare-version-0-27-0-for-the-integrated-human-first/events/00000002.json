@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "sequence": 2,
+  "previousDigest": "sha256:9bb5d020f6b0a07ca96cb95c20e81193b93ba4b5dba298b65ba1d641540047b8",
+  "actor": "empirical-yolo",
+  "type": "transition",
+  "summary": "Recorded standing authorization through delivered",
+  "createdAt": "2026-08-21T22:49:41.417Z",
+  "stateBeforeDigest": "sha256:addc191876f8917907b79891fbce482e13e285abb1f3a6cc18ec5d344afea235",
+  "stateAfterDigest": "sha256:fae100b7e0c5c0b7a96a3f9bbb590894efb6af9180388c344ae18cd291e2b2d4",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 2,
+    "activeFeature": "prepare-version-0-27-0-for-the-integrated-human-first",
+    "request": "Prepare version 0.27.0 for the integrated human-first tracker comments change, create and merge a non-draft pull request into goempirical/empirical-sdd main, then publish the immutable v0.27.0 GitHub release and npm latest package.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "specify",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": null,
+    "implementationActor": null,
+    "specDigest": "sha256:ff496e56904d0e7b3b781574f6a9387cc3c2b30e421d2f41ec75a44309721d3b",
+    "approvedSpecRevision": null,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": null,
+    "impactDigest": null,
+    "capabilityClaimId": null,
+    "authorizationDigest": "sha256:4fa138e10a942738150eff354514c7d5bcc739b5089e5aed82674a44af46dc72",
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": false,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "none",
+      "reasons": {
+        "implemented": "implemented has not been proven by a durable receipt.",
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-21T22:49:41.417Z"
+  },
+  "digest": "sha256:3f4515a2553e0174c887470d08ef41c00241103279a88930de737d5a45658d51"
+}

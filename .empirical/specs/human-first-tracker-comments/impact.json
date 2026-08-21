@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "classification": "behavioral",
+  "capabilities": [
+    "external-ticket-tracking"
+  ],
+  "surfaces": [
+    "workflow"
+  ],
+  "regressionRationale": null,
+  "digest": "sha256:df45bd06635a015c149817a6947b4b2b5124999fef4a81592452d0a8517299ac"
+}

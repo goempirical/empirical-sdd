@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "sequence": 5,
+  "previousDigest": "sha256:9ebfa654295c2c61547c3cad70f258e64aba5099d90849d1d98d68931a2ac7f1",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Planned exact remote preflight, upstream reconciliation, 0.27.0 surface alignment, full CI and package evidence, context/review/integration, protected source/evidence delivery, immutable publication, and public postflight verification.",
+  "createdAt": "2026-08-21T22:53:40.384Z",
+  "stateBeforeDigest": "sha256:b340515e4ebaf33113b677cb0d78cc8669b6b8b21fd4f6c83da752505f3c6f2b",
+  "stateAfterDigest": "sha256:27f3467d1b5a803cf1440d4a94a8ccae21b8d6eb662215ff03f2a0c21555b518",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 5,
+    "activeFeature": "prepare-version-0-27-0-for-the-integrated-human-first",
+    "request": "Prepare version 0.27.0 for the integrated human-first tracker comments change, create and merge a non-draft pull request into goempirical/empirical-sdd main, then publish the immutable v0.27.0 GitHub release and npm latest package.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "implement",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Planned exact remote preflight, upstream reconciliation, 0.27.0 surface alignment, full CI and package evidence, context/review/integration, protected source/evidence delivery, immutable publication, and public postflight verification.",
+    "implementationActor": null,
+    "specDigest": "sha256:c7de399031d126170c1d06c8a0f5225da7e9dfccdf56aff1cba325e5bd07eade",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:b3dad69aa7676547a911411e1c827459126ab644954913949b128b3c7ad163c3",
+    "impactDigest": "sha256:28155019597bb0a28e2e6ac5379c3fff40a6fea4007ace6bf33a71716d3d584a",
+    "capabilityClaimId": "prepare-version-0-27-0-for-the-integrated-human-first-7d7398d2891d",
+    "authorizationDigest": "sha256:4fa138e10a942738150eff354514c7d5bcc739b5089e5aed82674a44af46dc72",
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": false,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "none",
+      "reasons": {
+        "implemented": "implemented has not been proven by a durable receipt.",
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-21T22:53:40.384Z"
+  },
+  "digest": "sha256:d33439fff1fedf9b95c4e2c170ae7091b63925f06926f2b3a4ad050b2beb02f6"
+}

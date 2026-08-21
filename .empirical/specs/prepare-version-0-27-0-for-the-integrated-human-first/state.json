@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 5,
+  "revision": 10,
+  "activeFeature": "prepare-version-0-27-0-for-the-integrated-human-first",
+  "request": "Prepare version 0.27.0 for the integrated human-first tracker comments change, create and merge a non-draft pull request into goempirical/empirical-sdd main, then publish the immutable v0.27.0 GitHub release and npm latest package.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "yolo",
+  "phase": "deliver",
+  "status": "waiting",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: package-distribution",
+  "implementationActor": "agent",
+  "specDigest": "sha256:c7de399031d126170c1d06c8a0f5225da7e9dfccdf56aff1cba325e5bd07eade",
+  "approvedSpecRevision": 3,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:b3dad69aa7676547a911411e1c827459126ab644954913949b128b3c7ad163c3",
+  "impactDigest": "sha256:28155019597bb0a28e2e6ac5379c3fff40a6fea4007ace6bf33a71716d3d584a",
+  "capabilityClaimId": "prepare-version-0-27-0-for-the-integrated-human-first-7d7398d2891d",
+  "authorizationDigest": "sha256:4fa138e10a942738150eff354514c7d5bcc739b5089e5aed82674a44af46dc72",
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-291fc971e782cb5ec29a5f84",
+    "collected-7f03f6a045c6673d47a2b60b",
+    "collected-4230c63be76828a91af21708"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-21T23:21:30.609Z"
+}

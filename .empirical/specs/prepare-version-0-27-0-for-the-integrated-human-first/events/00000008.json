@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "sequence": 8,
+  "previousDigest": "sha256:5a3c64409df6bcc02390d34b4a758aa3b041ce01b947352b8df9319b555c39ea",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Verified the final 0.27.0 candidate with 276 passing tests, 90.12% line and 91.89% function coverage gates, distribution smoke, clean packed consumer, consistency, diff hygiene, and a 54-file npm pack manifest for empirical-sdd@0.27.0.",
+  "createdAt": "2026-08-21T22:59:58.152Z",
+  "stateBeforeDigest": "sha256:3044342e0aded8bd31ea4b4dfc184b43936dab3c5a2432fb50e8fc43e63ca53d",
+  "stateAfterDigest": "sha256:dc3c0096a20003b41b4d9f28ef3009b12360260d6ecc09a68f50f65f0a393804",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 8,
+    "activeFeature": "prepare-version-0-27-0-for-the-integrated-human-first",
+    "request": "Prepare version 0.27.0 for the integrated human-first tracker comments change, create and merge a non-draft pull request into goempirical/empirical-sdd main, then publish the immutable v0.27.0 GitHub release and npm latest package.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "review",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Verified the final 0.27.0 candidate with 276 passing tests, 90.12% line and 91.89% function coverage gates, distribution smoke, clean packed consumer, consistency, diff hygiene, and a 54-file npm pack manifest for empirical-sdd@0.27.0.",
+    "implementationActor": "agent",
+    "specDigest": "sha256:c7de399031d126170c1d06c8a0f5225da7e9dfccdf56aff1cba325e5bd07eade",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:b3dad69aa7676547a911411e1c827459126ab644954913949b128b3c7ad163c3",
+    "impactDigest": "sha256:28155019597bb0a28e2e6ac5379c3fff40a6fea4007ace6bf33a71716d3d584a",
+    "capabilityClaimId": "prepare-version-0-27-0-for-the-integrated-human-first-7d7398d2891d",
+    "authorizationDigest": "sha256:4fa138e10a942738150eff354514c7d5bcc739b5089e5aed82674a44af46dc72",
+    "evidence": [],
+    "evidenceReceiptIds": [
+      "executed-291fc971e782cb5ec29a5f84",
+      "collected-7f03f6a045c6673d47a2b60b"
+    ],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": true,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "verified",
+      "reasons": {
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-21T22:59:58.152Z"
+  },
+  "digest": "sha256:f9ad43039ec4fea8a8fd4ce10ad9316cc6005ce0373fff3f857d758b5ee91bde"
+}

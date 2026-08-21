@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "sequence": 7,
+  "previousDigest": "sha256:8477c856c7f21be4cc77e97a84f421559ebda73d002b756ea3001b2d00097842",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Refreshed repository knowledge after the upstream reconciliation and 0.27.0 release edits; all context pages are current with no stale, missing, invalid, or refinement-required paths.",
+  "createdAt": "2026-08-21T22:56:42.531Z",
+  "stateBeforeDigest": "sha256:cf155e9fd854bdabe41c4e4c02a2b62f8e8eb8e9ffe911c7bc4626eb594d29a8",
+  "stateAfterDigest": "sha256:3044342e0aded8bd31ea4b4dfc184b43936dab3c5a2432fb50e8fc43e63ca53d",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 7,
+    "activeFeature": "prepare-version-0-27-0-for-the-integrated-human-first",
+    "request": "Prepare version 0.27.0 for the integrated human-first tracker comments change, create and merge a non-draft pull request into goempirical/empirical-sdd main, then publish the immutable v0.27.0 GitHub release and npm latest package.",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "yolo",
+    "phase": "verify",
+    "status": "waiting",
+    "repairAttempts": 0,
+    "message": "Refreshed repository knowledge after the upstream reconciliation and 0.27.0 release edits; all context pages are current with no stale, missing, invalid, or refinement-required paths.",
+    "implementationActor": "agent",
+    "specDigest": "sha256:c7de399031d126170c1d06c8a0f5225da7e9dfccdf56aff1cba325e5bd07eade",
+    "approvedSpecRevision": 3,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:b3dad69aa7676547a911411e1c827459126ab644954913949b128b3c7ad163c3",
+    "impactDigest": "sha256:28155019597bb0a28e2e6ac5379c3fff40a6fea4007ace6bf33a71716d3d584a",
+    "capabilityClaimId": "prepare-version-0-27-0-for-the-integrated-human-first-7d7398d2891d",
+    "authorizationDigest": "sha256:4fa138e10a942738150eff354514c7d5bcc739b5089e5aed82674a44af46dc72",
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "implemented",
+      "reasons": {
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-21T22:56:42.531Z"
+  },
+  "digest": "sha256:5a3c64409df6bcc02390d34b4a758aa3b041ce01b947352b8df9319b555c39ea"
+}
