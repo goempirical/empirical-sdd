@@ -8,6 +8,12 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ## [Unreleased]
 
+### Fixed
+
+- Made `empirical update` invoke and verify the CLI installed under npm's actual
+  global prefix, then fail with actionable diagnostics when an older Empirical
+  installation still shadows it through `PATH`.
+
 ## [0.26.0] - 2026-08-20
 
 ### Added
