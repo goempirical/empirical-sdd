@@ -17,12 +17,12 @@ describe("package lifecycle", () => {
     const installed = resolveGlobalEmpirical(prefix, platform);
     const calls: Array<[string, string[], LifecycleRunOptions | undefined]> = [];
     const results = [
-      { status: 0, stdout: '"0.26.0"\n' },
+      { status: 0, stdout: '"0.26.1"\n' },
       { status: 0 },
       { status: 0, stdout: `${prefix}\n` },
-      { status: 0, stdout: "0.26.0\n" },
+      { status: 0, stdout: "0.26.1\n" },
       { status: 0 },
-      { status: 0, stdout: "0.26.0\n" },
+      { status: 0, stdout: "0.26.1\n" },
     ];
     const runner: LifecycleRunner = (command, args, options) => {
       calls.push([command, args, options]);
@@ -49,7 +49,7 @@ describe("package lifecycle", () => {
   test("update stops with a stage-specific error when package update fails", () => {
     let call = 0;
     expect(() => updateEmpirical(() => call++ === 0
-      ? { status: 0, stdout: '"0.26.0"' }
+      ? { status: 0, stdout: '"0.26.1"' }
       : { status: 1 }))
       .toThrow("npm package update failed with exit status 1");
   });
@@ -58,10 +58,10 @@ describe("package lifecycle", () => {
     let call = 0;
     const prefix = process.platform === "win32" ? "C:\\npm" : "/opt/npm";
     const results = [
-      { status: 0, stdout: '"0.26.0"' },
+      { status: 0, stdout: '"0.26.1"' },
       { status: 0 },
       { status: 0, stdout: prefix },
-      { status: 0, stdout: "0.26.0" },
+      { status: 0, stdout: "0.26.1" },
       { status: 7 },
     ];
     expect(() => updateEmpirical(() => results[call++] ?? { status: 99 }))
@@ -72,28 +72,28 @@ describe("package lifecycle", () => {
     let call = 0;
     const prefix = process.platform === "win32" ? "C:\\npm" : "/opt/npm";
     const results = [
-      { status: 0, stdout: '"0.26.0"' },
+      { status: 0, stdout: '"0.26.1"' },
       { status: 0 },
       { status: 0, stdout: prefix },
-      { status: 0, stdout: "0.26.0" },
+      { status: 0, stdout: "0.26.1" },
       { status: 0 },
       { status: 0, stdout: "0.23.1" },
     ];
     expect(() => updateEmpirical(() => results[call++] ?? { status: 99 }))
-      .toThrow(/PATH-visible empirical version mismatch: expected 0\.26\.0, observed 0\.23\.1.*shadowing.*PATH/u);
+      .toThrow(/PATH-visible empirical version mismatch: expected 0\.26\.1, observed 0\.23\.1.*shadowing.*PATH/u);
   });
 
   test("update rejects a prefix-owned CLI that does not match npm latest", () => {
     let call = 0;
     const prefix = process.platform === "win32" ? "C:\\npm" : "/opt/npm";
     const results = [
-      { status: 0, stdout: '"0.26.0"' },
+      { status: 0, stdout: '"0.26.1"' },
       { status: 0 },
       { status: 0, stdout: prefix },
-      { status: 0, stdout: "0.25.0" },
+      { status: 0, stdout: "0.26.0" },
     ];
     expect(() => updateEmpirical(() => results[call++] ?? { status: 99 }))
-      .toThrow("npm-installed CLI version mismatch: expected 0.26.0, observed 0.25.0");
+      .toThrow("npm-installed CLI version mismatch: expected 0.26.1, observed 0.26.0");
   });
 
   test("update rejects malformed registry and global-prefix discovery", () => {
@@ -102,7 +102,7 @@ describe("package lifecycle", () => {
 
     let call = 0;
     const results = [
-      { status: 0, stdout: '"0.26.0"' },
+      { status: 0, stdout: '"0.26.1"' },
       { status: 0 },
       { status: 0, stdout: "relative/npm" },
     ];
@@ -114,10 +114,10 @@ describe("package lifecycle", () => {
     let call = 0;
     const prefix = process.platform === "win32" ? "C:\\npm" : "/opt/npm";
     const results = [
-      { status: 0, stdout: '"0.26.0"' },
+      { status: 0, stdout: '"0.26.1"' },
       { status: 0 },
       { status: 0, stdout: prefix },
-      { status: 0, stdout: "0.26.0" },
+      { status: 0, stdout: "0.26.1" },
       { status: 0 },
       { status: null, error: new Error("not found") },
     ];
