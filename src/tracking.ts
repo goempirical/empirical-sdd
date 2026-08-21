@@ -82,6 +82,9 @@ const TRACKER_PROGRESS_STATES: TrackerProgressState[] = [
   "done",
 ];
 const TRACKER_DISCOVERY_LIMIT = 100;
+// Linear multiplies nested connection sizes into the query complexity score.
+// Ten teams keeps the two 100-item nested connections below its 10,000 limit.
+const LINEAR_TEAM_DISCOVERY_PAGE_SIZE = 10;
 const TRACKER_ARTIFACT_MAX_COUNT = 10;
 const TRACKER_ARTIFACT_MAX_BYTES = 5 * 1_024 * 1_024;
 const TRACKER_ARTIFACT_TOTAL_BYTES = 10 * 1_024 * 1_024;
@@ -2851,9 +2854,9 @@ async function discoverLinearResources(
   const cursors = new Set<string>();
   for (let page = 0; page < TRACKER_DISCOVERY_LIMIT; page += 1) {
     const data = await linearGraphql(
-      `query EmpiricalTrackerDiscovery($after: String) {
+      `query EmpiricalTrackerDiscovery($after: String, $teamFirst: Int!) {
         organization { id name urlKey }
-        teams(first: 100, after: $after) {
+        teams(first: $teamFirst, after: $after) {
           nodes {
             id name key
             projects(first: 100) { nodes { id name url } pageInfo { hasNextPage endCursor } }
@@ -2862,7 +2865,7 @@ async function discoverLinearResources(
           pageInfo { hasNextPage endCursor }
         }
       }`,
-      { after },
+      { after, teamFirst: LINEAR_TEAM_DISCOVERY_PAGE_SIZE },
       authorization,
       dependencies,
     );

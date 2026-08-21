@@ -25,12 +25,10 @@ and the prepared changelog heading must match it. `SCHEMA_VERSION` changes only
 when durable state compatibility changes; a package version change does not
 imply a schema change.
 
-The prepared `0.26.0` release is an alpha MINOR: it adds public concise/detailed
-question modes, strict Tracker Policy v2 ticket-requirement matrices, safe
-optional no-ticket behavior, and a packaged offline demo while leaving Schema 5
-and Tracker Policy v1/v2 compatible. Existing repositories require no state
-migration; repositories without an explicit question mode retain detailed
-questions until configured otherwise.
+The prepared `0.26.1` release is an alpha PATCH: it bounds Linear team pages so
+tracker discovery remains below Linear's GraphQL query-complexity limit. Schema
+5 and Tracker Policy v1/v2 remain compatible, and existing repositories require
+no state migration.
 
 ## Changelog rules
 
