@@ -8,6 +8,21 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-08-21
+
+### Changed
+
+- Made Tracker Policy v2 lifecycle comments human-first across GitHub, Linear,
+  and Jira, with plain-language status, focused action requests, friendly
+  evidence links, native Jira formatting, and provider-safe exact recovery
+  markers that remain compatible with existing comments.
+
+### Migration
+
+- Existing Schema 5 and Tracker Policy v1/v2 repositories require no state
+  migration. Visibility cadence, ticket bindings, issue descriptions, and
+  historical comments remain compatible.
+
 ## [0.26.1] - 2026-08-21
 
 ### Fixed
@@ -193,7 +208,8 @@ Published through GitHub Actions trusted publishing with npm provenance.
 
 - Prepared and released package version `0.20.2`.
 
-[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.26.1...HEAD
+[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.27.0...HEAD
+[0.27.0]: https://github.com/goempirical/empirical-sdd/compare/v0.26.1...v0.27.0
 [0.26.1]: https://github.com/goempirical/empirical-sdd/compare/v0.26.0...v0.26.1
 [0.26.0]: https://github.com/goempirical/empirical-sdd/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/goempirical/empirical-sdd/compare/v0.24.1...v0.25.0

@@ -10,6 +10,11 @@ import { EmpiricalError } from "./errors.js";
 import { inferChangeType } from "./worktrees.js";
 import { resolveTrackerAuthentication } from "./tracker-auth.js";
 import {
+  inspectTrackerMilestoneMarker,
+  renderTrackerMilestone,
+  TRACKER_MARKER_ORIGIN as LINEAR_MARKER_ORIGIN,
+} from "./tracker-comments.js";
+import {
   digestJson,
   evidenceReceiptSchema,
   sha256,
@@ -1823,12 +1828,11 @@ async function projectRemoteTicketV2(
   if (shouldPublishMilestone(policy, binding, pending.projection)) {
     const commentKey = trackerEffectKey(policy, pending.projection, "comment");
     if (!hasTrackerEffect(activePending, commentKey)) {
-      const marker = milestoneMarker(commentKey);
       const commentId = await publishRemoteMilestone(
         policy,
         binding,
-        renderMilestone(pending.projection, marker),
-        marker,
+        pending.projection,
+        commentKey,
         credentials,
         dependencies,
       );
@@ -1965,12 +1969,16 @@ async function transitionRemoteTicketV2(
 async function publishRemoteMilestone(
   policy: TrackerPolicy,
   binding: TrackerBinding,
-  body: string,
-  marker: string,
+  projection: TrackerProjection,
+  effectKey: string,
   credentials: ResolvedTrackerAuthentication,
   dependencies: TrackerDependencies,
 ): Promise<string> {
   if (policy.provider === "github") {
+    const milestone = renderTrackerMilestone("github", projection, effectKey);
+    if (milestone.provider !== "github") {
+      throw new EmpiricalError("TRACKER_RENDERER_MISMATCH", "GitHub milestone renderer returned another provider payload");
+    }
     const token = accessTokenFor(credentials, "github");
     const found: string[] = [];
     let complete = false;
@@ -1981,9 +1989,16 @@ async function publishRemoteMilestone(
         headers: githubHeaders(token),
       }, [200], [token]);
       if (!Array.isArray(comments)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "GitHub milestone comments are malformed");
-      const matches = comments.map((entry) => record(entry, "GitHub milestone comment"))
-        .filter((comment) => typeof comment.body === "string" && comment.body.includes(marker));
-      found.push(...matches.map((comment) => String(requiredNumber(comment, "id", "GitHub milestone comment id"))));
+      for (const entry of comments) {
+        const comment = record(entry, "GitHub milestone comment");
+        const inspection = inspectTrackerMilestoneMarker("github", comment, effectKey);
+        if (inspection === "malformed") {
+          throw new EmpiricalError("TRACKER_MARKER_MALFORMED", "A GitHub comment contains malformed milestone ownership evidence");
+        }
+        if (inspection === "match") {
+          found.push(String(requiredNumber(comment, "id", "GitHub milestone comment id")));
+        }
+      }
       if (comments.length < 100) {
         complete = true;
         break;
@@ -1996,11 +2011,15 @@ async function publishRemoteMilestone(
       method: "POST",
       url: `https://api.github.com/repos/${encodeURIComponent(policy.target.owner)}/${encodeURIComponent(policy.target.repository)}/issues/${encodeURIComponent(binding.remoteKey)}/comments`,
       headers: githubHeaders(token),
-      body: JSON.stringify({ body }),
+      body: JSON.stringify({ body: milestone.body }),
     }, [201], [token]);
     return String(requiredNumber(created, "id", "GitHub milestone comment id"));
   }
   if (policy.provider === "linear") {
+    const milestone = renderTrackerMilestone("linear", projection, effectKey);
+    if (milestone.provider !== "linear") {
+      throw new EmpiricalError("TRACKER_RENDERER_MISMATCH", "Linear milestone renderer returned another provider payload");
+    }
     const accessToken = linearAuthorizationFor(credentials);
     let after: string | null = null;
     const cursors = new Set<string>();
@@ -2017,9 +2036,16 @@ async function publishRemoteMilestone(
       );
       const issue = record(data.issue, "Linear milestone issue");
       const comments = connection(issue.comments, "Linear milestone comments");
-      const matches = comments.nodes.map((entry) => record(entry, "Linear milestone comment"))
-        .filter((comment) => typeof comment.body === "string" && comment.body.includes(marker));
-      found.push(...matches.map((comment) => requiredString(comment, "id", "Linear milestone comment id")));
+      for (const entry of comments.nodes) {
+        const comment = record(entry, "Linear milestone comment");
+        const inspection = inspectTrackerMilestoneMarker("linear", comment, effectKey);
+        if (inspection === "malformed") {
+          throw new EmpiricalError("TRACKER_MARKER_MALFORMED", "A Linear comment contains malformed milestone ownership evidence");
+        }
+        if (inspection === "match") {
+          found.push(requiredString(comment, "id", "Linear milestone comment id"));
+        }
+      }
       if (!comments.hasNextPage) {
         complete = true;
         break;
@@ -2033,13 +2059,17 @@ async function publishRemoteMilestone(
       `mutation Milestone($input: CommentCreateInput!) {
         commentCreate(input: $input) { success comment { id body } }
       }`,
-      { input: { issueId: binding.remoteId, body } },
+      { input: { issueId: binding.remoteId, body: milestone.body } },
       accessToken,
       dependencies,
     );
     const create = record(data.commentCreate, "Linear commentCreate");
     if (create.success !== true) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Linear did not confirm milestone comment creation");
     return requiredString(record(create.comment, "Linear milestone comment"), "id", "Linear milestone comment id");
+  }
+  const milestone = renderTrackerMilestone("jira", projection, effectKey);
+  if (milestone.provider !== "jira") {
+    throw new EmpiricalError("TRACKER_RENDERER_MISMATCH", "Jira milestone renderer returned another provider payload");
   }
   const jira = jiraRequestContext(policy.target.siteUrl, credentials);
   let startAt = 0;
@@ -2048,13 +2078,20 @@ async function publishRemoteMilestone(
   for (let page = 0; page < TRACKER_DISCOVERY_LIMIT; page += 1) {
     const response = record(await requestJson(dependencies, {
       method: "GET",
-      url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/comment?startAt=${startAt}&maxResults=100`,
+      url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/comment?startAt=${startAt}&maxResults=100&expand=properties`,
       headers: jira.headers,
     }, [200], jira.secrets), "Jira milestone comments");
     if (!Array.isArray(response.comments)) throw new EmpiricalError("TRACKER_MALFORMED_RESPONSE", "Jira milestone comments are malformed");
-    const matches = response.comments.map((entry) => record(entry, "Jira milestone comment"))
-      .filter((comment) => JSON.stringify(comment.body ?? {}).includes(marker));
-    found.push(...matches.map((comment) => requiredString(comment, "id", "Jira milestone comment id")));
+    for (const entry of response.comments) {
+      const comment = record(entry, "Jira milestone comment");
+      const inspection = inspectTrackerMilestoneMarker("jira", comment, effectKey);
+      if (inspection === "malformed") {
+        throw new EmpiricalError("TRACKER_MARKER_MALFORMED", "A Jira comment contains malformed milestone ownership evidence");
+      }
+      if (inspection === "match") {
+        found.push(requiredString(comment, "id", "Jira milestone comment id"));
+      }
+    }
     const total = optionalFiniteNumber(response.total) ?? response.comments.length;
     if (startAt + response.comments.length >= total) {
       complete = true;
@@ -2070,7 +2107,7 @@ async function publishRemoteMilestone(
     method: "POST",
     url: `${jira.apiOrigin}/rest/api/3/issue/${encodeURIComponent(binding.remoteKey)}/comment`,
     headers: jira.headers,
-    body: JSON.stringify({ body: jiraAdf(body), properties: [{ key: "empirical-sdd-effect", value: marker }] }),
+    body: JSON.stringify({ body: milestone.body, properties: [milestone.property] }),
   }, [201], jira.secrets), "Jira milestone comment");
   return requiredString(created, "id", "Jira milestone comment id");
 }
@@ -2228,34 +2265,6 @@ function trackerEffectKey(
     kind,
     artifactDigest,
   });
-}
-
-function milestoneMarker(key: string): string {
-  return `[Empirical milestone](<${LINEAR_MARKER_ORIGIN}#empirical-milestone:${key}>)`;
-}
-
-function renderMilestone(projection: TrackerProjection, marker: string): string {
-  const clean = (value: string | null | undefined) => value
-    ?.replace(/<!--|-->/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
-  const summary = clean(projection.summary);
-  const blocker = clean(projection.blocker);
-  const artifacts = projection.artifacts ?? [];
-  return [
-    `## Empirical milestone · ${readableTrackerToken(projection.phase)}`,
-    marker,
-    `- Feature: ${projection.feature}`,
-    `- Revision: ${projection.revision}`,
-    `- Progress: ${readableTrackerToken(projection.progress)}`,
-    `- Completion: ${readableCompletionLevel(projection.completionLevel)}`,
-    ...(summary ? [`- Summary: ${summary}`] : []),
-    ...(blocker ? [`- Blocker: ${blocker}`] : []),
-    ...(artifacts.length ? ["- Reviewable artifacts:", ...artifacts.map((artifact) =>
-      artifact.url
-        ? `  - ${artifact.path} · ${artifact.receiptId} · ${artifact.url}`
-        : `  - ${artifact.path} · ${artifact.receiptId} · provider upload/link pending or unsupported`)] : []),
-  ].join("\n");
 }
 
 function hasTrackerEffect(pending: TrackerPendingRecord, key: string): boolean {
@@ -4191,8 +4200,6 @@ function upsertMarkerBlock(existing: string, projection: TrackerProjection): str
   }
   return `${existing.trim()}${existing.trim() ? "\n\n" : ""}${block}`;
 }
-
-const LINEAR_MARKER_ORIGIN = "https://github.com/goempirical/empirical-sdd";
 
 function linearProjectionBoundary(feature: string, boundary: "start" | "end"): string {
   const label = boundary === "start" ? "Delivery status" : "Managed by Empirical SDD · local workflow is authoritative";

@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { EmpiricalProject } from "../src/core.js";
 import { EmpiricalError } from "../src/errors.js";
 import { digestJson } from "../src/protocol.js";
+import { legacyTrackerMilestoneMarker } from "../src/tracker-comments.js";
 import {
   createTrackerProjection,
   DISABLED_TRACKER_SETUP,
@@ -31,6 +32,7 @@ import type {
   TrackerHttpRequest,
   TrackerHttpResponse,
   TrackerOAuthResolver,
+  TrackerProvider,
   TrackerStateMap,
   TrackerTicketRules,
   TrackerTransport,
@@ -316,6 +318,134 @@ function requestBody(request: TrackerHttpRequest | undefined): Record<string, an
   return JSON.parse(request.body) as Record<string, any>;
 }
 
+async function lostMilestoneFixture(provider: TrackerProvider) {
+  const { root, project, action } = await projectWithFastFeature();
+  if (provider === "linear") {
+    const setup = sequence([linearDiscoveryResponse()]);
+    await project.configureTracker(linearPolicyV2({ ticket: "manual" }), {
+      transport: setup.transport,
+      env: { LINEAR_API_KEY: "linear-secret" },
+    });
+    const first = sequence([
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issue: linearIssue() } }),
+      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
+      json(200, { data: { issue: { comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
+      new Error("connection closed after Linear accepted the comment"),
+    ]);
+    const interrupted = await project.bindTracker(
+      { mode: "attach", ticket: "EMP-1" },
+      { transport: first.transport, env: { LINEAR_API_KEY: "linear-secret" } },
+    );
+    expect(interrupted.tracker.health).toBe("failed");
+    const postedBody = requestBody(first.calls.at(-1)).variables.input.body as string;
+    const effectKey = /empirical-milestone:(sha256:[a-f0-9]{64})/.exec(postedBody)?.[1];
+    if (!effectKey) throw new Error("Linear milestone did not contain its effect key");
+    return {
+      root,
+      project,
+      action,
+      provider,
+      postedBody,
+      effectKey,
+      env: { LINEAR_API_KEY: "linear-secret" },
+      response: (comments: Array<Record<string, unknown>>) => json(200, { data: { issue: { comments: {
+        nodes: comments,
+        pageInfo: { hasNextPage: false, endCursor: null },
+      } } } }),
+    };
+  }
+  if (provider === "github") {
+    const setup = sequence([githubDiscoveryResponse()]);
+    await project.configureTracker(githubPolicyV2({ ticket: "manual" }), {
+      transport: setup.transport,
+      env: { GITHUB_TOKEN: "github-secret" },
+    });
+    const issue = {
+      node_id: "I_kwDO_issue",
+      number: 42,
+      html_url: "https://github.com/goempirical/empirical-sdd/issues/42",
+    };
+    const first = sequence([
+      json(200, issue),
+      json(200, issue),
+      json(200, { data: { node: { projectItems: {
+        nodes: [{ id: "PVTI_item", project: { id: "PVT_project" } }],
+        pageInfo: { hasNextPage: false, endCursor: null },
+      } } } }),
+      json(200, { data: { updateProjectV2ItemFieldValue: { projectV2Item: { id: "PVTI_item" } } } }),
+      json(200, []),
+      new Error("connection closed after GitHub accepted the comment"),
+    ]);
+    const interrupted = await project.bindTracker(
+      { mode: "attach", ticket: "42" },
+      { transport: first.transport, env: { GITHUB_TOKEN: "github-secret" } },
+    );
+    expect(interrupted.tracker.health).toBe("failed");
+    const postedBody = requestBody(first.calls.at(-1)).body as string;
+    const effectKey = /empirical-sdd-effect:(sha256:[a-f0-9]{64})/.exec(postedBody)?.[1];
+    if (!effectKey) throw new Error("GitHub milestone did not contain its effect key");
+    return {
+      root,
+      project,
+      action,
+      provider,
+      postedBody,
+      effectKey,
+      env: { GITHUB_TOKEN: "github-secret" },
+      response: (comments: Array<Record<string, unknown>>) => json(200, comments),
+    };
+  }
+
+  const setup = sequence(jiraDiscoveryResponses());
+  await project.configureTracker(jiraPolicyV2(), {
+    transport: setup.transport,
+    env: { JIRA_EMAIL: "person@example.com", JIRA_API_TOKEN: "jira-secret" },
+  });
+  const issue = jiraIssue({ fields: {
+    status: { id: "state-work" },
+    project: { key: "ENG" },
+    issuetype: { id: "10001" },
+  } });
+  const first = sequence([
+    json(200, issue),
+    json(200, issue),
+    json(204, {}),
+    json(200, { comments: [], total: 0 }),
+    new Error("connection closed after Jira accepted the comment"),
+  ]);
+  const interrupted = await project.bindTracker(
+    { mode: "attach", ticket: "ENG-7" },
+    {
+      transport: first.transport,
+      env: { JIRA_EMAIL: "person@example.com", JIRA_API_TOKEN: "jira-secret" },
+    },
+  );
+  expect(interrupted.tracker.health).toBe("failed");
+  const posted = requestBody(first.calls.at(-1));
+  const postedBody = posted.body as Record<string, unknown>;
+  const effectKey = posted.properties?.[0]?.value as string | undefined;
+  if (!effectKey) throw new Error("Jira milestone did not contain its effect key property");
+  return {
+    root,
+    project,
+    action,
+    provider,
+    postedBody,
+    effectKey,
+    env: { JIRA_EMAIL: "person@example.com", JIRA_API_TOKEN: "jira-secret" },
+    response: (comments: Array<Record<string, unknown>>) => json(200, { comments, total: comments.length }),
+  };
+}
+
+async function trackerPendingEffects(root: string, feature: string): Promise<string[]> {
+  const pending = JSON.parse(await readFile(
+    join(root, ".empirical", "specs", feature, "tracker", "pending.json"),
+    "utf8",
+  )) as Record<string, any>;
+  return pending.effects.map((effect: Record<string, string>) => effect.kind);
+}
+
 describe("external ticket tracking", () => {
   test("Linear discovery proposes a complete semantic map and exposes primary-signal ambiguity", async () => {
     const ordinary = sequence([linearDiscoveryResponse()]);
@@ -548,9 +678,12 @@ describe("external ticket tracking", () => {
     expect(requestBody(fake.calls[2]).variables.input.description).not.toContain("Delivery status");
     expect(requestBody(fake.calls[4]).variables.input).toEqual({ stateId: "state-progress" });
     const milestone = requestBody(fake.calls[6]).variables.input.body as string;
-    expect(milestone).toContain(`- Feature: ${action.feature}`);
-    expect(milestone).toContain(`- Revision: ${action.revision}`);
-    expect(milestone).toContain("- Completion:");
+    expect(milestone).toContain("## Implementation in progress");
+    expect(milestone).toContain("**Add a local tracker fixture**");
+    expect(milestone).toContain("_[Managed by Empirical]");
+    expect(milestone).not.toContain(`- Feature: ${action.feature}`);
+    expect(milestone).not.toContain("- Revision:");
+    expect(milestone).not.toContain("- Completion:");
     const binding = JSON.parse(await readFile(
       join(root, ".empirical", "specs", action.feature!, "tracker", "binding.json"),
       "utf8",
@@ -763,7 +896,8 @@ describe("external ticket tracking", () => {
     expect(fake.calls[0]?.url).toContain("/issues?state=all");
     expect(fake.calls.some((request) => request.method === "POST" && request.url.endsWith("/issues"))).toBe(false);
     expect(requestBody(fake.calls[4]).variables.option).toBe("doing");
-    expect(requestBody(fake.calls[6]).body).toContain("## Empirical milestone");
+    expect(requestBody(fake.calls[6]).body).toContain("## Implementation in progress");
+    expect(requestBody(fake.calls[6]).body).toContain("<!-- empirical-sdd-effect:sha256:");
 
     let repeatedRequests = 0;
     expect((await project.syncTracker({
@@ -888,43 +1022,101 @@ describe("external ticket tracking", () => {
     expect(two.remaining).toHaveLength(0);
   });
 
-  test("a lost milestone response is reconciled by marker without repeating acknowledged effects", async () => {
-    const { root, project, action } = await projectWithFastFeature();
-    const first = sequence([
-      linearDiscoveryResponse(),
-      json(200, { data: { issues: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } }),
-      json(200, { data: { issueCreate: { success: true, issue: linearIssue() } } }),
-      json(200, { data: { issue: linearIssue() } }),
-      json(200, { data: { issueUpdate: { success: true, issue: linearIssue() } } }),
-      json(200, { data: { issue: { comments: { nodes: [], pageInfo: { hasNextPage: false, endCursor: null } } } } }),
-      new Error("connection closed after Linear accepted the comment"),
-    ]);
-    await project.configureTracker(linearPolicyV2(), {
-      transport: first.transport,
-      env: { LINEAR_API_KEY: "linear-secret" },
-    });
-    expect((await project.syncTracker({
-      transport: first.transport,
-      env: { LINEAR_API_KEY: "linear-secret" },
-    })).tracker.health).toBe("failed");
-    const pendingPath = join(root, ".empirical", "specs", action.feature!, "tracker", "pending.json");
-    const interrupted = JSON.parse(await readFile(pendingPath, "utf8")) as Record<string, any>;
-    expect(interrupted.effects.map((effect: Record<string, string>) => effect.kind)).toEqual(["transition"]);
-    const postedMilestone = requestBody(first.calls.at(-1)).variables.input.body as string;
+  test("lost new-format milestone responses reconcile once on every provider", async () => {
+    for (const provider of ["linear", "github", "jira"] as const) {
+      const fixture = await lostMilestoneFixture(provider);
+      expect(await trackerPendingEffects(fixture.root, fixture.action.feature!)).toEqual(["transition"]);
+      const recoveredComment = provider === "jira"
+        ? {
+          id: "comment-recovered",
+          body: { version: 1, type: "doc", content: [] },
+          properties: [{ key: "empirical-sdd-effect", value: fixture.effectKey }],
+        }
+        : {
+          id: provider === "github" ? 801 : "comment-recovered",
+          body: fixture.postedBody,
+        };
+      const retry = sequence([fixture.response([recoveredComment])]);
+      const recovered = await fixture.project.syncTracker({
+        transport: retry.transport,
+        env: fixture.env,
+      });
+      expect(recovered.tracker).toMatchObject({ health: "synced", pendingEffects: 0 });
+      expect(retry.calls).toHaveLength(1);
+      if (provider === "jira") expect(retry.calls[0]?.url).toContain("expand=properties");
+      expect(await trackerPendingEffects(fixture.root, fixture.action.feature!)).toEqual(["transition", "comment"]);
+    }
+  });
 
-    const retry = sequence([json(200, { data: { issue: { comments: {
-      nodes: [{ id: "comment-recovered", body: postedMilestone }],
-      pageInfo: { hasNextPage: false, endCursor: null },
-    } } } })]);
-    const recovered = await project.syncTracker({
-      transport: retry.transport,
-      env: { LINEAR_API_KEY: "linear-secret" },
-    });
-    expect(recovered.tracker).toMatchObject({ health: "synced", pendingEffects: 0 });
-    expect(retry.calls).toHaveLength(1);
-    expect(requestBody(retry.calls[0]).query).toContain("Milestones");
-    const acknowledged = JSON.parse(await readFile(pendingPath, "utf8")) as Record<string, any>;
-    expect(acknowledged.effects.map((effect: Record<string, string>) => effect.kind)).toEqual(["transition", "comment"]);
+  test("lost legacy milestone responses reconcile once on every provider", async () => {
+    for (const provider of ["linear", "github", "jira"] as const) {
+      const fixture = await lostMilestoneFixture(provider);
+      const marker = legacyTrackerMilestoneMarker(fixture.effectKey);
+      const body = provider === "jira"
+        ? { version: 1, type: "doc", content: [{
+          type: "paragraph",
+          content: [{ type: "text", text: marker }],
+        }] }
+        : `Older milestone\n${marker}`;
+      const retry = sequence([fixture.response([{
+        id: provider === "github" ? 802 : "legacy-comment",
+        body,
+      }])]);
+      const recovered = await fixture.project.syncTracker({
+        transport: retry.transport,
+        env: fixture.env,
+      });
+      expect(recovered.tracker).toMatchObject({ health: "synced", pendingEffects: 0 });
+      expect(retry.calls).toHaveLength(1);
+      expect(await trackerPendingEffects(fixture.root, fixture.action.feature!)).toEqual(["transition", "comment"]);
+    }
+  });
+
+  test("malformed milestone ownership fails closed on every provider", async () => {
+    for (const provider of ["linear", "github", "jira"] as const) {
+      const fixture = await lostMilestoneFixture(provider);
+      const surrounded = `quoted ${legacyTrackerMilestoneMarker(fixture.effectKey)}`;
+      const body = provider === "jira"
+        ? { version: 1, type: "doc", content: [{
+          type: "paragraph",
+          content: [{ type: "text", text: surrounded }],
+        }] }
+        : surrounded;
+      const retry = sequence([fixture.response([{
+        id: provider === "github" ? 803 : "malformed-comment",
+        body,
+      }])]);
+      const failed = await fixture.project.syncTracker({
+        transport: retry.transport,
+        env: fixture.env,
+      });
+      expect(failed.tracker).toMatchObject({
+        health: "failed",
+        failure: { code: "TRACKER_MARKER_MALFORMED" },
+      });
+      expect(retry.calls).toHaveLength(1);
+      expect(await trackerPendingEffects(fixture.root, fixture.action.feature!)).toEqual(["transition"]);
+    }
+  });
+
+  test("duplicate exact milestone ownership remains ambiguous on every provider", async () => {
+    for (const provider of ["linear", "github", "jira"] as const) {
+      const fixture = await lostMilestoneFixture(provider);
+      const retry = sequence([fixture.response([
+        { id: provider === "github" ? 804 : "duplicate-one", body: fixture.postedBody },
+        { id: provider === "github" ? 805 : "duplicate-two", body: fixture.postedBody },
+      ])]);
+      const failed = await fixture.project.syncTracker({
+        transport: retry.transport,
+        env: fixture.env,
+      });
+      expect(failed.tracker).toMatchObject({
+        health: "failed",
+        failure: { code: "TRACKER_MARKER_AMBIGUOUS" },
+      });
+      expect(retry.calls).toHaveLength(1);
+      expect(await trackerPendingEffects(fixture.root, fixture.action.feature!)).toEqual(["transition"]);
+    }
   });
 
   test("receipt-approved Jira evidence through an aliased root uploads once and recovers a lost response", async () => {

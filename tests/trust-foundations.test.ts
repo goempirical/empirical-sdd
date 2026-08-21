@@ -80,7 +80,7 @@ describe("Schema-5 protocol", () => {
   test("exports one coherent alpha protocol version", () => {
     expect(SCHEMA_VERSION).toBe(5);
     expect(POLICY_SCHEMA_VERSION).toBe(2);
-    expect(PRODUCT_VERSION).toBe("0.26.1");
+    expect(PRODUCT_VERSION).toBe("0.27.0");
   });
 
   test("canonical JSON is key-order independent and rejects unsafe values", () => {
