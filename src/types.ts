@@ -5,6 +5,7 @@ export {
   RECEIPT_SCHEMA_VERSION,
   SCHEMA_VERSION,
 } from "./protocol.js";
+import type { ConsultFinding, ConsultPacket } from "./specialists.js";
 import {
   POLICY_SCHEMA_VERSION,
   SCHEMA_VERSION,
@@ -722,6 +723,21 @@ export interface ExplainReport {
   rationale: ActionRationale;
   decisions: DecisionSummary[];
   tracker: TrackerStatus;
+}
+
+export interface ConsultReport {
+  protocol: "empirical-sdd";
+  schemaVersion: typeof SCHEMA_VERSION;
+  root: string;
+  feature: string | null;
+  phase: Phase;
+  /** Every specialist this feature's surface implies. */
+  required: string[];
+  /** Focused packets for the specialists gated at the current phase. */
+  packets: ConsultPacket[];
+  /** Advisories required now but missing or structurally invalid. */
+  missingPaths: string[];
+  blocked: { specialist: string; finding: ConsultFinding } | null;
 }
 
 export interface ExplorationPacket {

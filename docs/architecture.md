@@ -20,6 +20,11 @@ Schema 5 model.
 - `runtime.ts` executes exact argument arrays without a shell and captures
   bounded output.
 - `evidence.ts` creates and verifies executed and collected receipts.
+- `specialists.ts` owns the frozen specialist registry, derives required
+  consults from risk floor and criterion surfaces, and parses advisories.
+  Consults are derived rather than persisted, bounded to a context slice
+  narrower than the phase packet, and advisory unless a blocking verdict
+  carries a critical or high finding inside the specialist's own domain.
 - `coordination.ts` owns Git-common-dir identity, capability claims, base replay,
   candidate validation, projection rollback, and integration receipts.
 - `delivery.ts` owns protected GitHub source/evidence PR convergence and

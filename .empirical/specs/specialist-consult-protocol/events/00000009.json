@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "sequence": 9,
+  "previousDigest": "sha256:67934af0f56b32744145d8b2eb0bd3aa277c9e98769df67ed6fda3a30b4fab07",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Implementation unchanged; AC-5 now asserts the consult slice is a strict subset of the phase packet's required context.",
+  "createdAt": "2026-08-21T23:23:16.769Z",
+  "stateBeforeDigest": "sha256:dbd5ac091083ab26243c6c73bdbb96ee08c77b25f9cbfee284e70baf858ec1b1",
+  "stateAfterDigest": "sha256:9365500a3531fc9f4192342a99af19d5ec992f9699a1c39a33a6d93113eab4aa",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 9,
+    "activeFeature": "specialist-consult-protocol",
+    "request": "Add a specialist consult protocol so tagged specialists such as security and ui-ux run as focused advisories without standing roles",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "normal",
+    "phase": "context",
+    "status": "waiting",
+    "repairAttempts": 1,
+    "message": "Implementation unchanged; AC-5 now asserts the consult slice is a strict subset of the phase packet's required context.",
+    "implementationActor": "agent",
+    "specDigest": "sha256:d90a2458e693828ba5716ffd483c4e426f0cd9a5ac379325a4fb415d1294d1f2",
+    "approvedSpecRevision": 2,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:ddf457858dbe6bc7c30a5aafc428f38f5f8a25f4f466153910f98c4ec6957446",
+    "impactDigest": "sha256:65dc56e5206226b7ecddd3c57f32954a5989d39af7ebbf105999c174845e0997",
+    "capabilityClaimId": "specialist-consult-protocol-d86297b2a087",
+    "authorizationDigest": null,
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "implemented",
+      "reasons": {
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-21T23:23:16.769Z"
+  },
+  "digest": "sha256:666d4205225439abe4b939a2025417421bb37f92b585f8abb5d38e98cea3ee7f"
+}

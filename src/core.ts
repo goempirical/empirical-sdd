@@ -38,6 +38,11 @@ import {
 } from "./protocol.js";
 import { routeRequest } from "./routing.js";
 import {
+  consultPackets,
+  evaluateConsults,
+  type ConsultEvaluation,
+} from "./specialists.js";
+import {
   appendReceipt,
   createCollectedReceipt,
   createExecutedReceipt,
@@ -138,6 +143,7 @@ import {
   type WorktreeHandoff,
   type WorktreeProposal,
   type YoloOptions,
+  type ConsultReport,
 } from "./types.js";
 
 const FAST_PHASES: Phase[] = ["implement", "context", "done"];
@@ -1084,6 +1090,34 @@ export class EmpiricalProject {
       rationale: packet.rationale,
       decisions,
       tracker: packet.tracker,
+    };
+  }
+
+  /**
+   * Read-only. Returns one bounded packet per specialist gated at the current
+   * phase. Creates no revision and mutates nothing.
+   */
+  async consult(): Promise<ConsultReport> {
+    const state = await this.store.loadState(!this.readOnly);
+    const criteria = state.activeFeature
+      ? parseCriteria(await this.store.readSpec(state.activeFeature))
+      : [];
+    const consults = await this.evaluateFeatureConsults(state, criteria);
+    const packets = state.activeFeature
+      ? consultPackets(state.activeFeature, consults.required).filter((packet) =>
+          consults.requiredPaths.includes(packet.advisoryPath),
+        )
+      : [];
+    return {
+      protocol: "empirical-sdd",
+      schemaVersion: SCHEMA_VERSION,
+      root: this.store.root,
+      feature: state.activeFeature,
+      phase: state.phase,
+      required: consults.required,
+      packets,
+      missingPaths: consults.missingPaths,
+      blocked: consults.blocked,
     };
   }
 
@@ -2275,6 +2309,7 @@ export class EmpiricalProject {
         ...knowledge.issues.map(() => ".empirical/context/manifest.json"),
       );
     }
+    const consults = await this.evaluateFeatureConsults(state, criteria);
     return actionPacket(
       this.store.root,
       state,
@@ -2282,13 +2317,61 @@ export class EmpiricalProject {
       policy,
       await existingKnowledgePaths(this.store.root),
       capabilities.map((capability) => capability.path),
-      artifacts,
-      [...new Set(missingArtifacts)],
+      [...artifacts, ...consults.requiredPaths],
+      [...new Set([...missingArtifacts, ...consults.missingPaths])],
       config,
       await trackerStatus(this.store.root, state),
+      consults,
     );
   }
+
+  /**
+   * Specialist consults are derived from the work itself, never persisted and
+   * never caller-supplied, so they need no schema field and cannot be forged.
+   */
+  private async evaluateFeatureConsults(
+    state: WorkflowState,
+    criteria: Criterion[],
+  ): Promise<ConsultEvaluation> {
+    if (!state.activeFeature || !state.request) {
+      return { required: [], requiredPaths: [], missingPaths: [], blocked: null };
+    }
+    const route = routeRequest({
+      request: state.request,
+      mode: state.mode,
+      requestedProfile: state.workflow,
+      ...(state.workflow === "fast" ? { declaredContractNeutral: true } : {}),
+    });
+    const feature = state.activeFeature;
+    const store = this.store;
+    return evaluateConsults({
+      feature,
+      phase: state.phase,
+      riskFloor: route.riskFloor,
+      criteria,
+      readAdvisory: async (path) => {
+        try {
+          // Same containment discipline as every other feature-scoped read:
+          // reject symlinked feature storage, and refuse any resolved path that
+          // escapes this feature's own specification directory.
+          await store.assertFeaturePathSafe(feature);
+          const resolved = resolve(store.root, path);
+          const allowed = join(store.specDirectory(feature), "consults");
+          if (resolved !== allowed && !resolved.startsWith(allowed + sep)) return null;
+          return await readFile(resolved, "utf8");
+        } catch {
+          return null;
+        }
+      },
+    });
+  }
 }
+
+/**
+ * [UI] is a leading tag, not a substring. A criterion that merely mentions
+ * the token in prose is not a UI criterion and must not demand browser evidence.
+ */
+const UI_TAG = /^\[UI\]/i;
 
 export function parseCriteria(markdown: string): Criterion[] {
   const criteria: Criterion[] = [];
@@ -2310,7 +2393,7 @@ export function parseCriteria(markdown: string): Criterion[] {
       activeCriterion = {
         id,
         text,
-        ui: /\[UI\]/i.test(text),
+        ui: UI_TAG.test(text),
         checked: match[1]?.toLowerCase() === "x",
       };
       criteria.push(activeCriterion);
@@ -2318,7 +2401,7 @@ export function parseCriteria(markdown: string): Criterion[] {
     }
     if (activeCriterion && /^\s{2,}\S/.test(line)) {
       activeCriterion.text = `${activeCriterion.text} ${line.trim()}`;
-      activeCriterion.ui = /\[UI\]/i.test(activeCriterion.text);
+      activeCriterion.ui = UI_TAG.test(activeCriterion.text);
       continue;
     }
     activeCriterion = null;
@@ -2543,6 +2626,7 @@ function actionPacket(
   missingArtifacts: string[],
   config: ProjectConfig,
   tracker: TrackerStatus,
+  consults: ConsultEvaluation,
 ): ActionPacket {
   const route = state.request
     ? routeRequest({
@@ -2582,8 +2666,8 @@ function actionPacket(
     phase: state.phase,
     status: state.status,
     revision: state.revision,
-    instructions: instructionsFor(state, policy, config),
-    rationale: rationaleFor(state, artifacts, missingArtifacts, evidence),
+    instructions: instructionsFor(state, policy, config, consults),
+    rationale: rationaleFor(state, artifacts, missingArtifacts, evidence, consults),
     acceptanceCriteria: criteria,
     requiredEvidence: evidence,
     artifacts,
@@ -2628,6 +2712,7 @@ function rationaleFor(
   artifacts: string[],
   missingArtifacts: string[],
   evidence: EvidenceKind[],
+  consults: ConsultEvaluation,
 ): ActionRationale {
   const currentState = `${state.phase}/${state.status} at revision ${state.revision}`;
   const nextAction = state.status === "blocked" || state.status === "awaiting_human"
@@ -2652,7 +2737,13 @@ function rationaleFor(
     reason,
     requiredContext: [...artifacts, ...evidence.map((kind) => `${kind} evidence`)],
     missingContext: [...missingArtifacts, ...evidence.map((kind) => `${kind} evidence`)],
-    gate: state.status === "blocked" || state.status === "awaiting_human" ? "stop" : "proceed",
+    gate:
+      state.status === "blocked" ||
+      state.status === "awaiting_human" ||
+      consults.missingPaths.length > 0 ||
+      consults.blocked !== null
+        ? "stop"
+        : "proceed",
   };
 }
 
@@ -2685,7 +2776,12 @@ function assertStartAction(
   return action;
 }
 
-function instructionsFor(state: WorkflowState, policy: ProjectPolicy, config: ProjectConfig): string {
+function instructionsFor(
+  state: WorkflowState,
+  policy: ProjectPolicy,
+  config: ProjectConfig,
+  consults: ConsultEvaluation,
+): string {
   if (state.status === "blocked") return appendPolicy(`Stop. Resolve this blocker before retrying: ${state.message ?? "unknown"}`, state, policy);
   if (state.status === "awaiting_human") return appendPolicy(`Stop and ask the user: ${state.message ?? "a decision is required"}`, state, policy);
   if (state.phase === "idle") return appendPolicy("No feature is active. Loop does not create or route new work. Use the installed empirical skill for setup, automatic routing, concrete contracts, or five-pass discovery.", state, policy);
@@ -2719,7 +2815,45 @@ function instructionsFor(state: WorkflowState, policy: ProjectPolicy, config: Pr
     publish: "Publish only the exact explicitly authorized immutable version; converge identical artifacts and stop on any conflict.",
     archive: "Legacy Schema-4 archive state must be migrated to Integrate before completion.",
   };
-  return appendPolicy(instructions[state.phase], state, policy);
+  return appendPolicy(
+    appendConsults(instructions[state.phase], state, consults),
+    state,
+    policy,
+  );
+}
+
+/**
+ * Consults are an obligation on the current phase, not a transition. A blocking
+ * in-domain finding stops the gate; anything else is advice the agent must read.
+ */
+function appendConsults(
+  base: string,
+  state: WorkflowState,
+  consults: ConsultEvaluation,
+): string {
+  if (consults.blocked) {
+    const { specialist, finding } = consults.blocked;
+    return [
+      "Stop.",
+      `The ${specialist} consult reported a ${finding.severity} ${finding.category} finding`,
+      `at ${finding.location}: ${finding.recommendation}`,
+      "Resolve it, update the advisory, then continue.",
+    ].join(" ");
+  }
+  if (consults.missingPaths.length === 0) return base;
+  const feature = state.activeFeature ?? "current feature";
+  const lines = consultPackets(feature, consults.required)
+    .filter((packet) => consults.missingPaths.includes(packet.advisoryPath))
+    .map(
+      (packet) =>
+        `- ${packet.specialist}: ${packet.question} Read only ${packet.contextSlice.join(", ")}, then write ${packet.advisoryPath}.`,
+    );
+  return [
+    base,
+    "",
+    "This phase also requires specialist consults. Run each as one focused pass, then record a structured advisory naming the specialist, exactly one verdict of advisory or blocking, and any findings with severity, category, location, and recommendation:",
+    ...lines,
+  ].join("\n");
 }
 
 function appendPolicy(base: string, state: WorkflowState, policy: ProjectPolicy): string {

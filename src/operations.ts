@@ -55,6 +55,7 @@ export const OPERATIONS = Object.freeze([
   operation("next", "Read the exact current action without mutation.", { readOnly: true }),
   operation("status", "Read exact workflow and completion state.", { readOnly: true }),
   operation("explain", "Explain deterministic state rationale.", { readOnly: true }),
+  operation("consult", "Return the required specialist consult packets.", { readOnly: true }),
   operation("tracker-discover", `Discover accessible tracker targets, workflow metadata, and adapter capabilities. ${TRACKER_AUTH_BOUNDARY}`, { readOnly: true, cliUsage: " --input <json-file|->" }),
   operation("tracker-suggest", `Propose the seven-state semantic mapping for one discovered workflow parent. ${TRACKER_AUTH_BOUNDARY}`, { readOnly: true, cliUsage: " --input <json-file|->" }),
   operation("tracker-preview", `Validate and preview one complete effective tracker policy without saving it. ${TRACKER_AUTH_BOUNDARY}`, { readOnly: true, cliUsage: " --input <json-file|->" }),

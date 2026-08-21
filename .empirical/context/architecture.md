@@ -14,6 +14,9 @@
   inventory, compact context, and managed/legacy placeholder recognition.
 - `src/discovery.ts`: ordered Socratic passes, progressive durable answers, and
   exact approved Complex handoff.
+- `src/specialists.ts`: frozen specialist registry, deterministic consult
+  derivation from risk floor and criterion surfaces, bounded consult packets,
+  and fail-closed advisory parsing with domain-scoped blocking.
 - `src/tracking.ts`: strict optional tracker policy, target-bound feature
   bindings, change-type/profile ticket-requirement resolution, durable pending
   operations, normalized projection, and GitHub, Linear, and Jira adapters.

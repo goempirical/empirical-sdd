@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "classification": "behavioral",
+  "capabilities": [
+    "specialist-consults",
+    "workflow-routing"
+  ],
+  "surfaces": [
+    "workflow"
+  ],
+  "regressionRationale": null,
+  "digest": "sha256:65dc56e5206226b7ecddd3c57f32954a5989d39af7ebbf105999c174845e0997"
+}

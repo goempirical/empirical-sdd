@@ -371,6 +371,13 @@ export function createMcpServer(
     annotations: operationAnnotations("explain"),
   }, async ({ root }) => toolResult(async () => (await EmpiricalProject.openReadOnly(root ?? defaultRoot)).explain()));
 
+  server.registerTool(operationName("consult"), {
+    title: "Return required specialist consults",
+    description: operationSummary("consult"),
+    inputSchema: { root: z.string().optional() },
+    annotations: operationAnnotations("consult"),
+  }, async ({ root }) => toolResult(async () => (await EmpiricalProject.openReadOnly(root ?? defaultRoot)).consult()));
+
   server.registerTool(operationName("tracker-discover"), {
     title: "Discover tracker targets and workflow metadata",
     description: operationSummary("tracker-discover"),

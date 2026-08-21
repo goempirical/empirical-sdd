@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "sequence": 8,
+  "previousDigest": "sha256:350ba427548878d61ff0d7e9dd412402517cfbe8a66d9b99f47438d668dd66e9",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Evidence invalidated: the AC-5 strict-subset assertion was strengthened after Verify, so the recorded receipt no longer describes the reviewed tree. Re-establishing evidence against the final tree.",
+  "createdAt": "2026-08-21T23:23:15.965Z",
+  "stateBeforeDigest": "sha256:63c1f53380e0d197eeca89ad79b2af7fc8f6f03c37c705787db73a407fdafafe",
+  "stateAfterDigest": "sha256:dbd5ac091083ab26243c6c73bdbb96ee08c77b25f9cbfee284e70baf858ec1b1",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 8,
+    "activeFeature": "specialist-consult-protocol",
+    "request": "Add a specialist consult protocol so tagged specialists such as security and ui-ux run as focused advisories without standing roles",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "normal",
+    "phase": "implement",
+    "status": "waiting",
+    "repairAttempts": 1,
+    "message": "Evidence invalidated: the AC-5 strict-subset assertion was strengthened after Verify, so the recorded receipt no longer describes the reviewed tree. Re-establishing evidence against the final tree.",
+    "implementationActor": "agent",
+    "specDigest": "sha256:d90a2458e693828ba5716ffd483c4e426f0cd9a5ac379325a4fb415d1294d1f2",
+    "approvedSpecRevision": 2,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:ddf457858dbe6bc7c30a5aafc428f38f5f8a25f4f466153910f98c4ec6957446",
+    "impactDigest": "sha256:65dc56e5206226b7ecddd3c57f32954a5989d39af7ebbf105999c174845e0997",
+    "capabilityClaimId": "specialist-consult-protocol-d86297b2a087",
+    "authorizationDigest": null,
+    "evidence": [],
+    "evidenceReceiptIds": [],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": false,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "implemented",
+      "reasons": {
+        "verified": "verified has not been proven by a durable receipt.",
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-21T23:23:15.965Z"
+  },
+  "digest": "sha256:67934af0f56b32744145d8b2eb0bd3aa277c9e98769df67ed6fda3a30b4fab07"
+}
