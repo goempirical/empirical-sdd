@@ -1,4 +1,4 @@
-# Empirical 0.26.0 demo
+# Empirical 0.26.1 demo
 
 ## Install once
 

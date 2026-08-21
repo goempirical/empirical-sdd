@@ -1,6 +1,6 @@
 {
   "name": "empirical-sdd",
-  "version": "0.26.0",
+  "version": "0.26.1",
   "description": "Agent-neutral, resumable spec-driven development for every terminal-capable coding agent",
   "type": "module",
   "bin": {
