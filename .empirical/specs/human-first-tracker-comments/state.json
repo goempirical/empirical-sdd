@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 5,
+  "revision": 13,
+  "activeFeature": "human-first-tracker-comments",
+  "request": "I don't like the way Empirical comments on the external trackboard and want to enhance those comments.\n\nApproved Socratic discovery:\n- Primary user and problem: The primary audience is engineers, reviewers, product owners, and other collaborators who follow Empirical-managed work from Linear, GitHub, or Jira rather than from the local journal. Today each eligible sync publishes a machine-oriented milestone block with a duplicate visible marker label, a feature slug, revision/progress/completion jargon, generic internal summaries, and raw artifact paths or receipt identifiers. Readers must translate implementation metadata to learn what changed, whether the work is healthy, and whether they need to act, so the ticket feels noisy and automated instead of useful. Improving the comments matters because the external ticket is the team's shared communication surface: each update should make the human-relevant change, current state, required action, and trustworthy evidence obvious without exposing or weakening Empirical's recovery metadata.\n- Smallest observable outcome: When an eligible tracker milestone is synchronized, Linear, GitHub, and Jira each receive one idempotent, human-first update. At a glance the reader sees a humanized work title, a plain-language state headline, the concise committed summary, and only the context relevant to that event: a prominent action-needed section for blocked or awaiting-human work, and friendly evidence links when reviewable artifacts exist. Raw feature slugs, receipt IDs, file paths without useful links, duplicate marker labels, hashes, and revision/completion implementation jargon do not dominate the visible comment; exact feature/revision/receipt identity remains available in provider-safe machine metadata for recovery and deduplication. Retrying the same sync creates no duplicate, and the existing visibility policy still decides when an update is published.\n- Scope, non-goals, and constraints: The first version must redesign Tracker Policy v2 milestone comments for GitHub, Linear, and Jira; map workflow states to concise human labels; present the committed summary first; emphasize blockers or required human action; show only useful evidence links with friendly labels; and encode the exact idempotency marker in a provider-appropriate non-distracting form. It must retain deterministic rendering, bounded sanitized content, cross-provider tests, and lost-response retry coverage. Out of scope are changing visibility cadence or defaults, replacing append-only history with one rolling comment, editing historical comments, changing ticket creation/binding or provider state mapping, rewriting issue descriptions, mentions/notifications, user-configurable templates, localization, and changing artifact eligibility or upload behavior. Non-negotiable constraints are local-journal authority, remote effects only after local commits, exact feature/revision/receipt-bound deduplication, no duplicate effect after ambiguous responses, no secrets or raw hashes in visible prose, preservation of user-authored content, dormant Policy v1 compatibility, and truthful health/failure reporting.\n- Failure cases and risks: The main architectural risk is that GitHub Markdown, Linear Markdown, and Jira ADF render and retain hidden metadata differently. A cosmetic change must not make the exact milestone marker unsearchable after a lost response, expose its digest, or cause a retry to post twice; provider-specific marker/rendering functions are safer than one nominally shared Markdown string, and existing old-format comments and pending effects must remain reconcilable. Untrusted state summaries, feature names, artifact labels, URLs, Markdown, and mention-like text must stay length-bounded and escaped so they cannot spoof sections, notify users, leak secrets, or break the template. Human labels must not overclaim completion: blocked and awaiting-human need distinct language, and implemented, verified, integrated, delivered, and published remain truthful. Jira comment formatting must be isolated from the generic description ADF path. If a safe evidence URL is unavailable, the comment should omit raw paths/receipt IDs and avoid claiming an attachment succeeded; pending or failed artifact projection remains visible in tracker health. If rendering, provider reconciliation, or remote publication is uncertain, the local workflow still succeeds, the existing remote comment is not overwritten or duplicated, and tracker health reports a bounded pending or failed diagnostic that can be retried.\n- Required verification: Add a table-driven renderer and adapter contract suite covering ordinary progress, verification/review, blocked, awaiting-human, final completion levels, absent summaries, safe evidence links, and provider-native upload cases. Assert GitHub and Linear Markdown plus Jira ADF render a concise human-first hierarchy, truthful state language, and friendly links while visible output omits raw feature slugs, hashes, receipt IDs, unsupported-upload prose, duplicate marker labels, and technical revision/completion clutter. Assert each provider payload still carries the exact effect marker in its safe machine representation. Feed adversarial multiline Markdown, HTML-comment delimiters, mention-like text, long strings, odd filenames, and invalid URLs to prove deterministic escaping and bounds. Re-run lost-response reconciliation for all three providers with both new and legacy marker representations and assert a retry performs no second comment; ambiguous or malformed markers fail closed with durable pending health. Preserve tests for visibility cadence, transition-before-comment ordering, Policy v1 compatibility, byte-for-byte user descriptions, artifact acknowledgements, and credential redaction. Run the focused tracking suite, TypeScript/check gates, the complete clean `bun run ci` suite, and a browser-rendered fixture/screenshot comparison of representative comments so the visual hierarchy—not just source strings—is verified.",
+  "profile": "complex",
+  "workflow": "complex",
+  "mode": "normal",
+  "phase": "done",
+  "status": "done",
+  "repairAttempts": 0,
+  "message": "Integrated capability changes: external-ticket-tracking",
+  "implementationActor": "agent",
+  "specDigest": "sha256:27573d8ec9adeb8e53d2320289963a8ab948038fd7ce024bc662c811fbc0378c",
+  "approvedSpecRevision": 2,
+  "capabilityArchiveRequired": true,
+  "capabilityDeltaDigest": "sha256:551349e15432b4d105659960edf372191ef0f2aa620a0d60ba0de5d6110502b5",
+  "impactDigest": "sha256:df45bd06635a015c149817a6947b4b2b5124999fef4a81592452d0a8517299ac",
+  "capabilityClaimId": "human-first-tracker-comments-7d7398d2891d",
+  "authorizationDigest": null,
+  "evidence": [],
+  "evidenceReceiptIds": [
+    "executed-c3e72d10f44336aec8579d3c",
+    "collected-b4824097001d7225449be71b",
+    "collected-32a4a370494626d503ae0184"
+  ],
+  "legacyEvidenceCount": 0,
+  "completion": {
+    "implemented": true,
+    "verified": true,
+    "integrated": true,
+    "delivered": false,
+    "published": false,
+    "highest": "integrated",
+    "reasons": {
+      "delivered": "delivered has not been proven by a durable receipt.",
+      "published": "published has not been proven by a durable receipt."
+    }
+  },
+  "updatedAt": "2026-08-21T21:46:50.714Z"
+}

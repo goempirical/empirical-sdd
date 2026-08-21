@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "id": "collected-32a4a370494626d503ae0184",
+  "criteria": [
+    "AC-1",
+    "AC-10",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7",
+    "AC-8",
+    "AC-9"
+  ],
+  "evidenceKinds": [
+    "review"
+  ],
+  "summary": "Criterion-by-criterion diff and accepted-decision review found no open findings: provider-native payloads, exact current/legacy recovery, fail-closed ambiguity, bounded sanitization, unchanged cadence/descriptions, and test/visual evidence are coherent.",
+  "passed": true,
+  "startedAt": "2026-08-21T21:44:38.481Z",
+  "completedAt": "2026-08-21T21:44:38.481Z",
+  "provenance": {
+    "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+    "feature": "human-first-tracker-comments",
+    "specRevision": 2,
+    "specDigest": "sha256:27573d8ec9adeb8e53d2320289963a8ab948038fd7ce024bc662c811fbc0378c",
+    "treeDigest": "sha256:8f049db9229cc9d0d67b38375ee38a5fedb1e310d8f1cae5f4e2cffccbcd744b",
+    "policyDigest": "sha256:d1f5cd886f30de09b672911041c00cda350042fe9d96e5595a6d9ca4be592e0c"
+  },
+  "digest": "sha256:98ad019c110fe68b7a93516c025b422a0bd4366c392d2621561507b812e7fd4a",
+  "kind": "collected",
+  "collector": "codex-diff-review",
+  "artifacts": [
+    {
+      "path": ".empirical/specs/human-first-tracker-comments/decisions.md",
+      "mediaType": "text/markdown",
+      "bytes": 5822,
+      "digest": "sha256:b52e6aca2262b51ed1c63eef6d6fce68151122279ab83657650590411521d15d"
+    }
+  ]
+}

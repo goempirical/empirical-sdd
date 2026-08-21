@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "id": "executed-ec49d79800cd432da2e7a992",
+  "criteria": [
+    "AC-1",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7",
+    "AC-8",
+    "AC-9"
+  ],
+  "evidenceKinds": [
+    "test"
+  ],
+  "summary": "Full 0.27.0 release-candidate CI after current-main reconciliation and package-manifest capture.",
+  "passed": true,
+  "startedAt": "2026-08-21T22:57:52.936Z",
+  "completedAt": "2026-08-21T22:58:23.012Z",
+  "provenance": {
+    "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+    "feature": "prepare-version-0-27-0-for-the-integrated-human-first",
+    "specRevision": 3,
+    "specDigest": "sha256:c7de399031d126170c1d06c8a0f5225da7e9dfccdf56aff1cba325e5bd07eade",
+    "treeDigest": "sha256:d19b31d0e58b78b50ba78b52d3a0fc55d85fb02d47567b5163f6c30956bd0f1b",
+    "policyDigest": "sha256:d1f5cd886f30de09b672911041c00cda350042fe9d96e5595a6d9ca4be592e0c"
+  },
+  "digest": "sha256:e9fbbc28e4716b6dd582d05762ca525a2bd36dcd8ef831f7f3c0c0a7b58989b9",
+  "kind": "executed",
+  "command": {
+    "argv": [
+      "bun",
+      "run",
+      "ci"
+    ],
+    "cwd": ".",
+    "timeoutMs": 900000,
+    "maxOutputBytes": 4194304,
+    "environmentKeys": [
+      "PATH"
+    ]
+  },
+  "result": {
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "stdoutDigest": "sha256:f89a8cb58ae913bfe6154e1aad8f7a5fd41a425ccc19d5e4c5d3762c2c099fa9",
+    "stderrDigest": "sha256:96b5c733ed904d3ed597e4aa710d49d57e511bf3934a64f1bdb9bf8f1ed5134b",
+    "stdoutTail": "bun test v1.3.3 (274e01c7)\nCoverage gate: 90.12% lines, 91.89% functions across 34 modules.\nBundled 0.26 OAuth-first Init, tracker, uninstall, receipt, routing, YOLO, worktree, CLI, and MCP smoke passed.\n\nadded 95 packages in 3s\nClean package consumer passed for empirical-sdd 0.27.0.\nConsistency gate: Empirical 0.27.0, Schema 5, 1 skill, 37 operations.\n",
+    "stderrTail": "ss) immutable evidence receipts > exclusive append preserves an immutable receipt file [1.00ms]\n\ntests/worktree-isolation.test.ts:\n(pass) Git worktree isolation > unrelated work returns a complete read-only proposal [56.00ms]\n(pass) Git worktree isolation > approved creation blocks a dirty source checkout [56.00ms]\n(pass) Git worktree isolation > approved clean creation runs exact -b behavior and starts the request in the new checkout [91.00ms]\n(pass) Git worktree isolation > a linked worktree does not inherit a committed blocked feature owned by its source checkout [92.00ms]\n(pass) Git worktree isolation > branch and path collisions are rejected without force or workflow mutation [88.00ms]\n(pass) Git worktree isolation > editable type, base, branch, and path survive proposal and approval [43.00ms]\n(pass) Git worktree isolation > approval becomes stale when the base or active feature changes [122.99ms]\n(pass) Git worktree isolation > isolation can be explicitly disabled [41.00ms]\n\ntests/tracker-comments.test.ts:\n(pass) human-first tracker milestone comments > derives deterministic truthful headlines for progress, stops, and final proof\n(pass) human-first tracker milestone comments > humanizes work and shows stop details once with distinct action labels\n(pass) human-first tracker milestone comments > serializes one human hierarchy as Markdown or native Jira ADF\n(pass) human-first tracker milestone comments > shows only safe durable evidence with friendly deterministic labels [1.00ms]\n(pass) human-first tracker milestone comments > bounds and neutralizes adversarial human content for every provider [1.00ms]\n(pass) human-first tracker milestone comments > recognizes exact current and legacy markers for every provider\n(pass) human-first tracker milestone comments > fails closed on partial, surrounded, duplicated, or malformed expected markers [1.00ms]\n(pass) human-first tracker milestone comments > rejects non-digest effect identities before building machine metadata\n(pass) human-first tracker milestone comments > keeps the browser fixture aligned with representative semantic views\n\ntests/lifecycle.test.ts:\n(pass) package lifecycle > update verifies and invokes the CLI from npm's actual global prefix\n(pass) package lifecycle > global executable paths use the npm layout for POSIX and Windows\n(pass) package lifecycle > update stops with a stage-specific error when package update fails\n(pass) package lifecycle > update reports integration refresh failures separately\n(pass) package lifecycle > update rejects a stale PATH-visible Empirical after refreshing with the prefix CLI\n(pass) package lifecycle > update rejects a prefix-owned CLI that does not match npm latest\n(pass) package lifecycle > update rejects malformed registry and global-prefix discovery\n(pass) package lifecycle > update reports an unavailable PATH-visible CLI with remediation\n(pass) package lifecycle > uninstall removes the exact global package through the platform npm executable [1.00ms]\n(pass) package lifecycle > uninstall reports package-stage failure after managed cleanup may have occurred\n(pass) package lifecycle > uninstall confirmation defaults closed and accepts only an explicit yes\n----------------------------|---------|---------|-------------------\nFile                        | % Funcs | % Lines | Uncovered Line #s\n----------------------------|---------|---------|-------------------\nAll files                   |   93.76 |   92.71 |\n src/agent-catalog.ts       |   90.48 |   96.65 | 242,252,283-288\n src/agents.ts              |   83.33 |   96.83 | 99-101\n src/branding.ts            |  100.00 |  100.00 | \n src/checkouts.ts           |   95.00 |   93.20 | 51,70,99,103,116,127-128\n src/coordination.ts        |   91.67 |   89.19 | 125,155-156,168,177-178,182-183,194,201,215,218,223,227,232,301,324,327,340-341,347-348,357-358,364-365,369,394,399,452,469-470,505-527,535,542,574-575,588,618,632-633,661,740-741,747,757,791,801,810\n src/core.ts                |   89.59 |   89.43 | 353-373,569-572,891-900,1462-1608,1789-1841,1906-1951,2800-2802,2915-2922,3085-3086,3137-3141,3222-3224\n src/decisions.ts           |   94.74 |   90.91 | 47,72-73,109-113,116-119\n src/delivery.ts            |   95.45 |   94.15 | 74,80,109,192-194,210,224-225,238-239,266,270,313,390,405,458-459,467-468,471,476,522,525,548-549,555,571,575,663-664,746,757,809-811,822,874-875,896,917,931,949,961,965,969,993-994\n src/discovery.ts           |   96.77 |   88.79 | 159,165,168,174-175,181-182,210-213,223,238,258-261,264-267,301-303,338-342,350-353,397,426,429,433\n src/doctor.ts              |   97.96 |   85.00 | 66,101-102,234-242,339-346,398-428,445-453,498-506,615-624,645-653,712-720,727-733,739-745\n src/errors.ts              |  100.00 |  100.00 | \n src/evidence.ts            |   90.00 |   93.47 | 35,114,130,138,183-187,191-195,230\n src/integrations.ts        |   98.94 |   94.89 | 431,614,618,623,636,697,715-716,801-804,819-820,825-826,854-855,858-869,886,914,931,953-954\n src/journal.ts             |   97.44 |   91.27 | 64,70,76,92,97,123,146,162,165,168,171,178,182,199,208-209,213-214,247-248,280,287,296,346-347,351,362-363,401,405,413,418,426,454\n src/knowledge-templates.ts |  100.00 |  100.00 | \n src/knowledge.ts           |   92.19 |   96.90 | 217,227-228,322,388,414-415,483-486,492-495\n src/lifecycle.ts           |   91.67 |   91.15 | 101-108,121\n src/mcp.ts                 |   56.58 |   81.64 | 86-89,154-160,209-217,226-251,260-261,290-294,309-314,325-329,343-349,472-473,509-514,532-538,567-568,589,603-608,627-636,648,654-658\n src/migration-scratch.ts   |  100.00 |  100.00 | \n src/migration.ts           |   96.00 |   91.02 | 71,79-80,89,126-128,137-138,142-143,153,171,209,223,233,245-246,257-258,272-273,312-315,458,489-502,525,585-586,612,671,679,689-690,715,722,744,800,803-804,810,822-826,885-886,897-900,919-920,925-927\n src/operations.ts          |   83.33 |   94.57 | 121,130,139,143-145\n src/policy.ts              |  100.00 |   93.33 | 32,45-47,60,64\n src/protocol.ts            |   93.33 |   96.36 | 83,109,189-193,252,256,259,448,451,454\n src/routing.ts             |  100.00 |   96.18 | 76,105-107\n src/runtime.ts             |   93.75 |   95.63 | 84,136-139,180,209\n src/selector.ts            |   96.15 |   80.08 | 89,93,200-245\n src/setup.ts               |   91.67 |   89.60 | 31-36,52,55,68,91-92,153-157,159\n src/specifications.ts      |   95.12 |   86.93 | 51,85,93,103,121-124,148-151,162-163,169-170,174-175,192-194,200,241-247,266,270,294-305,355-356\n src/storage.ts             |   90.51 |   91.67 | 91,447-458,491,523,697-698,769-819,831-835,840,896-897\n src/tracker-auth.ts        |   91.67 |   94.64 | 163-166,191,194-195,206,213-214,220,227,253-254,279,296-297,301,342\n src/tracker-comments.ts    |  100.00 |   96.34 | 100,177,192,255-256,270,275-276,294,320,380-381\n src/tracking.ts            |   94.50 |   87.85 | 434-438,443-446,502-506,619-622,629-632,653,687-691,804-808,812-815,821-824,832,836,841,844,848,852,899-909,913-928,958,1110,1115,1155-1156,1201-1203,1217-1218,1220-1221,1225-1237,1245,1305,1407,1411-1415,1421-1422,1479-1485,1568-1590,1595-1619,1715-1716,1739,1742-1754,1773-1792,1950-1964,1980,2005,2021,2052-2053,2072,2099-2101,2136,2141,2160-2168,2176,2180,2185,2189,2229-2230,2426,2432,2438-2439,2467,2474,2481-2483,2519,2526,2580,2652,2668-2698,2721,2777,2805,2838,2883-2886,2934-2936,3025-3031,3104,3124,3142,3148,3169-3177,3185,3226-3227,3259,3266,3423,3435,3441,3467,3472,3481,3495-3496,3576,3765-3766,3778,3801-3813,3875-3882,3893,3940,3948-3949,3979,3982-3983,3987-3989,3992-4031,4073-4074,4112-4114,4117-4165,4184-4200,4421,4424,4428,4434,4448-4452,4474,4477,4480,4483,4488,4512,4516,4575-4579,4644,4649,4709,4737,4749-4750,4762,4771\n src/types.ts               |  100.00 |  100.00 | \n src/worktrees.ts           |  100.00 |   84.48 | 83,95-98,107,115-118,127-133,140,147,150,156,164,167,170,180,188\n----------------------------|---------|---------|-------------------\n\n 276 pass\n 0 fail\n 2330 expect() calls\nRan 276 tests across 23 files. [22.35s]\n$ bun run build && bun run scripts/smoke-mcp.ts\n$ bun run scripts/build.ts\n$ bun run scripts/test-package.ts\n$ bun run scripts/check-consistency.ts\n",
+    "stdoutTruncated": false,
+    "stderrTruncated": false
+  }
+}

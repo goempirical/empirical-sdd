@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "feature": "prepare-version-0-27-0-for-the-integrated-human-first",
+  "sourceMergeCommit": "cb557ef0790ca3b1b53efc854be5019a480c45c6",
+  "integrationReceiptDigest": "sha256:5dce4beaabb5cd461f08d94383d70bf09399d5f44bb9a08a4d5f1d240ff85737",
+  "digest": "sha256:517bc4935b9b2ab01b32ac84779adff2d50cd4b72869f006214bef9bea7a5d8a"
+}

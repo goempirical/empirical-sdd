@@ -22,5 +22,8 @@
   "migratedFrom": {
     "schemaVersion": 4,
     "migratedAt": "2026-08-03T22:31:23.517Z"
+  },
+  "interaction": {
+    "questions": "detailed"
   }
 }

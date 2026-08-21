@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "mode": "yolo",
+  "repositoryId": "sha256:f8bfb213a854bdefd32d29af75cf26f90bbae3dceb62959e0bfca91866d7f589",
+  "feature": "prepare-version-0-27-0-for-the-integrated-human-first",
+  "requestDigest": "sha256:97a937f45c60d9d4d5d164e9f223e6e6f5eb90ce9d03356eb4f7e28cc4f90ac4",
+  "ceiling": "delivered",
+  "targetBranch": "main",
+  "allowExternalAgent": false,
+  "createdAt": "2026-08-21T22:49:41.409Z",
+  "expiresAt": null,
+  "digest": "sha256:4fa138e10a942738150eff354514c7d5bcc739b5089e5aed82674a44af46dc72"
+}
