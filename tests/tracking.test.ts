@@ -326,6 +326,9 @@ describe("external ticket tracking", () => {
     expect(discovery.resources.map((resource) => resource.kind)).toEqual([
       "workspace", "team", "project", "state", "state", "state", "state",
     ]);
+    const discoveryRequest = requestBody(ordinary.calls[0]);
+    expect(discoveryRequest.query).toContain("teams(first: $teamFirst, after: $after)");
+    expect(discoveryRequest.variables).toEqual({ after: null, teamFirst: 10 });
     const mapping = suggestTrackerStateMapping(discovery);
     expect(mapping.ambiguous).toEqual([]);
     expect(mapping.states).toEqual(linearPolicyV2().states);

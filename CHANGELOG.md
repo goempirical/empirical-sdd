@@ -8,6 +8,13 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 
 ## [Unreleased]
 
+## [0.26.1] - 2026-08-21
+
+### Fixed
+
+- Bounded Linear team discovery pages so the nested project and workflow-state
+  connections stay below Linear's GraphQL query-complexity limit.
+
 ## [0.26.0] - 2026-08-20
 
 ### Added
@@ -183,7 +190,8 @@ Published through GitHub Actions trusted publishing with npm provenance.
 
 - Prepared and released package version `0.20.2`.
 
-[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.26.0...HEAD
+[Unreleased]: https://github.com/goempirical/empirical-sdd/compare/v0.26.1...HEAD
+[0.26.1]: https://github.com/goempirical/empirical-sdd/compare/v0.26.0...v0.26.1
 [0.26.0]: https://github.com/goempirical/empirical-sdd/compare/v0.25.0...v0.26.0
 [0.25.0]: https://github.com/goempirical/empirical-sdd/compare/v0.24.1...v0.25.0
 [0.24.1]: https://github.com/goempirical/empirical-sdd/compare/v0.24.0...v0.24.1
