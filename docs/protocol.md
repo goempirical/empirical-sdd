@@ -1,4 +1,4 @@
-# Empirical protocol 0.26
+# Empirical protocol 0.27
 
 ## Shared contract
 

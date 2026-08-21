@@ -25,12 +25,11 @@ and the prepared changelog heading must match it. `SCHEMA_VERSION` changes only
 when durable state compatibility changes; a package version change does not
 imply a schema change.
 
-The prepared `0.26.1` release is an alpha PATCH: it corrects global updater
-verification so npm-prefix and PATH-visible executables cannot diverge behind a
-false success report, and it bounds Linear team pages so tracker discovery
-remains below Linear's GraphQL query-complexity limit. Schema 5, Tracker Policy
-v1/v2, workflow behavior, and the package surface remain compatible, and
-existing repositories require no state migration.
+The prepared `0.27.0` release is an additive alpha MINOR: Tracker Policy v2
+milestone comments become human-first across GitHub, Linear, and Jira while
+retaining exact current and legacy recovery metadata. Schema 5, Tracker Policy
+v1/v2, visibility cadence, issue descriptions, and the package surface remain
+compatible, and existing repositories require no state migration.
 
 ## Changelog rules
 

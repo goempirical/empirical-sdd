@@ -1,6 +1,6 @@
 # Architecture
 
-Empirical 0.26 is a TypeScript library, Node.js CLI, stdio MCP server, one
+Empirical 0.27 is a TypeScript library, Node.js CLI, stdio MCP server, one
 explicit global Init skill, and a repository-local automatic workflow over one
 Schema 5 model.
 
