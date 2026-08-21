@@ -15,6 +15,8 @@ under the alpha rules in [docs/versioning.md](docs/versioning.md).
 - Made `empirical update` invoke and verify the CLI installed under npm's actual
   global prefix, then fail with actionable diagnostics when an older Empirical
   installation still shadows it through `PATH`.
+- Bounded Linear team discovery pages so the nested project and workflow-state
+  connections stay below Linear's GraphQL query-complexity limit.
 
 ## [0.26.0] - 2026-08-20
 

@@ -27,9 +27,10 @@ imply a schema change.
 
 The prepared `0.26.1` release is an alpha PATCH: it corrects global updater
 verification so npm-prefix and PATH-visible executables cannot diverge behind a
-false success report. Schema 5, Tracker Policy v1/v2, workflow behavior, and the
-package surface remain compatible, and existing repositories require no state
-migration.
+false success report, and it bounds Linear team pages so tracker discovery
+remains below Linear's GraphQL query-complexity limit. Schema 5, Tracker Policy
+v1/v2, workflow behavior, and the package surface remain compatible, and
+existing repositories require no state migration.
 
 ## Changelog rules
 
