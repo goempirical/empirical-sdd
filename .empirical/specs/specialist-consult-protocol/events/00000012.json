@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "sequence": 12,
+  "previousDigest": "sha256:f7257d96d96566eb72e3cc0ca74ac880dede8c714cf638d6e53d49e206108465",
+  "actor": "agent",
+  "type": "transition",
+  "summary": "Review complete: every criterion traced to code and tests, AC-5 asserts the slice is a strict subset of the phase packet, decisions D-001 to D-004 consistent with the implementation.",
+  "createdAt": "2026-08-21T23:30:16.447Z",
+  "stateBeforeDigest": "sha256:4ae3a04b5771b78da516a1ea0b105207832f6a2b8a2b099685a04aca903848c2",
+  "stateAfterDigest": "sha256:500f7e6900fcd4cb5366920aa416f7cb0f92f0944e6dcf03a54615e16f471361",
+  "state": {
+    "schemaVersion": 5,
+    "revision": 12,
+    "activeFeature": "specialist-consult-protocol",
+    "request": "Add a specialist consult protocol so tagged specialists such as security and ui-ux run as focused advisories without standing roles",
+    "profile": "complex",
+    "workflow": "complex",
+    "mode": "normal",
+    "phase": "integrate",
+    "status": "waiting",
+    "repairAttempts": 1,
+    "message": "Review complete: every criterion traced to code and tests, AC-5 asserts the slice is a strict subset of the phase packet, decisions D-001 to D-004 consistent with the implementation.",
+    "implementationActor": "agent",
+    "specDigest": "sha256:d90a2458e693828ba5716ffd483c4e426f0cd9a5ac379325a4fb415d1294d1f2",
+    "approvedSpecRevision": 2,
+    "capabilityArchiveRequired": true,
+    "capabilityDeltaDigest": "sha256:ddf457858dbe6bc7c30a5aafc428f38f5f8a25f4f466153910f98c4ec6957446",
+    "impactDigest": "sha256:65dc56e5206226b7ecddd3c57f32954a5989d39af7ebbf105999c174845e0997",
+    "capabilityClaimId": "specialist-consult-protocol-d86297b2a087",
+    "authorizationDigest": null,
+    "evidence": [],
+    "evidenceReceiptIds": [
+      "executed-db2bb6caf50d0d38a444a8f2"
+    ],
+    "legacyEvidenceCount": 0,
+    "completion": {
+      "implemented": true,
+      "verified": true,
+      "integrated": false,
+      "delivered": false,
+      "published": false,
+      "highest": "verified",
+      "reasons": {
+        "integrated": "integrated has not been proven by a durable receipt.",
+        "delivered": "delivered has not been proven by a durable receipt.",
+        "published": "published has not been proven by a durable receipt."
+      }
+    },
+    "updatedAt": "2026-08-21T23:30:16.447Z"
+  },
+  "digest": "sha256:b7c601b90ea609c7b11efe949161150c74371eed74f2df35624e68f7f0b7346b"
+}

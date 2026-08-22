@@ -26,7 +26,8 @@ executable handoff support.
 - Discovery and routing: `empirical_explore`, `empirical_discovery`,
   `empirical_route`, `empirical_fast`, `empirical_complex`, `empirical_yolo`.
 - Exact workflow: `empirical_loop`, `empirical_next`, `empirical_status`,
-  `empirical_explain`, `empirical_complete`, `empirical_retry`.
+  `empirical_explain`, `empirical_consult`, `empirical_complete`,
+  `empirical_retry`.
 - External ticket mirror: `empirical_tracker_discover`,
   `empirical_tracker_suggest`, `empirical_tracker_preview`, `empirical_tracker_configure`,
   `empirical_tracker_bind`, `empirical_tracker_sync`.

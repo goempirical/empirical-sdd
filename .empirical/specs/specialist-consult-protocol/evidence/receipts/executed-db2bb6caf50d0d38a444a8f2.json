@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "id": "executed-db2bb6caf50d0d38a444a8f2",
+  "criteria": [
+    "AC-1",
+    "AC-10",
+    "AC-2",
+    "AC-3",
+    "AC-4",
+    "AC-5",
+    "AC-6",
+    "AC-7",
+    "AC-8",
+    "AC-9"
+  ],
+  "evidenceKinds": [
+    "review",
+    "test"
+  ],
+  "summary": "Full CI gate: typecheck, 251 tests, coverage thresholds, distribution smoke, package inspection, and the consistency gate.",
+  "passed": true,
+  "startedAt": "2026-08-21T23:23:33.806Z",
+  "completedAt": "2026-08-21T23:29:58.978Z",
+  "provenance": {
+    "repositoryId": "sha256:4779b1583f8a459f8cbad7181cabbe37ecc5f764d4a20cccc81c076629a68f0c",
+    "feature": "specialist-consult-protocol",
+    "specRevision": 2,
+    "specDigest": "sha256:d90a2458e693828ba5716ffd483c4e426f0cd9a5ac379325a4fb415d1294d1f2",
+    "treeDigest": "sha256:29efa0fc569312cfbdee63192f085c44f3a1e7ad85528957c1b4da1f9b8adcf1",
+    "policyDigest": "sha256:888d86d00b83ec4a957413efb0701df5278d06de2077ba6b76f58dd2ba6eeeaf"
+  },
+  "digest": "sha256:ba8cae3d494a52d143a856616032562f7b9fe1cfb969f16e1d130db9c3661f55",
+  "kind": "executed",
+  "command": {
+    "argv": [
+      "bun",
+      "run",
+      "ci"
+    ],
+    "cwd": ".",
+    "timeoutMs": 900000,
+    "maxOutputBytes": 4194304,
+    "environmentKeys": [
+      "PATH",
+      "PATHEXT",
+      "SYSTEMROOT",
+      "TEMP",
+      "TMP",
+      "TMPDIR"
+    ]
+  },
+  "result": {
+    "exitCode": 0,
+    "signal": null,
+    "timedOut": false,
+    "stdoutDigest": "sha256:abf8fa497d3512d9fabc3cfd9f6426ce4d27531dbe587e29d2d5fbdaee678cfa",
+    "stderrDigest": "sha256:16de3a7966e5c1c64ad47f0ac0552a046a97efeb2a09801eea63e8658950854e",
+    "stdoutTail": "bun test v1.3.5 (1e86cebd)\nbun test v1.3.5 (1e86cebd)\nCoverage gate: 90.01% lines, 93.50% functions across 32 modules.\nBundled 0.22 single-skill, tracker, uninstall, receipt, routing, YOLO, worktree, CLI, and MCP smoke passed.\n\nadded 95 packages in 8s\nClean package consumer passed for empirical-sdd 0.22.1.\nConsistency gate: Empirical 0.22.1, Schema 5, 1 skill, 35 operations.\n",
+    "stderrTail": "ifiers\n(pass) Schema-5 protocol > impact manifests enforce behavioral and non-behavioral contracts\n(pass) Schema-5 protocol > standing authorization is digest-bound, bounded, and expires\n(pass) Schema-5 protocol > completion cannot skip a durable level\n(pass) operation and skill registry > has unique operations and exactly one registry-backed skill\n(pass) deterministic routing > keeps explicit neutral edits Fast and promotes every material floor\n(pass) deterministic routing > normal retains material gates and YOLO retains external safety gates\n(pass) deterministic routing > YOLO questions only when material outcomes cannot be resolved\n(pass) Policy v2 > strict defaults grant no delivery or publication authority\n(pass) Policy v2 > accepts exact command vectors and rejects shell/path/timeout hazards [15.00ms]\n(pass) Policy v2 > migrates v1 guidance without inventing authority\n(pass) shell-free runtime > passes exact argv/cwd and stores no environment values\n(pass) shell-free runtime > rejects path escapes, bounds, null argv, and secret-like environment keys\n(pass) immutable evidence receipts > repository tree digests exclude reserved migration scratch only [172.00ms]\n(pass) immutable evidence receipts > derives executed pass/fail from runtime and validates provenance [16.00ms]\n(pass) immutable evidence receipts > hashes collected artifacts and rejects modification or escape [15.00ms]\n(pass) immutable evidence receipts > exclusive append preserves an immutable receipt file [32.00ms]\n\ntests\\worktree-isolation.test.ts:\n(pass) Git worktree isolation > unrelated work returns a complete read-only proposal [1593.00ms]\n(pass) Git worktree isolation > approved creation blocks a dirty source checkout [1891.00ms]\n(pass) Git worktree isolation > approved clean creation runs exact -b behavior and starts the request in the new checkout [3125.00ms]\n(pass) Git worktree isolation > a linked worktree does not inherit a committed blocked feature owned by its source checkout [2609.00ms]\n(pass) Git worktree isolation > branch and path collisions are rejected without force or workflow mutation [2579.00ms]\n(pass) Git worktree isolation > editable type, base, branch, and path survive proposal and approval [1218.00ms]\n(pass) Git worktree isolation > approval becomes stale when the base or active feature changes [3297.00ms]\n(pass) Git worktree isolation > isolation can be explicitly disabled [1172.00ms]\n----------------------------------|---------|---------|-------------------\nFile                              | % Funcs | % Lines | Uncovered Line #s\n----------------------------------|---------|---------|-------------------\nAll files                         |   94.79 |   95.27 |\n src\\agent-catalog.ts             |   90.48 |   96.65 | 242,252,283-288\n src\\agents.ts                    |   83.33 |   96.83 | 99-101\n src\\branding.ts                  |  100.00 |  100.00 | \n src\\checkouts.ts                 |   95.00 |   93.20 | 51,70,99,103,116,127-128\n src\\coordination.ts              |   92.21 |   88.59 | 93,123-124,136,145-146,152,162,169,183,186,191,195,200,269,292,295,308-309,315-316,325-326,332-333,337,362,367,420,437-438,473-495,503,510,542-543,556,586,600-601,629,708-709,715,740\n src\\core.ts                      |   88.69 |   88.46 | 324-327,527-530,849-858,1045-1072,1448-1594,1775-1827,1892-1937,2304-2314,2393-2408,2782,2868-2870,2983-2990,3153-3154,3290-3292\n src\\decisions.ts                 |   94.74 |   90.91 | 47,72-73,109-113,116-119\n src\\delivery.ts                  |   93.65 |   92.35 | 73,79,108,112-122,141-143,159,173-174,187-188,215,219,262,339,354,407-408,416-417,420,425,471,474,497-498,504,520,524,612-613,695,706,758-760,771,823-824,845,866,880,884,898,910,914,918,942-943\n src\\discovery.ts                 |   96.77 |   88.79 | 159,165,168,174-175,181-182,210-213,223,238,258-261,264-267,301-303,338-342,350-353,397,426,429,433\n src\\doctor.ts                    |   97.92 |   84.27 | 60,95-96,255-262,285,306-336,353-361,406-414,523-532,553-561,620-628,635-641,647-653\n src\\errors.ts                    |   50.00 |   88.89 | \n src\\evidence.ts                  |   93.33 |   95.12 | 35,114,130,138,183-187,196,230\n src\\integrations.ts              |   97.01 |   89.04 | 213,363,367,372,385,446,464-465,494-495,513,530-531,536-537,563-567,571-572,578-579,600-622,634,649-653,656-657\n src\\journal.ts                   |  100.00 |   91.54 | 64,70,76,92,97,123,146,162,165,168,171,178,182,199,208-209,215,247-248,280,287,296,346-347,351,362-363,401,405,413,418,426,454\n src\\knowledge-templates.ts       |  100.00 |  100.00 | \n src\\knowledge.ts                 |   90.63 |   96.87 | 212,222-223,317,383,409-410,478-481,487-490\n src\\lifecycle.ts                 |   80.00 |   94.29 | 46-47\n src\\migration-scratch.ts         |  100.00 |  100.00 | \n src\\migration.ts                 |   97.33 |   91.16 | 71,79-80,89,126-128,137-138,144,153,171,209,223,233,245-246,257-258,272-273,312-315,458,489-502,525,585-586,612,671,679,689-690,715,722,744,800,803-804,810,822-826,885-886,897-900,919-920,925-927\n src\\operations.ts                |   83.33 |   94.44 | 117,126,135,139-141\n src\\policy.ts                    |  100.00 |   93.33 | 32,45-47,60,64\n src\\protocol.ts                  |   93.33 |   96.36 | 83,109,189-193,252,256,259,448,451,454\n src\\routing.ts                   |  100.00 |   96.24 | 79,108-110\n src\\runtime.ts                   |   93.75 |   95.63 | 84,136-139,180,209\n src\\selector.ts                  |   96.15 |   80.08 | 89,93,200-245\n src\\setup.ts                     |   88.89 |   90.72 | 24-28,43,46,59\n src\\specialists.ts               |  100.00 |   96.91 | 107,110,114,117,120,123,127\n src\\specifications.ts            |   95.12 |   86.93 | 51,85,93,103,121-124,148-151,162-163,169-170,174-175,192-194,200,241-247,266,270,294-305,355-356\n src\\storage.ts                   |   91.14 |   91.86 | 91,446-457,490,522,696-697,768-818,830-834\n src\\tracking.ts                  |   96.30 |   87.25 | 437,479-480,525-527,541-542,544-545,549-561,569,624,640,644-648,654-655,707-713,791-813,818-842,915-916,939,942-953,971-989,1143,1149,1155-1156,1184,1191,1198-1200,1236,1243,1291,1360,1376-1406,1429,1485,1519,1563-1564,1737,1749,1755,1781,1786,1795,1798-1811,1890,2018-2019,2031,2098-2105,2116,2152-2153,2191-2193,2196-2244,2263-2279,2495,2503,2515,2524\n src\\types.ts                     |  100.00 |  100.00 | \n src\\worktrees.ts                 |  100.00 |   84.48 | 83,95-98,107,115-118,127-133,140,147,150,156,164,167,170,180,188\n tests\\agent-catalog.test.ts      |  100.00 |  100.00 | \n tests\\agents.test.ts             |  100.00 |  100.00 | \n tests\\branding.test.ts           |  100.00 |  100.00 | \n tests\\cli-config.test.ts         |   88.89 |  100.00 | \n tests\\coordination.test.ts       |   95.12 |   97.58 | 27,247-249,273-275\n tests\\core.test.ts               |   98.44 |  100.00 | \n tests\\delivery.test.ts           |   97.22 |   99.81 | \n tests\\discovery.test.ts          |   97.37 |  100.00 | \n tests\\doctor.test.ts             |   97.83 |  100.00 | \n tests\\integrations.test.ts       |   98.39 |   87.32 | 265-270,272-280,282-289,511-534,536-544,549-554,556-563\n tests\\journal.test.ts            |  100.00 |  100.00 | \n tests\\knowledge.test.ts          |  100.00 |  100.00 | \n tests\\lifecycle.test.ts          |  100.00 |  100.00 | \n tests\\living-specs.test.ts       |   92.50 |  100.00 | \n tests\\mcp.test.ts                |  100.00 |  100.00 | \n tests\\migration.test.ts          |   91.89 |  100.00 | \n tests\\selector.test.ts           |  100.00 |  100.00 | \n tests\\setup.test.ts              |  100.00 |  100.00 | \n tests\\specialists.test.ts        |   97.56 |  100.00 | \n tests\\tracking.test.ts           |   92.38 |   98.65 | 156-157,216-217,441-442,496-497,725-726,845-846,870-871,1251-1252\n tests\\trust-foundations.test.ts  |   98.55 |   99.82 | \n tests\\worktree-isolation.test.ts |   93.33 |  100.00 | \n----------------------------------|---------|---------|-------------------\n\n 252 pass\n 0 fail\n 1792 expect() calls\nRan 252 tests across 22 files. [180.54s]\n$ bun run build && bun run scripts/smoke-mcp.ts\n$ bun run scripts/build.ts\n$ bun run scripts/test-package.ts\n$ bun run scripts/check-consistency.ts\n",
+    "stdoutTruncated": false,
+    "stderrTruncated": false
+  }
+}

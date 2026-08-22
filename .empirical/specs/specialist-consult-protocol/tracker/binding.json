@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "feature": "specialist-consult-protocol",
+  "provider": "linear",
+  "remoteId": "09a72bee-1e1c-4df7-ad13-6dcf9b459020",
+  "remoteKey": "SDD-9",
+  "url": "https://linear.app/empirical/issue/SDD-9/specialist-consult-protocol-no-standing-roles",
+  "projectItemId": null,
+  "markerId": null,
+  "targetDigest": "sha256:e25c875da71446ca4c96d6e581aba9a29f67b20f5a3d8e43863c14e9e3ffbb8d",
+  "bindIdempotencyKey": "sha256:9c67f5a972a4ff57e4469040d104f537770d213d8865c7bfa01b41b68e4e008f",
+  "lastSyncedRevision": 4,
+  "lastSyncedDigest": "sha256:9bea004aa832effd1c8d4c56532818d610d10aa9de0c7153b7bd5906edd4dc3c",
+  "lastSyncedPolicyDigest": "sha256:3df9c6ddae5f4538432594653f5331cba00a25f059789155ef2e6287d3c6c3e6",
+  "digest": "sha256:4ed2878ff424c47b7d668e8077cbcee45092734e05e021f63040b0f00b9e5559"
+}

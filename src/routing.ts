@@ -1,4 +1,5 @@
 import type { ExecutionMode, RiskFloor, Workflow } from "./protocol.js";
+import { deriveConsults } from "./specialists.js";
 
 const RISK_ORDER: readonly RiskFloor[] = [
   "contract-neutral",
@@ -64,6 +65,8 @@ export interface RouteDecision {
   rationaleCodes: string[];
   gates: string[];
   promoted: boolean;
+  /** Specialist ids implied by this request. Derived, never caller-supplied. */
+  consults: string[];
 }
 
 function maxFloor(left: RiskFloor, right: RiskFloor): RiskFloor {
@@ -150,6 +153,7 @@ export function routeRequest(input: RouteInput): RouteDecision {
     rationaleCodes: [...new Set(rationaleCodes)],
     gates: [...new Set(gates)],
     promoted,
+    consults: deriveConsults({ riskFloor }),
   };
 }
 

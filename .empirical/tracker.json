@@ -3,7 +3,7 @@
   "provider": "linear",
   "target": {
     "teamId": "759936b8-0971-44ad-9162-6909afdd4467",
-    "projectId": null
+    "projectId": "6eb70b1d-a893-4bf1-b35a-38cd99c72d83"
   },
   "credentialEnv": {
     "apiKey": "LINEAR_API_KEY"

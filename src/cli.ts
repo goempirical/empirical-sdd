@@ -538,6 +538,12 @@ async function main(): Promise<void> {
       emit(await project.explain(), context.json, renderExplain);
       return;
     }
+    case "consult": {
+      assertNoArgs(context.args, "consult");
+      const project = await EmpiricalProject.openReadOnly(context.root);
+      emit(await project.consult(), context.json, renderConsult);
+      return;
+    }
     case "tracker-discover": {
       const input = parseTrackerDiscoveryInput(
         await readJsonInput<unknown>(context.args, "tracker-discover"),
@@ -1448,6 +1454,38 @@ function renderProposal(value: unknown): string {
 function renderHandoff(value: unknown): string {
   const handoff = value as WorktreeHandoff;
   return `Worktree created and Empirical started ${handoff.feature}.\nPath: ${handoff.path}\nBranch: ${handoff.branch}\nBase: ${handoff.base}\nRevision: ${handoff.revision}\nResume: ${handoff.resume}\n\n${renderAction(handoff.action)}`;
+}
+
+function renderConsult(value: unknown): string {
+  const report = value as Awaited<ReturnType<EmpiricalProject["consult"]>>;
+  const heading = `Empirical Consult · ${report.feature ?? "no active feature"}`;
+  if (report.blocked) {
+    const { specialist, finding } = report.blocked;
+    return [
+      heading,
+      `Blocked by ${specialist}: ${finding.severity} ${finding.category} at ${finding.location}`,
+      `Recommendation: ${finding.recommendation}`,
+    ].join("\n");
+  }
+  if (report.packets.length === 0) {
+    return [
+      heading,
+      report.required.length > 0
+        ? `No consult is gated at ${report.phase}; required elsewhere: ${report.required.join(", ")}`
+        : "This feature's surface requires no specialist consult.",
+    ].join("\n");
+  }
+  return [
+    `${heading} · phase ${report.phase}`,
+    ...report.packets.flatMap((packet) => [
+      "",
+      `${packet.title} (${packet.specialist})`,
+      `  Question: ${packet.question}`,
+      `  Read only: ${packet.contextSlice.join(", ")}`,
+      `  Write: ${packet.advisoryPath}`,
+      `  May block on: ${packet.domain.join(", ")}`,
+    ]),
+  ].join("\n");
 }
 
 function renderExplain(value: unknown): string {
